@@ -1,0 +1,14 @@
+line 1:
+  comment (paren): "Macro variables and expressions are parsed, not evaluated."
+line 2:
+  assign: #100 = 5
+line 3:
+  assign: #101 = [[#100 * 2] + 1]
+line 4:
+  assign: #[#1 + 1] = [SIN[30.] * #2]
+line 5:
+  words: G1 X#100 Y-#101 Z[#100 / 2]
+line 6:
+  words: G1 X[ATAN[1, 2]] Y#[#100 + 1] Z#[#3]
+line 7:
+  assign: #1 = [[#2 GT 3] AND [#4 LE 5]]
