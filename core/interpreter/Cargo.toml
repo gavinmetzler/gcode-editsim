@@ -1,0 +1,10 @@
+[package]
+name = "interpreter"
+description = "Applies dialect commands to a machine model to produce the IR."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

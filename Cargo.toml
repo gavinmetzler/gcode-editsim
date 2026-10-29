@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+# Core library crates (see ARCHITECTURE.md §5). `app/` (Tauri shell) joins
+# the workspace in a later milestone.
+members = [
+    "core/gcode-syntax",
+    "core/ir",
+    "core/dialect-api",
+    "core/dialect-fanuc",
+    "core/machine-api",
+    "core/machine-mill",
+    "core/interpreter",
+    "core/sim",
+    "core/testkit",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+publish = false
+
+# Applied to every member via `[lints] workspace = true`.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"

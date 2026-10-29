@@ -1,0 +1,10 @@
+[package]
+name = "machine-api"
+description = "Machine trait, axis definitions, kinematics, tool and stock traits."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
