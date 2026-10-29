@@ -1,6 +1,6 @@
 //! Modal state carried from block to block.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ir::{ArcPlane, LengthUnit, WorkOffsetId};
 
@@ -78,6 +78,9 @@ pub struct ModalState {
     pub current_tool: Option<u32>,
     /// Active work coordinate system.
     pub work_offset: WorkOffsetId,
+    /// Keys of program-wide conditions already reported, so a dialect can
+    /// warn about something once per program instead of on every block.
+    pub reported_once: BTreeSet<String>,
 }
 
 impl Default for ModalState {
@@ -97,6 +100,7 @@ impl Default for ModalState {
             selected_tool: None,
             current_tool: None,
             work_offset: WorkOffsetId::default(),
+            reported_once: BTreeSet::new(),
         }
     }
 }
@@ -110,5 +114,11 @@ impl ModalState {
     /// Makes `code` the active code of modal group `group`.
     pub fn set_active(&mut self, group: u16, code: CodeKey) {
         self.active.insert(group, code);
+    }
+
+    /// Returns `true` the first time it is called with `key` for this
+    /// state, and `false` afterwards.
+    pub fn first_report(&mut self, key: &str) -> bool {
+        self.reported_once.insert(key.to_owned())
     }
 }
