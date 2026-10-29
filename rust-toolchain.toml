@@ -1,0 +1,6 @@
+# Pin the exact stable toolchain so local builds and CI behave the same.
+# Bump deliberately, in its own PR.
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

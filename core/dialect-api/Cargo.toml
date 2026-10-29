@@ -1,0 +1,10 @@
+[package]
+name = "dialect-api"
+description = "Dialect trait, command enum, modal state and code-table loader."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,10 @@
+[package]
+name = "ir"
+description = "Dialect- and machine-neutral IR: segments, diagnostics and render-buffer encoding."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
