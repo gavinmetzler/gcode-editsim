@@ -107,31 +107,43 @@ Canned cycles expand to many primitive Segments that all share the `SourceRef` o
 
 ### 6.5 Commands (dialect → interpreter)
 
-Machine-neutral intents. Dialects emit these; they know nothing about geometry beyond what the program stated. *Provisional.*
+Machine-neutral intents, defined in `dialect-api`. Dialects emit these; they know nothing about geometry beyond what the program stated. All values are already in internal units. *Provisional.*
 
 ```rust
 pub enum Command {
-    Rapid   { target: AxisWords },
-    Linear  { target: AxisWords, feed: Option<Feed> },
-    Arc     { target: AxisWords, center: ArcCenter, dir: ArcDir, plane: Plane, feed: Option<Feed> },
+    Rapid   { target: Vec<AxisWord> },
+    Linear  { target: Vec<AxisWord> },
+    Arc     { target: Vec<AxisWord>, center: ArcCenter, dir: ArcDir, plane: ArcPlane },
     Dwell   { seconds: f64 },
-    SetUnits(Units),
-    SetDistanceMode(Distance),          // absolute / incremental
-    SetPlane(Plane),
-    SetWorkOffset(WorkOffsetId),        // G54..G59, G54.1 Pn
+    SetFeedRate(f64),                   // emitted whenever F is programmed
+    SetUnits(LengthUnit),               // records the program's units; values are already mm
+    SetDistanceMode(DistanceMode),      // absolute / incremental
+    SetPlane(ArcPlane),
+    SetWorkOffset(WorkOffsetId),
     SetFeedMode(FeedMode),              // per-min, per-rev, inverse-time
-    SetSpindle { state: SpindleState, rpm: Option<f64>, spindle: u8 },
-    ToolChange { tool: u32, offset_h: Option<u32>, offset_d: Option<u32> },
-    ToolLengthComp(TlcMode),
-    CutterComp  { mode: CompMode, d: Option<u32> },
+    SetSpindleSpeed { spindle: u8, rpm: f64 },
+    SetSpindleState { spindle: u8, state: SpindleState },   // off / cw / ccw
+    SelectTool(u32),                    // choose the next tool
+    ToolChange { tool: u32 },           // change tools now
     Coolant(CoolantState),
-    Sync { id: u32 },
+    Stop { optional: bool },            // operator stop / optional stop
     ProgramEnd { rewind: bool },
     Unsupported { what: String },       // always accompanied by a Diagnostic
 }
+
+pub struct AxisWord { pub axis: usize, pub value: f64, pub incremental: bool }  // axis = index into AxisSet
+pub enum ArcCenter { Offset(Vec<AxisOffset>), Radius(f64) }  // offsets from start; negative R = long arc
 ```
 
-`AxisWords` is a sparse set of `(axis_name, value, is_incremental)`. Resolving to absolute positions is the interpreter's job, since it owns the machine position and work offsets.
+Resolving axis words to absolute positions is the interpreter's job, since it owns the machine position and work offsets. Commands carry no `SourceRef`: the caller attaches the source block's reference to every command the block produced.
+
+Differences from the first draft, and why:
+
+- **Feed is its own command** rather than an optional field on each move. `F` can appear without motion, and a single source of truth avoids two ways to say the same thing.
+- **Spindle speed and spindle state are separate**, because `S` and the start/stop codes are independent and often appear on different blocks.
+- **Tool selection and tool change are separate** (`T` chooses, a change code changes), which most controllers distinguish. A dialect whose `T` word changes immediately just emits both.
+- **`Stop` was added** for operator stops and optional stops.
+- **Deferred until their milestones**: tool length and cutter compensation (M4/M5) and multi-channel `Sync`.
 
 ### 6.6 Segments (the IR)
 
@@ -242,23 +254,28 @@ Adding a Fanuc-compatible variant (Haas, a different Fanuc series) is mostly a t
 
 ```rust
 pub trait Dialect {
-    fn id(&self) -> &'static str;
+    fn id(&self) -> &str;
     fn code_table(&self) -> &CodeTable;
+
+    /// The controller's power-on modal state.
+    fn initial_state(&self, axes: &AxisSet) -> ModalState;
 
     /// Interpret one parsed block, updating modal state and appending Commands.
     /// Must not panic on bad input; report via `diag`.
     fn interpret_block(
         &self,
         block: &Block,
+        ctx: &BlockContext,             // the machine's AxisSet + the block's SourceRef
         state: &mut ModalState,
         out: &mut Vec<Command>,
         diag: &mut Diagnostics,
     );
-
-    /// Hooks for program-level behaviour (subprogram calls, macro variables, end-of-program).
-    fn macro_env(&self) -> &dyn MacroEnvironment;
 }
 ```
+
+`AxisSet` is the machine's ordered axis list as the dialect sees it: each axis's address letter and, optionally, the letter for its arc-centre offset (e.g. `I` for `X`). Index *i* in the set is index *i* in `Pos`. The dialect looks letters up there instead of assuming X/Y/Z exist; it cannot depend on `machine-api` (which comes later in the dependency order), so the caller builds the `AxisSet` from the user's machine definition (§9).
+
+A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferred until macros are in scope (M4); see §7.4.
 
 ### 7.3 Canned cycles
 
@@ -266,7 +283,7 @@ Expanded inside the dialect layer into primitive `Command`s (Rapid / Linear / Dw
 
 ### 7.4 Macros and expressions
 
-`gcode-syntax` parses expressions (`#100`, `[#1+2]`, functions) into an AST but does not evaluate them. Evaluation happens in the dialect's `MacroEnvironment`, because variable numbering, system variables and control flow (`IF`, `WHILE`, `GOTO`) differ per controller. Milestone 1 supports only literal numbers and simple variable assignment; the AST is there so adding more doesn't require a parser rewrite.
+`gcode-syntax` parses expressions (`#100`, `[#1+2]`, functions) into an AST but does not evaluate them. Evaluation happens in the dialect's `MacroEnvironment`, because variable numbering, system variables and control flow (`IF`, `WHILE`, `GOTO`) differ per controller. Milestone 1 evaluates literal numbers only: a block that uses a variable or expression gets an error diagnostic and is skipped. The AST is there so adding evaluation later doesn't require a parser rewrite.
 
 ## 8. Rust → UI boundary
 
@@ -355,7 +372,7 @@ pub trait Machine {
 }
 ```
 
-`machine-mill` implements the trivial case. Machine definitions are loaded from data (TOML) where possible: axis list, limits, tool table format, default work offsets.
+`machine-mill` implements the trivial case. Machine definitions are **user-editable text files** (TOML), loaded from data where possible: axis list (letters and arc-offset letters), travel limits, maximum speeds, tool table format, default work offsets. A UI for editing them comes later; until then users edit the file directly. The dialect's `AxisSet` (§7.2) is built from this definition.
 
 ## 10. Simulation (material removal)
 
