@@ -159,17 +159,21 @@ pub struct Segment {
     pub tool: u32,
     pub work_offset: WorkOffsetId,
     pub src: SourceRef,
-    pub cycle_step: CycleStep,          // None | Rapid-to-R | Feed-in | Dwell | Retract | ...
+    pub cycle_step: CycleStep,          // None | Approach | FeedIn | Dwell | PeckClear | Retract
     pub flags: SegFlags,                // bitflags: COMP_ACTIVE, OUT_OF_LIMITS, ...
 }
 
 pub struct ArcGeom {
-    pub center: Pos,                    // absolute, in the arc's plane axes
-    pub plane: Plane,                   // XY | ZX | YZ (G17/G18/G19), or axis-pair for others
+    pub center: Pos,                    // absolute; only the two plane axes are meaningful
+    pub plane: ArcPlane,                // two indices into the machine's axis list
     pub radius: f64,
     pub turns: u16,                     // full extra revolutions (e.g. P-word); usually 0
-    pub helical_delta: f64,             // travel along the plane normal
 }
+
+/// CCW turns from `first` toward `second` (right-hand rule about the third axis).
+pub struct ArcPlane { pub first: u8, pub second: u8 }
+
+pub struct WorkOffsetId(pub u16);       // opaque, assigned by the dialect; 0 = machine coords
 
 pub struct ChannelStream {
     pub channel: u8,
@@ -187,7 +191,8 @@ pub struct Program {
 Design notes:
 
 - **Arcs stay arcs in the IR.** They are exact, compact, and let stats and sim choose their own tolerance. Tessellation is a function in `ir` (`tessellate(&Segment, tol) -> impl Iterator<Item = Pos>`), used by the render-buffer builder and by sim.
-- Segments are emitted **in program order**, so a source line maps to a contiguous segment range (binary search on `src.line`).
+- Segments are emitted **in program order**, so a source line maps to a contiguous segment range (binary search on `src.line`). This holds for straight-line, single-file programs. Subprograms, macro loops and `GOTO` (M4) break it, because one line can then produce segments at several places in the stream; the lookup will need a separate line index by then.
+- **Arc plane is a pair of axis indices**, not a fixed `XY | ZX | YZ` enum, so the IR names no axes (the machine maps G17/G18/G19 or any other plane selection to indices). The swept angle is the shortest turn in the arc's direction from `start` to `end`, plus `turns` full revolutions; coincident end points mean a full circle. Axes outside the plane move linearly from `start` to `end`, which describes a helix without a separate `helical_delta` field (that field would duplicate `end - start` and could disagree with it).
 - A `Segment` is deliberately fat (~250 bytes). If memory becomes an issue on huge programs, the render path already uses a compact encoding (§8) and the IR can later move to a struct-of-arrays layout without changing consumers' API.
 
 ### 6.7 Diagnostics
