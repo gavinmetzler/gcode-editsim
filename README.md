@@ -1,223 +1,196 @@
 # GCode EditSim
 
-**A modern G-code editor and CNC milling simulator.**
+**A modern G-code editor, backplotter and CNC simulator for desktop and mobile.**
 
-GCode EditSim is an open-source project to develop a dedicated G-code editor, visualiser and milling simulator, with an emphasis on accurate CNC program interpretation, clear visual feedback and a modular architecture.
+GCode EditSim is an open-source project to develop a dedicated G-code editor, visualiser and machining simulator, in the spirit of tools such as CIMCOEdit and NCPlot. It emphasises accurate CNC program interpretation, clear visual feedback and a modular architecture.
 
-The long-term goal is to provide a practical environment where CNC programmers can write, edit, inspect and simulate milling programs before sending them to a machine.
+The long-term goal is to provide a practical environment where CNC programmers can write, edit, inspect, analyse and simulate programs before sending them to a machine. The same codebase targets desktop (Linux, Windows, macOS) and mobile (Android, iOS).
 
-The project is being developed in Rust, with a clean separation between the G-code processing engine, application logic and user interface.
+The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early development — Milestone 1 (Core Foundation).
+> **Development status:** Early development, Milestone 1 (core pipeline, no UI yet).
 
-The application is not yet suitable for production CNC verification or machine operation.
+GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
 ---
 
 ## Project Goals
 
-GCode EditSim aims to bring together three essential capabilities:
+GCode EditSim aims to bring together four capabilities:
 
-- **G-code editing** – A dedicated editor for writing and modifying CNC programs.
-- **Toolpath visualisation** – Interactive 3D visualisation of programmed tool movements.
-- **Material removal simulation** – Visual simulation of the machining process, showing how the stock changes as the tool moves through the program.
+- **G-code editing:** a dedicated editor for writing and modifying CNC programs, with source lines linked to the toolpath in both directions.
+- **Toolpath visualisation (backplotting):** interactive 3D display of programmed tool movements.
+- **Program analysis:** diagnostics, statistics, bounding box, tools used and estimated cycle time.
+- **Material removal simulation:** visual simulation of how the stock changes as the tool moves through the program.
 
-The project is being designed with extensibility in mind, allowing support for different CNC controller dialects and machine configurations over time.
+It is built for extensibility. The user selects both the **controller dialect** (Fanuc, Haas, Siemens, Heidenhain, GRBL, LinuxCNC, ...) and the **machine type** (mill, lathe, mill-turn, multi-channel, 5-axis). Each is a separate module, so adding one does not mean rewriting the engine.
+
+**Initial scope:** 3-axis mill with the Fanuc dialect. Everything else is designed for but not built yet.
+
+### Non-goals
+
+- **Not a CAM system.** It does not generate toolpaths.
+- **Not a safety verification tool.** Its output must never be treated as proof that a program is safe to run.
+- **Not an exact emulation of every controller option.** It targets the commonly used subset of each dialect and reports clearly what it does not support.
+- **No cloud service or accounts.** Everything runs on the user's device.
 
 ### Design Principles
 
-The project follows several core principles:
-
-1. **Correctness before appearance** – Accurate G-code interpretation is more important than visual sophistication.
-2. **Separation of concerns** – Parsing, interpretation, geometry, simulation and rendering should remain independent.
-3. **Testability** – Core functionality should be independently testable without requiring the graphical application.
-4. **Extensibility** – Controller dialects and machine configurations should be supported without rewriting the underlying engine.
-5. **Explicit diagnostics** – Unsupported commands, invalid input and interpretation problems should be reported clearly rather than silently ignored.
+1. **Correctness before appearance:** accurate G-code interpretation matters more than visual sophistication.
+2. **Separation of concerns:** dialect (what the text means), machine (axes, kinematics, tooling) and the intermediate representation are kept strictly apart.
+3. **A pure core:** the processing engine has no UI or platform dependencies. It compiles for native targets and for WebAssembly.
+4. **Data over code:** dialect code tables and machine definitions live in data files where practical.
+5. **Testability:** all core functionality is tested headlessly, without the graphical application.
+6. **Explicit diagnostics:** unsupported commands, invalid input and controller-dependent behaviour are reported clearly with their source location, never silently ignored.
 
 ---
 
 ## Architecture
 
-The project uses a modular Rust workspace.
-
-Its central design is a processing pipeline that transforms G-code into a neutral intermediate representation (IR), which can then be consumed by visualisation and simulation systems.
+The project is a modular Rust workspace. Its central design is a pipeline that turns G-code into a neutral intermediate representation (IR), which visualisation, analysis and simulation then consume.
 
 ```text
-                G-code Source
-                     |
-                     v
-                Syntax Parser
-                     |
-                     v
-             Dialect Interpreter
-                     |
-                     v
-              Machine Interpreter
-                     |
-                     v
-          Intermediate Representation
-                     |
-             +-------+-------+
-             |               |
-             v               v
-         Backplotter     Simulator
-             |               |
-             v               v
-         3D Toolpath    Material Removal
+                     G-code source
+                           |
+                           v
+                gcode-syntax: lexer + parser
+                           |   blocks (no G-code meaning yet)
+                           v
+           dialect (e.g. Fanuc): codes -> commands
+                           |   machine-neutral intents, in mm
+                           v
+       interpreter + machine model (axes, limits, tools)
+                           |
+                           v
+            Intermediate Representation (IR)
+           segments + diagnostics + source refs
+                           |
+         +-----------------+-----------------+
+         |                 |                 |
+         v                 v                 v
+  render buffer      statistics,        material removal
+  -> 3D backplot     cycle time         simulation
 ```
 
-### Main Components
+The full design, including the dependency rules between crates, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-| Component | Responsibility |
+### Components
+
+| Path | Responsibility |
 |---|---|
-| `gcode-syntax` | Parsing G-code source into structured syntax |
-| `ir` | Defining the neutral intermediate representation |
-| `core` | Core CNC interpretation and processing |
-| `app` | Application-level orchestration |
-| `ui` | User interface and visual presentation |
-
-The exact implementation boundaries are defined in [ARCHITECTURE.md](ARCHITECTURE.md).
+| `core/gcode-syntax` | Lexer and parser: G-code text to blocks, words, comments and unevaluated expressions. Knows no G-code meaning. |
+| `core/ir` | The neutral intermediate representation: segments, arcs, diagnostics, source references, bounding box. |
+| `core/dialect-api` | The `Dialect` trait, commands, modal state and the data-driven code-table loader. |
+| `core/dialect-fanuc` | The first dialect: Fanuc milling. |
+| `core/machine-api` | The machine trait: axis definitions, kinematics, limits, tools. |
+| `core/machine-mill` | The first machine type: 3-axis mill. |
+| `core/interpreter` | Combines dialect, machine and state to produce the IR. |
+| `core/sim` | Material removal simulation, per machine family. |
+| `core/testkit` | Golden-file test helpers. |
+| `app/` | Tauri 2 shell: a thin command layer over the core. |
+| `ui/` | TypeScript user interface: three.js viewport, CodeMirror editor. |
 
 ### Intermediate Representation
 
-The Intermediate Representation is a central part of the architecture.
+The IR is the centre of the architecture. Each controller dialect is interpreted into a common representation of machine movements and operations, rather than talking to the visualisation or simulation directly. All dialects and machine types then share the same backplotting, analysis and simulation code.
 
-Rather than allowing each controller dialect to communicate directly with the visualisation or simulation systems, G-code is interpreted into a common representation of machine movements and operations.
+The IR preserves:
 
-This allows different controllers to share the same downstream geometry, backplotting and simulation infrastructure.
+- Rapid, linear, circular and helical movements. Arcs stay exact arcs, not line approximations.
+- Dwells, tool changes and synchronisation points between channels.
+- Feed rate, spindle speed, active tool and work offset for every segment.
+- A source reference (file, line, block) on every segment and diagnostic, linking the editor and the toolpath.
+- Diagnostics with a severity and a stable code.
 
-The IR is intended to preserve important information such as:
-
-- Linear movements.
-- Circular movements and arcs.
-- Helical interpolation.
-- Rapid positioning.
-- Feed movements.
-- Tool changes.
-- Source-code references.
-- Diagnostic information.
+Positions are indexed by the machine's own axis list, so nothing downstream assumes X, Y and Z.
 
 ---
 
 ## Planned Capabilities
 
-The following capabilities represent the project's intended direction. They are not necessarily implemented yet.
+These are the project's intended direction. Most are not implemented yet; see the roadmap.
 
-### G-code Support
+### Controller Dialects
 
-- G0 and G1 linear movements.
-- G2 and G3 circular interpolation.
-- Absolute and incremental positioning.
-- XY, XZ and YZ arc planes.
-- Work coordinate systems.
-- Tool length compensation.
-- Cutter radius compensation.
-- Canned drilling cycles.
-- Tool changes.
-- Controller-specific dialect support.
+- **Fanuc first**, starting with:
+  - G0–G3 (including helical arcs)
+  - planes G17–G19, inch/metric G20/G21, absolute/incremental G90/G91
+  - work offsets G54–G59
+  - F, S and T words
+  - common M codes: stops, program end, spindle, tool change, coolant
+- **Then:** tool length compensation, canned drilling cycles, subprograms, macro variables and cutter radius compensation.
+- **Later:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.
 
 ### Machine Support
 
-The architecture is intended to accommodate different machine configurations, including:
+- **Machine types:** 3-axis mills first, then lathes, mill-turn, multi-channel machines and 5-axis.
+- **User-defined machines:** described in editable text files (TOML) covering axes, travel limits, maximum speeds, tool table format and default work offsets. A graphical editor for these files will come later.
 
-- Three-axis milling machines.
-- Four-axis milling machines.
-- Five-axis milling machines.
-- Additional machine types as the project evolves.
+### Visualisation, Analysis and Simulation
 
-Initial development is focused on three-axis milling.
-
-### Visualisation and Simulation
-
-Planned visual capabilities include:
-
-- Interactive 3D toolpath display.
-- Tool and stock visualisation.
-- Tool movement playback.
-- Simulation controls.
-- Material removal visualisation.
-- Machine movement inspection.
-- Detection of potential machining problems.
+- Interactive 3D toolpath display, with editor line and toolpath segment selection kept in sync.
+- Diagnostics and statistics panels: bounding box, tools used, estimated cycle time.
+- Tool movement playback and simulation controls.
+- Travel-limit checking.
+- Material removal simulation, milling first.
 
 ---
 
 ## Technology
 
-The project uses Rust as its primary implementation language.
+- **Rust:** the processing engine. It is pure and platform-independent, and also compiles to WebAssembly.
+- **Tauri 2:** the application shell for desktop and mobile.
+- **TypeScript, three.js, CodeMirror:** the user interface, 3D viewport and editor.
+- **Binary data boundary:** bulk toolpath data passes from Rust to the UI as a compact, versioned binary buffer, never as JSON.
+- **TOML:** dialect code tables and machine definitions.
 
-Key technologies and architectural choices include:
-
-- **Rust** – Core application and processing engine.
-- **Cargo** – Workspace and dependency management.
-- **TypeScript** – UI-side integration.
-- **Rust-to-TypeScript interface** – Communication between the processing engine and visualisation layer.
-- **Golden-file testing** – Regression testing of parsing and interpretation behaviour.
-
-See `Cargo.toml` and `ARCHITECTURE.md` for implementation details.
+See `Cargo.toml` and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ---
 
 ## Development Roadmap
 
-Development is organised into milestones.
+Development is organised into milestones (details in [ARCHITECTURE.md §13](ARCHITECTURE.md#13-milestones)).
 
-### M1 – Core Foundation
+### M1 – Core Skeleton (in progress)
 
-Establish the underlying Rust workspace and core G-code processing architecture.
+The complete headless pipeline from G-code text to IR, with no UI.
 
-Current development is focused on:
+- [x] Workspace, pinned toolchain and CI
+- [x] `gcode-syntax` parser, with property tests and a fuzz target
+- [x] `ir` types, line lookup and bounding box
+- [x] `dialect-api` and the Fanuc dialect (M1 subset)
+- [ ] `machine-api` and `machine-mill`, including user-editable machine definitions
+- [ ] `interpreter` and end-to-end golden tests
 
-- Workspace and crate structure.
-- G-code syntax parsing.
-- Intermediate representation.
-- Core data types.
-- Diagnostics.
-- Unit and regression testing.
+### Later Milestones
 
-### M2 – Core Interpretation
-
-Develop the functionality required to interpret G-code into meaningful machine movements and operations.
-
-### M3 – Application and UI Foundation
-
-Develop the application interface and establish communication between the Rust engine and the UI.
-
-### Future Milestones
-
-Further development will focus on:
-
-- Interactive toolpath visualisation.
-- Machine configuration.
-- Material removal simulation.
-- Editing and playback functionality.
-- Expanded controller support.
-- Additional machine types.
-
-The roadmap will evolve as the underlying engine develops.
+- **M2 – Render buffer and minimal UI:** binary Rust/UI boundary, 3D viewport, editor, line and toolpath sync, statistics and diagnostics. Desktop only. Stub lathe and second dialect to test the module boundaries.
+- **M3 – Mobile spike:** the same app on Android and iOS.
+- **M4 – Machine state:** tool changes and tool table, tool length compensation, canned cycles, subprograms, simple macro variables.
+- **M5 – Accuracy:** cutter radius compensation, cycle-time estimation with acceleration, limits checking.
+- **M6 – Material removal (mill).**
+- **M7+ – More dialects and machine types:** Haas, then others; lathe and mill-turn.
 
 ---
 
 ## Testing and Quality
 
-Correctness is a priority, particularly because the application deals with CNC machine movements.
+Correctness is a priority, because the application deals with CNC machine movements. The project uses:
 
-The project uses:
+- **Unit tests,** and **conformance tests** for each dialect, one file per behaviour.
+- **Golden-file tests:** sample programs with reviewed expected output in `tests/golden/`.
+- **Property tests (proptest):** for example, the parser never panics on any input, and arc bounding boxes are exact.
+- **Fuzzing (cargo-fuzz):** of the parser, because G-code files come from untrusted sources.
+- **Checks:** formatting (`cargo fmt`), linting (`cargo clippy`, warnings as errors) and continuous integration through GitHub Actions.
 
-- Rust unit tests.
-- Golden-file regression tests.
-- Automated formatting checks.
-- Clippy linting.
-- Continuous integration through GitHub Actions.
-
-Unsupported or invalid G-code should generate explicit diagnostics rather than being silently discarded.
-
-New functionality should include appropriate regression tests.
+Unsupported or invalid G-code produces explicit diagnostics rather than being silently discarded. Every feature ships with tests.
 
 ---
 
 ## Safety Disclaimer
 
-GCode EditSim is a development project and is not currently certified or validated as a CNC machine safety or verification system.
+GCode EditSim is a visualisation and analysis aid. It is not, and is not intended to become, a CNC machine safety or verification system.
 
 A successful simulation does not guarantee that a program is safe to execute on a physical machine.
 
@@ -229,12 +202,11 @@ Never rely solely on this software to prevent collisions, tool breakage or machi
 
 ## Contributing
 
-The project is currently under active development.
+The project is in active development. Architectural decisions and development conventions are documented in:
 
-Architectural decisions and development conventions are documented in:
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) – System architecture and technical design.
-- [CLAUDE.md](CLAUDE.md) – Development guidelines and instructions for AI-assisted development.
+- [ARCHITECTURE.md](ARCHITECTURE.md): system architecture and technical design (the source of truth).
+- [CLAUDE.md](CLAUDE.md): development rules, including for AI-assisted development.
+- [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
 
 Contributions, technical feedback and suggestions are welcome as the project evolves.
 
