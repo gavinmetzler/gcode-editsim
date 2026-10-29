@@ -1,0 +1,31 @@
+line 1: %
+line 2:
+  words: O1000
+  comment (paren): "BASIC POCKET"
+line 3:
+  comment (paren): "T1 = 10MM FLAT ENDMILL"
+line 4: N10
+  words: G21 G90 G17 G40 G49 G80
+line 5: N20
+  words: T1 M6
+line 6: N30
+  words: G54 G0 X0. Y0. S3000 M3
+line 7: N40
+  words: G43 H1 Z25.
+line 8: N50
+  words: G1 Z-2.5 F200.
+line 9: N60
+  words: X50. F600.
+line 10: N70
+  words: G2 X60. Y10. I0 J10.
+line 11: N80
+  words: G3 X50. Y20. R10.
+line 12: N90
+  words: G1 X0.
+line 13: N100
+  words: G0 Z25.
+line 14: N110
+  words: M5
+line 15: N120
+  words: M30
+line 16: %

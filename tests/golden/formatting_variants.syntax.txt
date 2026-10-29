@@ -1,0 +1,16 @@
+line 1:
+  words: G0 X0 Y0
+  comment (semicolon): " lowercase, no spaces"
+line 2:
+  words: G1 X0.5 Y-0.25 Z-0.125 F100.
+line 3:
+  words: X10 Y-2
+line 5: skip=1 N200
+  words: M1
+line 6: skip=2
+  words: G0 X-1.
+line 7: N300
+  words: G1 X1 Y2
+  comment (paren): "mid-line comment"
+line 8:
+  words: G54.1 P1
