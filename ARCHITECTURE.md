@@ -77,13 +77,18 @@ Positions are arrays indexed by the machine's axis list, never hard-coded X/Y/Z.
 pub const MAX_AXES: usize = 9;          // X Y Z A B C U V W — revisit if a machine needs more
 pub type Pos = [f64; MAX_AXES];         // unused axes are 0.0 / ignored via the machine's axis mask
 
-pub struct AxisDef {
+pub struct AxisDef {                    // in machine-api
     pub name: char,                     // 'X', 'Y', 'Z', 'A', 'B', 'C', ...
     pub kind: AxisKind,                 // Linear | Rotary
     pub travel: Option<(f64, f64)>,     // soft limits, machine coords
-    pub diameter_mode_capable: bool,    // lathe X
+    pub arc_offset_letter: Option<char>,// e.g. 'I' for X; None = not in any arc plane
+    pub direction: Option<CartesianAxis>, // x | y | z: travel direction (linear) or rotation axis (rotary)
+    pub rapid_rate: Option<f64>,        // mm/min or deg/min
+    pub diameter_mode_capable: bool,    // turning X
 }
 ```
+
+The arc-offset letter belongs to the machine definition, not the dialect, so a dialect never has to assume that I goes with X.
 
 ### 6.3 Channels
 
@@ -358,21 +363,28 @@ Interpretation runs off the UI thread (Rust thread on desktop/mobile; Web Worker
 pub trait Machine {
     fn name(&self) -> &str;
     fn axes(&self) -> &[AxisDef];
-    fn channel_count(&self) -> usize;
+    fn channel_count(&self) -> usize { 1 }
 
     /// Convert machine-axis coordinates into Cartesian tool-tip position + tool axis
     /// (identity for a 3-axis mill; non-trivial for 5-axis or lathes with Y/B axes).
     fn forward_kinematics(&self, pos: &Pos) -> ToolPose;
 
-    fn tool_model(&self, tool: u32) -> Option<&ToolGeometry>;
-    fn limits_check(&self, pos: &Pos) -> LimitStatus;
+    /// Axes of `pos` outside their travel limits (empty if none).
+    fn check_limits(&self, pos: &Pos) -> Vec<LimitViolation>;
+
+    /// Machine-coordinate origin of a work coordinate system (id 0 = machine coords).
+    fn work_offset(&self, id: WorkOffsetId) -> Option<Pos>;
+
+    fn speeds(&self) -> &SpeedLimits;   // max feed, max spindle rpm
 
     /// Lathe-style X diameter handling etc. is applied here, not in the dialect.
-    fn normalize_axis_word(&self, axis: char, value: f64) -> f64;
+    fn normalize_axis_value(&self, axis: usize, value: f64) -> f64 { value }
 }
 ```
 
-`machine-mill` implements the trivial case. Machine definitions are **user-editable text files** (TOML), loaded from data where possible: axis list (letters and arc-offset letters), travel limits, maximum speeds, tool table format, default work offsets. A UI for editing them comes later; until then users edit the file directly. The dialect's `AxisSet` (§7.2) is built from this definition.
+`machine-mill` implements the trivial case. `tool_model` (tool geometry and the tool table) is deferred to M4, when tool changes and length compensation are simulated.
+
+Machine definitions are **user-editable text files** (TOML) describing the user's own machine: name, machine family, axis list (letters, kinds, directions, arc-offset letters, travel limits, rapid rates), maximum feed and spindle speed, and work offsets. `machine-api` loads and validates the file into a `MachineDef` (unknown settings are rejected, not ignored); the machine type named by `family` then checks it makes sense for that type (e.g. `Mill::new`). The format is documented for users in `docs/machine-definition.md`. A UI for editing them comes later; until then users edit the file directly. The dialect's `AxisSet` (§7.2) is built from this definition by the interpreter.
 
 ## 10. Simulation (material removal)
 

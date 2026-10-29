@@ -8,3 +8,8 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+ir = { path = "../ir" }
+machine-api = { path = "../machine-api" }
+thiserror = "2.0.17"
