@@ -1,0 +1,429 @@
+# Fanuc milling dialect: code table.
+#
+# Every G and M code this dialect recognises. `handler` names the Rust
+# routine in src/lib.rs that carries the code out:
+#
+#   rapid, linear, arc_cw, arc_ccw   motion (group 1)
+#   plane_*, units_*, absolute, incremental, work_offset, feed_per_minute
+#                                    modal settings
+#   no_effect      cancel/setting codes that cannot change the path here
+#                  because what they cancel is never active (G40, G49, G80)
+#   not_simulated  accepted, but the effect is not modelled yet: a warning is
+#                  reported and the block still moves (G41-G44)
+#   unsupported    recognised but not supported: an error is reported, and if
+#                  the code could change motion the block does not move
+#
+# Codes not listed here are unknown: an error is reported and the block does
+# not move. Group numbers follow the Fanuc G-code list (group 0 = one-shot).
+# M codes other than M00/M01/M02/M30/M98/M99 are defined by the machine
+# builder; the meanings below are the common convention.
+# See docs/dialect-notes/fanuc.md.
+
+[dialect]
+id = "fanuc"
+variant = "0i-M"
+
+[[g]]
+code = "G00"
+group = 1
+modal = true
+handler = "rapid"
+description = "Rapid positioning"
+
+[[g]]
+code = "G01"
+group = 1
+modal = true
+handler = "linear"
+description = "Linear interpolation"
+
+[[g]]
+code = "G02"
+group = 1
+modal = true
+handler = "arc_cw"
+description = "Circular interpolation, clockwise"
+words = { optional = ["R"] }
+
+[[g]]
+code = "G03"
+group = 1
+modal = true
+handler = "arc_ccw"
+description = "Circular interpolation, counter-clockwise"
+words = { optional = ["R"] }
+
+[[g]]
+code = "G04"
+group = 0
+modal = false
+handler = "unsupported"
+description = "Dwell"
+words = { optional = ["P", "X"] }
+
+[[g]]
+code = "G10"
+group = 0
+modal = false
+handler = "unsupported"
+description = "Programmable data input"
+words = { optional = ["L", "P", "R"] }
+
+[[g]]
+code = "G17"
+group = 2
+modal = true
+handler = "plane_xy"
+description = "XY plane selection"
+
+[[g]]
+code = "G18"
+group = 2
+modal = true
+handler = "plane_zx"
+description = "ZX plane selection"
+
+[[g]]
+code = "G19"
+group = 2
+modal = true
+handler = "plane_yz"
+description = "YZ plane selection"
+
+[[g]]
+code = "G20"
+group = 6
+modal = true
+handler = "units_inch"
+description = "Inch input"
+
+[[g]]
+code = "G21"
+group = 6
+modal = true
+handler = "units_metric"
+description = "Metric input"
+
+[[g]]
+code = "G28"
+group = 0
+modal = false
+handler = "unsupported"
+description = "Return to reference position"
+
+[[g]]
+code = "G40"
+group = 7
+modal = true
+handler = "no_effect"
+description = "Cutter compensation cancel"
+
+[[g]]
+code = "G41"
+group = 7
+modal = true
+handler = "not_simulated"
+description = "Cutter compensation left"
+words = { optional = ["D"] }
+
+[[g]]
+code = "G42"
+group = 7
+modal = true
+handler = "not_simulated"
+description = "Cutter compensation right"
+words = { optional = ["D"] }
+
+[[g]]
+code = "G43"
+group = 8
+modal = true
+handler = "not_simulated"
+description = "Tool length compensation +"
+words = { optional = ["H"] }
+
+[[g]]
+code = "G44"
+group = 8
+modal = true
+handler = "not_simulated"
+description = "Tool length compensation -"
+words = { optional = ["H"] }
+
+[[g]]
+code = "G49"
+group = 8
+modal = true
+handler = "no_effect"
+description = "Tool length compensation cancel"
+
+[[g]]
+code = "G53"
+group = 0
+modal = false
+handler = "unsupported"
+description = "Machine coordinate system selection"
+
+[[g]]
+code = "G54"
+group = 14
+modal = true
+handler = "work_offset"
+description = "Work coordinate system 1"
+
+[[g]]
+code = "G55"
+group = 14
+modal = true
+handler = "work_offset"
+description = "Work coordinate system 2"
+
+[[g]]
+code = "G56"
+group = 14
+modal = true
+handler = "work_offset"
+description = "Work coordinate system 3"
+
+[[g]]
+code = "G57"
+group = 14
+modal = true
+handler = "work_offset"
+description = "Work coordinate system 4"
+
+[[g]]
+code = "G58"
+group = 14
+modal = true
+handler = "work_offset"
+description = "Work coordinate system 5"
+
+[[g]]
+code = "G59"
+group = 14
+modal = true
+handler = "work_offset"
+description = "Work coordinate system 6"
+
+[[g]]
+code = "G65"
+group = 0
+modal = false
+handler = "unsupported"
+description = "Macro call"
+words = { optional = ["P", "L"] }
+
+[[g]]
+code = "G73"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Peck drilling cycle"
+words = { optional = ["R", "Q", "F", "K"] }
+
+[[g]]
+code = "G74"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Left-hand tapping cycle"
+words = { optional = ["R", "P", "F", "K"] }
+
+[[g]]
+code = "G76"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Fine boring cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G80"
+group = 9
+modal = true
+handler = "no_effect"
+description = "Canned cycle cancel"
+
+[[g]]
+code = "G81"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Drilling cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G82"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Drilling cycle with dwell"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G83"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Peck drilling cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G84"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Tapping cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G85"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Boring cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G86"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Boring cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G87"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Back boring cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G88"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Boring cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G89"
+group = 9
+modal = true
+handler = "unsupported"
+description = "Boring cycle"
+words = { optional = ["R", "Q", "P", "F", "K"] }
+
+[[g]]
+code = "G90"
+group = 3
+modal = true
+handler = "absolute"
+description = "Absolute programming"
+
+[[g]]
+code = "G91"
+group = 3
+modal = true
+handler = "incremental"
+description = "Incremental programming"
+
+[[g]]
+code = "G92"
+group = 0
+modal = false
+handler = "unsupported"
+description = "Workpiece coordinate system setting"
+
+[[g]]
+code = "G94"
+group = 5
+modal = true
+handler = "feed_per_minute"
+description = "Feed per minute"
+
+[[g]]
+code = "G95"
+group = 5
+modal = true
+handler = "unsupported"
+description = "Feed per revolution"
+
+[[g]]
+code = "G98"
+group = 10
+modal = true
+handler = "no_effect"
+description = "Canned cycle: return to initial level"
+
+[[g]]
+code = "G99"
+group = 10
+modal = true
+handler = "no_effect"
+description = "Canned cycle: return to R level"
+
+[[m]]
+code = "M00"
+handler = "stop"
+description = "Program stop"
+
+[[m]]
+code = "M01"
+handler = "optional_stop"
+description = "Optional stop"
+
+[[m]]
+code = "M02"
+handler = "program_end"
+description = "End of program"
+
+[[m]]
+code = "M03"
+handler = "spindle_cw"
+description = "Spindle on, clockwise"
+
+[[m]]
+code = "M04"
+handler = "spindle_ccw"
+description = "Spindle on, counter-clockwise"
+
+[[m]]
+code = "M05"
+handler = "spindle_stop"
+description = "Spindle stop"
+
+[[m]]
+code = "M06"
+handler = "tool_change"
+description = "Tool change"
+
+[[m]]
+code = "M08"
+handler = "coolant_flood"
+description = "Coolant on"
+
+[[m]]
+code = "M09"
+handler = "coolant_off"
+description = "Coolant off"
+
+[[m]]
+code = "M30"
+handler = "program_end_rewind"
+description = "End of program and rewind"
+
+[[m]]
+code = "M98"
+handler = "unsupported"
+description = "Subprogram call"
+words = { optional = ["P", "L"] }
+
+[[m]]
+code = "M99"
+handler = "unsupported"
+description = "Subprogram end"
+words = { optional = ["P"] }

@@ -7,6 +7,7 @@ fn axis(letter: char, offset: Option<char>) -> AxisInfo {
     AxisInfo {
         letter,
         arc_offset_letter: offset,
+        rotary: false,
     }
 }
 
@@ -96,4 +97,19 @@ fn rejects_duplicate_and_invalid_letters() {
         AxisSet::new(vec![axis('X', Some('#'))]),
         Err(AxisSetError::InvalidLetter('#'))
     );
+}
+
+#[test]
+fn rotary_flag_is_kept() {
+    let axes = AxisSet::new(vec![
+        axis('X', Some('I')),
+        AxisInfo {
+            letter: 'A',
+            arc_offset_letter: None,
+            rotary: true,
+        },
+    ])
+    .unwrap();
+    assert!(!axes.axes()[0].rotary);
+    assert!(axes.axes()[1].rotary);
 }

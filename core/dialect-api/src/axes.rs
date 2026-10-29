@@ -11,6 +11,9 @@ pub struct AxisInfo {
     /// The address letter that gives an arc-centre offset along this axis,
     /// if the axis can take part in arcs (e.g. `'I'` for `'X'`).
     pub arc_offset_letter: Option<char>,
+    /// `true` for a rotary axis (values in degrees, never unit-converted);
+    /// `false` for a linear axis (values in length units).
+    pub rotary: bool,
 }
 
 /// The ordered list of axes a machine provides.

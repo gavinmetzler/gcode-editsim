@@ -273,7 +273,7 @@ pub trait Dialect {
 }
 ```
 
-`AxisSet` is the machine's ordered axis list as the dialect sees it: each axis's address letter and, optionally, the letter for its arc-centre offset (e.g. `I` for `X`). Index *i* in the set is index *i* in `Pos`. The dialect looks letters up there instead of assuming X/Y/Z exist; it cannot depend on `machine-api` (which comes later in the dependency order), so the caller builds the `AxisSet` from the user's machine definition (§9).
+`AxisSet` is the machine's ordered axis list as the dialect sees it: each axis's address letter, whether it is rotary, and optionally the letter for its arc-centre offset (e.g. `I` for `X`). Index *i* in the set is index *i* in `Pos`. The dialect looks letters up there instead of assuming X/Y/Z exist; it cannot depend on `machine-api` (which comes later in the dependency order), so the caller builds the `AxisSet` from the user's machine definition (§9).
 
 A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferred until macros are in scope (M4); see §7.4.
 

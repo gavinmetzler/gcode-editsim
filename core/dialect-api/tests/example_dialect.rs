@@ -162,10 +162,12 @@ fn run(src: &str) -> (Vec<Command>, Diagnostics) {
         AxisInfo {
             letter: 'X',
             arc_offset_letter: None,
+            rotary: false,
         },
         AxisInfo {
             letter: 'Y',
             arc_offset_letter: None,
+            rotary: false,
         },
     ])
     .unwrap();

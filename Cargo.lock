@@ -115,6 +115,13 @@ dependencies = [
 [[package]]
 name = "dialect-fanuc"
 version = "0.1.0"
+dependencies = [
+ "dialect-api",
+ "gcode-syntax",
+ "ir",
+ "proptest",
+ "thiserror",
+]
 
 [[package]]
 name = "equivalent"
