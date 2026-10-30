@@ -9,6 +9,9 @@
 //!   the raw body, with the path in the `x-path` header (percent-encoded
 //!   UTF-8, as `encodeURIComponent` produces).
 //!
+//! The window shows the UI from `ui/` (built into `ui/dist`, embedded at
+//! compile time: build the UI before building this crate).
+//!
 //! Small settings (the machine, the dialect, options) are JSON. The
 //! machine and dialect are chosen once with `select_machine` and
 //! `set_run_options` and kept in [`AppState`], so each `interpret` call

@@ -197,9 +197,9 @@ Linux CI build job).
   - **Sample program:** the shipped `basic_mill.nc` loads at start.
   - **Checking:** checked visually in the real app under Xvfb with
     screenshots, as well as by unit tests of the pure parts.
-- **M2.5b** (needs the owner's permission for a workflow change): serve
-  `ui/dist` from the app shell instead of the placeholder, so the shell's
-  CI job must build the UI first.
+- **M2.5b** (workflow change approved by the owner): the app shell serves
+  `ui/dist` instead of the placeholder; the shell's CI job builds the UI
+  first.
 
 ### M2.6: CodeMirror editor and line ↔ segment sync
 
