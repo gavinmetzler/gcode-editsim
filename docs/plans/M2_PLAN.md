@@ -48,6 +48,18 @@ data (CLAUDE.md rule 4).
 5. **CLAUDE.md "Current milestone":** the agent updates it (done with this
    plan).
 
+M2.3 decisions (owner, before M2.3):
+
+6. **The Tauri shell is its own small Cargo workspace** (`app/shell`), so
+   the core and its CI need no WebKit. Its behaviour lives in
+   `app/backend` (`app-backend`), a normal workspace crate.
+7. **App identity:** name "GCode EditSim", bundle identifier
+   `com.ncsoftbyai.gcodeeditsim`.
+8. **Mobile spike: Android only.** iOS waits until much later (it needs a
+   Mac).
+9. **The Osai stub is offered in the UI's dialect list** (marked as an
+   early stub).
+
 Smaller choices left to the agent's judgement:
 - **M2.0:** Option A, new zero-length `SegKind` values, to keep program
   order and the line lookup.
@@ -116,9 +128,13 @@ access).
 
 ### M2.3: Tauri 2 app shell (`app/`)
 
-- Add `app/` to the workspace, and add a `depcheck` rule: `app` may use
-  `interpreter`, the `*-api` crates, concrete dialects and machines, and
-  `ir`. Core still never depends on `app`.
+Two PRs: **M2.3a** `app/backend` (all behaviour, plain Rust, tested in the
+normal workspace) and **M2.3b** `app/shell` (Tauri, its own workspace, a
+Linux CI build job).
+
+- `app-backend` gets a `depcheck` rule: it may use `interpreter`, the
+  `*-api` crates, concrete dialects and machines, and `ir`. Core still
+  never depends on it. It picks the machine type from `family`.
 - Commands (thin, no G-code logic):
   - `interpret(program_text, machine_toml, options)` returns the
     `RenderBuffer` bytes via `tauri::ipc::Response`, never JSON
@@ -127,8 +143,8 @@ access).
 - **Off the UI thread** (§8.5): run interpretation on a worker thread.
   Chunking is deferred, but keep the header's "partial" flag reserved.
 - **Tests:** Rust tests for the command layer that don't need a window.
-- **Then the mobile spike** (decision 1): the same command returning the
-  buffer on Android and iOS. A throw-away branch unless it is cheap to keep.
+- **Then the mobile spike** (decisions 1 and 8): the same command returning
+  the buffer on Android. A throw-away branch unless it is cheap to keep.
 
 ### M2.4: UI scaffold and buffer decoding (`ui/`)
 

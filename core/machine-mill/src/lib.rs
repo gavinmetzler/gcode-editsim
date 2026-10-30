@@ -16,8 +16,9 @@ use thiserror::Error;
 /// The `family` value this machine type accepts.
 pub const FAMILY: &str = "mill";
 
-/// The example definition shipped with this crate.
-const GENERIC: &str = include_str!("../data/generic_3axis_mill.toml");
+/// The example definition shipped with this crate
+/// (`data/generic_3axis_mill.toml`), as text.
+pub const EXAMPLE_DEFINITION: &str = include_str!("../data/generic_3axis_mill.toml");
 
 /// Why a definition is not a valid 3-axis mill.
 #[derive(Debug, Error)]
@@ -111,7 +112,7 @@ impl Mill {
     /// The example machine shipped with this crate
     /// (`data/generic_3axis_mill.toml`).
     pub fn generic() -> Result<Self, MillError> {
-        Self::from_toml_str(GENERIC)
+        Self::from_toml_str(EXAMPLE_DEFINITION)
     }
 
     /// The definition this mill was built from.
