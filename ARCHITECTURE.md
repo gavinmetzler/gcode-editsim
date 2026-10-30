@@ -36,6 +36,16 @@ G-code text
   → consumers      : backplot/render buffers, stats, cycle time, collision, material removal
 ```
 
+The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dyn Machine, Options) -> Program`. It never fails: every problem is a diagnostic. Behaviour decided in M1:
+
+- **Positions are machine coordinates.** Work offsets come from the machine definition and are applied by the interpreter; incremental moves are relative to the current machine position. An undefined work offset is reported once and machine coordinates are used.
+- **The machine starts at machine zero** on every axis (a home position setting can be added to the machine definition later).
+- **Arc centres** are computed here. Offset-style centres are checked so that start and end lie within 0.01 mm of the same radius (real controls make this a parameter); R-style centres are solved for the short or long arc by the sign of R. An impossible arc is an error and the block does not move.
+- **Travel limits** are checked for every motion segment, including arc bulges (via the segment's bounding box). Offending segments get `OUT_OF_LIMITS` and a warning; after 50 warnings the rest are only flagged.
+- **Program end** stops execution: later blocks with content are not run, with one info note.
+- **Block delete** (`/`) is an option (`Options::block_delete`), off by default, matching the operator switch.
+- Operator stops (M0/M1) and coolant have no IR representation yet; they are dropped at this stage.
+
 ## 5. Workspace layout
 
 ```
@@ -402,7 +412,7 @@ Not started until stages 1–3 are done. Dexels are the leading candidate for mi
 
 ## 11. Testing strategy
 
-- **Golden tests** (`tests/golden/`): each `*.nc` has an expected result file. Expected values are small and human-checkable: arc end points, bounding boxes, segment counts, estimated time, diagnostics. Regenerating goldens requires an explicit flag and a reviewed diff.
+- **Golden tests** (`tests/golden/`): each `*.nc` has an expected result file per stage: `<name>.syntax.txt` (parse result) and `<name>.ir.json` (interpreted with the Fanuc dialect on the generic 3-axis mill). The IR file is a compact summary built by `testkit` (end points by axis letter, arc centres and radii, feed, tool, flags, diagnostics, bounding box), rounded to 1e-6, rather than the full `Segment` structs, so diffs stay small and human-checkable. Regenerating goldens requires an explicit flag (`UPDATE_GOLDEN=1`) and a reviewed diff.
 - **Property tests** (`proptest`): parser never panics on arbitrary bytes; arc tessellation stays within tolerance; incremental/absolute equivalence.
 - **Cross-boundary test:** the §8.4 `.bin` fixture decoded in Rust and TS.
 - **Dialect conformance:** one test file per modal-group behaviour (e.g. "G91 persists across blocks", "G83 peck depths").

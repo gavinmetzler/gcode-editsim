@@ -1,0 +1,241 @@
+{
+  "segments": [
+    {
+      "line": 4,
+      "kind": "ToolChange",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 5,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": 0.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 6,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 7,
+      "kind": "Linear",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -401.0
+      },
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 9,
+      "kind": "ArcCw",
+      "end": {
+        "X": -360.0,
+        "Y": -205.0,
+        "Z": -401.0
+      },
+      "center": {
+        "X": -370.0,
+        "Y": -205.0
+      },
+      "radius": 10.0,
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 10,
+      "kind": "ArcCcw",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -401.0
+      },
+      "center": {
+        "X": -370.0,
+        "Y": -205.0
+      },
+      "radius": 10.0,
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 12,
+      "kind": "ArcCw",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -401.0
+      },
+      "center": {
+        "X": -370.0,
+        "Y": -205.0
+      },
+      "radius": 10.0,
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 13,
+      "kind": "ArcCcw",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -403.0
+      },
+      "center": {
+        "X": -370.0,
+        "Y": -205.0
+      },
+      "radius": 10.0,
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 15,
+      "kind": "Linear",
+      "end": {
+        "X": -370.0,
+        "Y": -205.0,
+        "Z": -403.0
+      },
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 16,
+      "kind": "Linear",
+      "end": {
+        "X": -370.0,
+        "Y": -195.0,
+        "Z": -403.0
+      },
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 17,
+      "kind": "Linear",
+      "end": {
+        "X": -380.0,
+        "Y": -195.0,
+        "Z": -403.0
+      },
+      "feed": 150.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 18,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -195.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 20,
+      "kind": "Rapid",
+      "end": {
+        "X": -200.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 2
+    },
+    {
+      "line": 22,
+      "kind": "Rapid",
+      "end": {
+        "X": -174.6,
+        "Y": -179.6,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 2
+    },
+    {
+      "line": 25,
+      "kind": "Rapid",
+      "end": {
+        "X": 50.0,
+        "Y": -179.6,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 2,
+      "flags": 2
+    }
+  ],
+  "diagnostics": [
+    {
+      "line": 25,
+      "severity": "Warning",
+      "code": "OutOfLimits",
+      "message": "move goes outside the travel limits: X reaches 50.000 (travel -760.000 to 0.000)"
+    },
+    {
+      "line": 28,
+      "severity": "Info",
+      "code": "NotYetSimulated",
+      "message": "blocks after the end of the program are not executed"
+    }
+  ],
+  "tools_used": [
+    2
+  ],
+  "bbox": {
+    "min": {
+      "X": -380.0,
+      "Y": -215.0,
+      "Z": -403.0
+    },
+    "max": {
+      "X": 50.0,
+      "Y": 0.0,
+      "Z": 0.0
+    }
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "segments": [
+    {
+      "line": 5,
+      "kind": "ToolChange",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 6,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": 0.0
+      },
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 7,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -375.0
+      },
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 8,
+      "kind": "Linear",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -402.5
+      },
+      "feed": 200.0,
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 9,
+      "kind": "Linear",
+      "end": {
+        "X": -330.0,
+        "Y": -205.0,
+        "Z": -402.5
+      },
+      "feed": 600.0,
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 10,
+      "kind": "ArcCw",
+      "end": {
+        "X": -320.0,
+        "Y": -195.0,
+        "Z": -402.5
+      },
+      "center": {
+        "X": -330.0,
+        "Y": -195.0
+      },
+      "radius": 10.0,
+      "feed": 600.0,
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 11,
+      "kind": "ArcCcw",
+      "end": {
+        "X": -330.0,
+        "Y": -185.0,
+        "Z": -402.5
+      },
+      "center": {
+        "X": -330.0,
+        "Y": -195.0
+      },
+      "radius": 10.0,
+      "feed": 600.0,
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 12,
+      "kind": "Linear",
+      "end": {
+        "X": -380.0,
+        "Y": -185.0,
+        "Z": -402.5
+      },
+      "feed": 600.0,
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 13,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -185.0,
+        "Z": -375.0
+      },
+      "rpm": 3000.0,
+      "tool": 1,
+      "work_offset": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "line": 7,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "G43 (Tool length compensation +) is not simulated yet; the path is shown without it"
+    }
+  ],
+  "tools_used": [
+    1
+  ],
+  "bbox": {
+    "min": {
+      "X": -380.0,
+      "Y": -205.0,
+      "Z": -402.5
+    },
+    "max": {
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 0.0
+    }
+  }
+}

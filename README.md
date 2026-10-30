@@ -8,7 +8,7 @@ The long-term goal is to provide a practical environment where CNC programmers c
 
 The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early development, Milestone 1 (core pipeline, no UI yet).
+> **Development status:** Early development. Milestone 1 (the headless core pipeline) is complete; there is no UI yet. Next is Milestone 2: render buffer and a minimal desktop UI.
 
 GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
@@ -152,7 +152,7 @@ See `Cargo.toml` and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 Development is organised into milestones (details in [ARCHITECTURE.md §13](ARCHITECTURE.md#13-milestones)).
 
-### M1 – Core Skeleton (in progress)
+### M1 – Core Skeleton (complete)
 
 The complete headless pipeline from G-code text to IR, with no UI.
 
@@ -160,8 +160,10 @@ The complete headless pipeline from G-code text to IR, with no UI.
 - [x] `gcode-syntax` parser, with property tests and a fuzz target
 - [x] `ir` types, line lookup and bounding box
 - [x] `dialect-api` and the Fanuc dialect (M1 subset)
-- [ ] `machine-api` and `machine-mill`, including user-editable machine definitions
-- [ ] `interpreter` and end-to-end golden tests
+- [x] `machine-api` and `machine-mill`, including user-editable machine definitions
+- [x] `interpreter` and end-to-end golden tests
+
+What works today, headlessly: a Fanuc milling program plus a machine definition file produce the toolpath in machine coordinates, with work offsets applied, exact arcs (I/J/K, R, full circles, helices), travel-limit checks including arc bulges, and diagnostics for everything unsupported. See [Trying it out](#trying-it-out).
 
 ### Later Milestones
 
@@ -174,12 +176,36 @@ The complete headless pipeline from G-code text to IR, with no UI.
 
 ---
 
+## Trying it out
+
+There is no graphical application yet. With [Rust](https://rustup.rs) installed, you can run a program through the engine and see the result as JSON:
+
+```bash
+cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc
+```
+
+That uses the example machine in `core/machine-mill/data/generic_3axis_mill.toml`. To use your own machine, copy that file, edit it (see [docs/machine-definition.md](docs/machine-definition.md)), and pass it as a second argument:
+
+```bash
+cargo run -p interpreter --example summary -- my_program.nc my_machine.toml
+```
+
+The output lists every move (end point in machine coordinates, arc centre and radius, feed, tool), every diagnostic with its line number, and the bounding box.
+
+To run the full test suite:
+
+```bash
+cargo test --workspace
+```
+
+---
+
 ## Testing and Quality
 
 Correctness is a priority, because the application deals with CNC machine movements. The project uses:
 
 - **Unit tests,** and **conformance tests** for each dialect, one file per behaviour.
-- **Golden-file tests:** sample programs with reviewed expected output in `tests/golden/`.
+- **Golden-file tests:** sample programs in `tests/golden/`, each with reviewed expected output for the parser (`.syntax.txt`) and for the whole pipeline (`.ir.json`).
 - **Property tests (proptest):** for example, the parser never panics on any input, and arc bounding boxes are exact.
 - **Fuzzing (cargo-fuzz):** of the parser, because G-code files come from untrusted sources.
 - **Checks:** formatting (`cargo fmt`), linting (`cargo clippy`, warnings as errors) and continuous integration through GitHub Actions.
@@ -207,6 +233,7 @@ The project is in active development. Architectural decisions and development co
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture and technical design (the source of truth).
 - [CLAUDE.md](CLAUDE.md): development rules, including for AI-assisted development.
 - [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
+- [docs/machine-definition.md](docs/machine-definition.md): the machine definition file format.
 
 Contributions, technical feedback and suggestions are welcome as the project evolves.
 
@@ -214,4 +241,4 @@ Contributions, technical feedback and suggestions are welcome as the project evo
 
 ## License
 
-License information will be added as the project progresses.
+GCode EditSim is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).

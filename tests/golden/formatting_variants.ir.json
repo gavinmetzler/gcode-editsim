@@ -1,0 +1,95 @@
+{
+  "segments": [
+    {
+      "line": 1,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
+      "line": 2,
+      "kind": "Linear",
+      "end": {
+        "X": -379.5,
+        "Y": -205.25,
+        "Z": -400.125
+      },
+      "feed": 100.0,
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
+      "line": 3,
+      "kind": "Linear",
+      "end": {
+        "X": -379.99,
+        "Y": -205.002,
+        "Z": -400.125
+      },
+      "feed": 100.0,
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
+      "line": 6,
+      "kind": "Rapid",
+      "end": {
+        "X": -381.0,
+        "Y": -205.002,
+        "Z": -400.125
+      },
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
+      "line": 7,
+      "kind": "Linear",
+      "end": {
+        "X": -379.999,
+        "Y": -204.998,
+        "Z": -400.125
+      },
+      "feed": 100.0,
+      "tool": 0,
+      "work_offset": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "line": 3,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "X10 has no decimal point, so it is read as 0.01 mm (Fanuc default, parameter DPI = 0). Machines set to calculator-type input (DPI = 1) read it as 10 mm. Further cases are not reported."
+    },
+    {
+      "line": 8,
+      "severity": "Error",
+      "code": "UnsupportedGCode",
+      "message": "G54.1 is not supported; block not moved"
+    },
+    {
+      "line": 8,
+      "severity": "Warning",
+      "code": "UnsupportedWord",
+      "message": "P1 has no effect in this block and was ignored"
+    }
+  ],
+  "tools_used": [],
+  "bbox": {
+    "min": {
+      "X": -381.0,
+      "Y": -205.25,
+      "Z": -400.125
+    },
+    "max": {
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 0.0
+    }
+  }
+}
