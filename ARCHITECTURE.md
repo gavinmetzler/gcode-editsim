@@ -47,7 +47,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 - **Travel limits** are checked for every motion segment, including arc bulges (via the segment's bounding box). Offending segments get `OUT_OF_LIMITS` and a warning; after 50 warnings the rest are only flagged.
 - **Program end** stops execution: later blocks with content are not run, with one info note.
 - **Block delete** (`/`) is an option (`Options::block_delete`), off by default, matching the operator switch.
-- Operator stops (M0/M1) and coolant have no IR representation yet; they are dropped at this stage.
+- **Events** (program and optional stops, spindle start/stop with direction, coolant on/off, program end) become zero-length segments at the current position, in program order, one per command the program gives (a repeated command is recorded again). An event that happens while the position is unknown is flagged `POSITION_UNKNOWN`, because its position is only the last known one.
 
 ## 5. Workspace layout
 
@@ -203,6 +203,15 @@ pub enum SegKind {
     Dwell = 4,
     ToolChange = 5,
     Sync = 6,
+    Stop = 7,                           // program stop
+    OptionalStop = 8,
+    SpindleCw = 9,
+    SpindleCcw = 10,
+    SpindleStop = 11,
+    CoolantFlood = 12,
+    CoolantMist = 13,
+    CoolantOff = 14,
+    ProgramEnd = 15,
 }
 
 pub struct Segment {
@@ -216,7 +225,7 @@ pub struct Segment {
     pub work_offset: WorkOffsetId,
     pub src: SourceRef,
     pub cycle_step: CycleStep,          // None | Approach | FeedIn | Dwell | PeckClear | Retract
-    pub flags: SegFlags,                // bitflags: COMP_ACTIVE, OUT_OF_LIMITS, ...
+    pub flags: SegFlags,                // bitflags: COMP_ACTIVE, OUT_OF_LIMITS, POSITION_UNKNOWN, ...
 }
 
 pub struct ArcGeom {
@@ -246,6 +255,7 @@ pub struct Program {
 
 Design notes:
 
+- **Events are segments.** Everything that is not motion (dwell, tool change, stops, spindle, coolant, program end, `Sync`) is a zero-length segment with `start == end`, rather than a separate event list. That keeps one list in program order, so the line lookup below finds a line's events as well as its moves, and a later playback can walk a single list. Each event is its own kind, because the render buffer stores only the kind byte. `SegKind` and `SegFlags` values are fixed once the render buffer exists.
 - **Arcs stay arcs in the IR.** They are exact, compact, and let stats and sim choose their own tolerance. Tessellation is a function in `ir` (`tessellate(&Segment, tol) -> impl Iterator<Item = Pos>`), used by the render-buffer builder and by sim.
 - Segments are emitted **in program order**, so a source line maps to a contiguous segment range (binary search on `src.line`). This holds for straight-line, single-file programs. Subprograms, macro loops and `GOTO` (M4) break it, because one line can then produce segments at several places in the stream; the lookup will need a separate line index by then.
 - **Arc plane is a pair of axis indices**, not a fixed `XY | ZX | YZ` enum, so the IR names no axes (the machine maps G17/G18/G19 or any other plane selection to indices). The swept angle is the shortest turn in the arc's direction from `start` to `end`, plus `turns` full revolutions; coincident end points mean a full circle. Axes outside the plane move linearly from `start` to `end`, which describes a helix without a separate `helical_delta` field (that field would duplicate `end - start` and could disagree with it).

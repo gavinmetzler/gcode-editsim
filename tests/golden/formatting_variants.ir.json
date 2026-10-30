@@ -36,6 +36,17 @@
       "work_offset": 1
     },
     {
+      "line": 5,
+      "kind": "OptionalStop",
+      "end": {
+        "X": -379.99,
+        "Y": -205.002,
+        "Z": -400.125
+      },
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
       "line": 6,
       "kind": "Rapid",
       "end": {

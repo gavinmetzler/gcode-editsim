@@ -29,6 +29,10 @@ pub struct SourceRef {
 
 /// What kind of segment this is.
 ///
+/// Motion kinds move the tool from `start` to `end`. Every other kind is a
+/// zero-length *event* at the position where it happened (`start == end`),
+/// kept in the segment list so that everything stays in program order.
+///
 /// The numeric values are part of the render-buffer format and must not
 /// change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -49,6 +53,25 @@ pub enum SegKind {
     ToolChange = 5,
     /// Synchronisation point between channels.
     Sync = 6,
+    /// Program stop: execution pauses until the operator restarts it.
+    Stop = 7,
+    /// Optional stop: pauses only if the operator's optional-stop switch
+    /// is on.
+    OptionalStop = 8,
+    /// Spindle started clockwise.
+    SpindleCw = 9,
+    /// Spindle started counter-clockwise.
+    SpindleCcw = 10,
+    /// Spindle stopped.
+    SpindleStop = 11,
+    /// Flood coolant on.
+    CoolantFlood = 12,
+    /// Mist coolant on.
+    CoolantMist = 13,
+    /// All coolant off.
+    CoolantOff = 14,
+    /// End of the program. Nothing after it is executed.
+    ProgramEnd = 15,
 }
 
 impl SegKind {
@@ -58,6 +81,11 @@ impl SegKind {
             self,
             SegKind::Rapid | SegKind::Linear | SegKind::ArcCw | SegKind::ArcCcw
         )
+    }
+
+    /// `true` for zero-length kinds: everything that is not motion.
+    pub fn is_event(self) -> bool {
+        !self.is_motion()
     }
 
     /// `true` for [`SegKind::ArcCw`] and [`SegKind::ArcCcw`].
@@ -105,6 +133,10 @@ impl SegFlags {
     pub const COMP_ACTIVE: SegFlags = SegFlags(1 << 0);
     /// Some part of the segment lies outside the machine's travel limits.
     pub const OUT_OF_LIMITS: SegFlags = SegFlags(1 << 1);
+    /// An event segment that happened while the machine position was not
+    /// known, so its `start`/`end` is only the last known position. Never
+    /// set on motion, which is not drawn from an unknown position.
+    pub const POSITION_UNKNOWN: SegFlags = SegFlags(1 << 2);
 
     /// `true` if every flag in `other` is set in `self`.
     pub fn contains(self, other: SegFlags) -> bool {

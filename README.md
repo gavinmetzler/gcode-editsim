@@ -184,7 +184,6 @@ See [Trying it out](#trying-it-out).
 
 - **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length (M4).
 - **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M5).
-- **Pauses, spindle direction, coolant and program end are not yet in the IR,** so the UI can't show them (M2).
 - **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used.
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 

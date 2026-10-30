@@ -13,6 +13,15 @@ fn seg_kind_values_are_stable() {
         (SegKind::Dwell, 4),
         (SegKind::ToolChange, 5),
         (SegKind::Sync, 6),
+        (SegKind::Stop, 7),
+        (SegKind::OptionalStop, 8),
+        (SegKind::SpindleCw, 9),
+        (SegKind::SpindleCcw, 10),
+        (SegKind::SpindleStop, 11),
+        (SegKind::CoolantFlood, 12),
+        (SegKind::CoolantMist, 13),
+        (SegKind::CoolantOff, 14),
+        (SegKind::ProgramEnd, 15),
     ];
     for (kind, value) in kinds {
         assert_eq!(kind as u8, value);
@@ -24,9 +33,38 @@ fn seg_kind_classification() {
     assert!(SegKind::Rapid.is_motion());
     assert!(SegKind::ArcCw.is_motion() && SegKind::ArcCw.is_arc());
     assert!(!SegKind::Linear.is_arc());
-    for k in [SegKind::Dwell, SegKind::ToolChange, SegKind::Sync] {
-        assert!(!k.is_motion() && !k.is_arc());
+    for k in [
+        SegKind::Dwell,
+        SegKind::ToolChange,
+        SegKind::Sync,
+        SegKind::Stop,
+        SegKind::OptionalStop,
+        SegKind::SpindleCw,
+        SegKind::SpindleCcw,
+        SegKind::SpindleStop,
+        SegKind::CoolantFlood,
+        SegKind::CoolantMist,
+        SegKind::CoolantOff,
+        SegKind::ProgramEnd,
+    ] {
+        assert!(!k.is_motion() && !k.is_arc() && k.is_event());
     }
+    for k in [
+        SegKind::Rapid,
+        SegKind::Linear,
+        SegKind::ArcCw,
+        SegKind::ArcCcw,
+    ] {
+        assert!(!k.is_event());
+    }
+}
+
+#[test]
+fn seg_flag_bits_are_stable() {
+    // The low byte is stored in the render buffer; must not change.
+    assert_eq!(SegFlags::COMP_ACTIVE.0, 1);
+    assert_eq!(SegFlags::OUT_OF_LIMITS.0, 2);
+    assert_eq!(SegFlags::POSITION_UNKNOWN.0, 4);
 }
 
 #[test]
