@@ -228,6 +228,14 @@ To run the full test suite:
 cargo test --workspace
 ```
 
+The user interface (`ui/`, TypeScript) needs [Node.js](https://nodejs.org) 22 or later:
+
+```bash
+cd ui && npm ci && npm run lint && npm run typecheck && npm test
+```
+
+After changing the render-buffer layout in `core/ir`, regenerate the UI's constants with `cargo run -p gen-ts`.
+
 The app shell is a separate Cargo workspace (so the engine builds without WebKit); its tests run with `cd app/shell && cargo test`.
 
 ---

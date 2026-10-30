@@ -166,6 +166,11 @@ Linux CI build job).
   test.
 - **CI job** for `npm ci && npm run lint && npm run typecheck && npm test`
   (approved for M2, decision 4).
+- **As built:** TypeScript 6.0 rather than 7.0, because typescript-eslint
+  does not support 7 yet. The generated-file check is a `gen-ts` test, so it
+  runs in the existing Rust job. The app shell keeps its placeholder page
+  until M2.5, when there is something to show; switching it to serve
+  `ui/dist` then also means the shell's CI job builds the UI first.
 
 ### M2.5: three.js viewport
 

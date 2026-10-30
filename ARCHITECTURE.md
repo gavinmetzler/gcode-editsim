@@ -89,6 +89,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `interpreter` | `dialect-api`, `machine-api`, `gcode-syntax`, `ir` |
 | `sim` | `machine-api`, `ir` |
 | `testkit` | `ir` |
+| `gen-ts` (`tools/gen-ts`) | `ir` |
 | `app-backend` (`app/backend`) | `interpreter`, `ir`, the `*-api` crates, and the concrete dialects and machines |
 
 The principles behind the table:
@@ -430,6 +431,12 @@ Layout is versioned from day one. Changing it means bumping `version` and updati
 ### 8.4 Keeping both sides in sync
 
 The layout is defined **once**, in `core/ir` (Rust), with a generated TypeScript constants file (`ui/src/generated/render_buffer.ts`) produced by a small build step. A golden `.bin` fixture is decoded by both a Rust test and a TypeScript test. If the two ever disagree, CI fails.
+
+As built (M2.4):
+
+- `tools/gen-ts` writes the constants from `ir::render::layout` and the value lists `SegKind::ALL`, `SegFlags::NAMED`, `Severity::ALL` and `DiagCode::ALL` (each guarded by a test that fails when a value is missing). Run `cargo run -p gen-ts` after a layout change. Its test fails when the committed file differs from what it would generate, so `cargo test --workspace` catches a forgotten regeneration.
+- `ui/src/buffer/decode.ts` checks every count and offset before reading (a damaged buffer is a `DecodeError`, never an out-of-range read), then exposes positions and vertex kinds as zero-copy typed-array views over the bytes. On a big-endian host, which no supported platform is, it copies the positions instead.
+- `ui/tests/decode.test.ts` checks the fixture's values, the same hand-worked ones as `core/ir/tests/render_buffer.rs`.
 
 ### 8.4a The desktop app's commands (M2.3)
 

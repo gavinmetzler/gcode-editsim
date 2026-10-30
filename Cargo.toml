@@ -16,6 +16,7 @@ members = [
     "core/sim",
     "core/testkit",
     "tools/depcheck",
+    "tools/gen-ts",
     "app/backend",
 ]
 

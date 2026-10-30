@@ -75,6 +75,27 @@ pub enum SegKind {
 }
 
 impl SegKind {
+    /// Every kind, in value order (index = value). Used to generate the
+    /// TypeScript constants (`tools/gen-ts`).
+    pub const ALL: [SegKind; 16] = [
+        SegKind::Rapid,
+        SegKind::Linear,
+        SegKind::ArcCw,
+        SegKind::ArcCcw,
+        SegKind::Dwell,
+        SegKind::ToolChange,
+        SegKind::Sync,
+        SegKind::Stop,
+        SegKind::OptionalStop,
+        SegKind::SpindleCw,
+        SegKind::SpindleCcw,
+        SegKind::SpindleStop,
+        SegKind::CoolantFlood,
+        SegKind::CoolantMist,
+        SegKind::CoolantOff,
+        SegKind::ProgramEnd,
+    ];
+
     /// `true` for kinds that move the tool from `start` to `end`.
     pub fn is_motion(self) -> bool {
         matches!(
@@ -137,6 +158,14 @@ impl SegFlags {
     /// known, so its `start`/`end` is only the last known position. Never
     /// set on motion, which is not drawn from an unknown position.
     pub const POSITION_UNKNOWN: SegFlags = SegFlags(1 << 2);
+
+    /// Every named flag with its name. Used to generate the TypeScript
+    /// constants (`tools/gen-ts`).
+    pub const NAMED: [(&'static str, SegFlags); 3] = [
+        ("COMP_ACTIVE", SegFlags::COMP_ACTIVE),
+        ("OUT_OF_LIMITS", SegFlags::OUT_OF_LIMITS),
+        ("POSITION_UNKNOWN", SegFlags::POSITION_UNKNOWN),
+    ];
 
     /// `true` if every flag in `other` is set in `self`.
     pub fn contains(self, other: SegFlags) -> bool {

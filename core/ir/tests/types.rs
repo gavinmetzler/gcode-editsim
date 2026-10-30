@@ -96,3 +96,67 @@ fn severity_ids_are_stable() {
     assert_eq!(ir::Severity::Warning.id(), 1);
     assert_eq!(ir::Severity::Error.id(), 2);
 }
+
+/// The `ALL` lists drive the generated TypeScript constants, so they must
+/// list every value. The matches have no wildcard: adding a variant breaks
+/// the build here until the list is updated.
+#[test]
+fn seg_kind_all_lists_every_kind_by_value() {
+    for (i, k) in SegKind::ALL.iter().enumerate() {
+        let value = match k {
+            SegKind::Rapid
+            | SegKind::Linear
+            | SegKind::ArcCw
+            | SegKind::ArcCcw
+            | SegKind::Dwell
+            | SegKind::ToolChange
+            | SegKind::Sync
+            | SegKind::Stop
+            | SegKind::OptionalStop
+            | SegKind::SpindleCw
+            | SegKind::SpindleCcw
+            | SegKind::SpindleStop
+            | SegKind::CoolantFlood
+            | SegKind::CoolantMist
+            | SegKind::CoolantOff
+            | SegKind::ProgramEnd => *k as u8,
+        };
+        assert_eq!(usize::from(value), i, "{k:?}");
+    }
+}
+
+#[test]
+fn diag_code_all_lists_every_code_by_id() {
+    use ir::DiagCode;
+    for (i, c) in DiagCode::ALL.iter().enumerate() {
+        let id = match c {
+            DiagCode::SyntaxError
+            | DiagCode::UnsupportedGCode
+            | DiagCode::UnsupportedMCode
+            | DiagCode::UnsupportedWord
+            | DiagCode::ModalGroupConflict
+            | DiagCode::MissingWord
+            | DiagCode::MissingFeedRate
+            | DiagCode::ArcRadiusMismatch
+            | DiagCode::InvalidArc
+            | DiagCode::InvalidValue
+            | DiagCode::OutOfLimits
+            | DiagCode::ControllerDependent
+            | DiagCode::NotYetSimulated => c.id(),
+            // DiagCode is non_exhaustive for other crates; a new code must be
+            // added to ALL (and here) by hand.
+            _ => panic!("{c:?} missing from this test"),
+        };
+        assert_eq!(usize::from(id), i + 1, "{c:?}");
+    }
+}
+
+#[test]
+fn severity_all_and_flags_named_are_complete() {
+    use ir::Severity;
+    for (i, s) in Severity::ALL.iter().enumerate() {
+        assert_eq!(usize::from(s.id()), i);
+    }
+    let bits: Vec<u32> = SegFlags::NAMED.iter().map(|(_, f)| f.0).collect();
+    assert_eq!(bits, vec![1, 2, 4]);
+}
