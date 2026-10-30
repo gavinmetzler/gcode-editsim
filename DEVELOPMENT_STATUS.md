@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: start of M2 (owner's answers recorded). M2 is planned in
+Last updated: M2.0 (IR events). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -113,6 +113,10 @@ Changing any of these is a deliberate, documented change.
   once collapsed G2 full circles.
 - Positions are **machine coordinates**: work offsets are applied by the
   interpreter.
+- **Events are zero-length segments** (M2.0): stops, spindle, coolant
+  and program end each have their own `SegKind` (7–15), one segment per
+  command, in program order. Events while the position is unknown get
+  `SegFlags::POSITION_UNKNOWN` (bit 2). Kind and flag values are fixed.
 
 **Dialect API**
 - Feed, spindle speed and spindle state are separate commands. So are tool
@@ -182,7 +186,7 @@ self-review: the same agent wrote the code.
 | I8: CI did not enforce the dependency rule; fuzz not in CI; no abs/inc test | **Fixed** (#9, #10) |
 | I2: G43 tool length not applied (Z and Z limits off by the tool length) | Open, M4 |
 | I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, M5 |
-| I4: IR lacks stop/pause, coolant, spindle direction, program end | **Open, first task of M2** |
+| I4: IR lacks stop/pause, coolant, spindle direction, program end | **Fixed** (M2.0): event segments |
 | I6: max feed / max rpm / rapid rates loaded but unused | Open |
 | I7: about 19 Fanuc behaviours marked *(unverified)* | Open; needs the owner's control manual |
 | Minor: R arc with equal end points is a warning in the dialect but an error in the interpreter | Open |
@@ -200,7 +204,6 @@ was asked to try a few real programs with the `summary` example.
 
 - G43 is not applied, and Z limit checks ignore the tool length.
 - Rapids are straight lines.
-- IR events (pause, coolant, spindle direction, end) are missing.
 - Speed limits are unused.
 - Not supported:
   - macros beyond literals

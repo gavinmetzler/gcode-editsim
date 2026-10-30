@@ -22,8 +22,8 @@ mod arc;
 use std::collections::BTreeSet;
 
 use dialect_api::{
-    ArcCenter, ArcDir, AxisInfo, AxisSet, AxisWord, BlockContext, Command, Dialect, ModalState,
-    SpindleState,
+    ArcCenter, ArcDir, AxisInfo, AxisSet, AxisWord, BlockContext, Command, CoolantState, Dialect,
+    ModalState, SpindleState,
 };
 use gcode_syntax::Block;
 use ir::{
@@ -267,6 +267,28 @@ impl<'m> Executor<'m> {
             Command::SetSpindleSpeed { spindle: 0, rpm } => self.spindle_rpm = *rpm,
             Command::SetSpindleState { spindle: 0, state } => {
                 self.spindle_on = *state != SpindleState::Off;
+                let kind = match state {
+                    SpindleState::Cw => SegKind::SpindleCw,
+                    SpindleState::Ccw => SegKind::SpindleCcw,
+                    SpindleState::Off => SegKind::SpindleStop,
+                };
+                self.push(kind, self.pos, None, src, diag);
+            }
+            Command::Coolant(state) => {
+                let kind = match state {
+                    CoolantState::Flood => SegKind::CoolantFlood,
+                    CoolantState::Mist => SegKind::CoolantMist,
+                    CoolantState::Off => SegKind::CoolantOff,
+                };
+                self.push(kind, self.pos, None, src, diag);
+            }
+            Command::Stop { optional } => {
+                let kind = if *optional {
+                    SegKind::OptionalStop
+                } else {
+                    SegKind::Stop
+                };
+                self.push(kind, self.pos, None, src, diag);
             }
             Command::ToolChange { tool } => {
                 self.tool = *tool;
@@ -275,18 +297,19 @@ impl<'m> Executor<'m> {
                 }
                 self.push(SegKind::ToolChange, self.pos, None, src, diag);
             }
-            Command::ProgramEnd { .. } => self.ended = true,
-            // Modes the dialect has already applied to its state, events with
-            // no IR representation yet, and commands already reported by the
-            // dialect.
+            Command::ProgramEnd { .. } => {
+                self.push(SegKind::ProgramEnd, self.pos, None, src, diag);
+                self.ended = true;
+            }
+            // Modes the dialect has already applied to its state, spindles
+            // other than the first (a single-spindle machine has no others),
+            // and commands already reported by the dialect.
             Command::SetDistanceMode(_)
             | Command::SetPlane(_)
             | Command::SetFeedMode(_)
             | Command::SetSpindleSpeed { .. }
             | Command::SetSpindleState { .. }
             | Command::SelectTool(_)
-            | Command::Coolant(_)
-            | Command::Stop { .. }
             | Command::Unsupported { .. } => {}
         }
     }
@@ -569,6 +592,10 @@ impl<'m> Executor<'m> {
         };
         if kind.is_motion() {
             self.check_limits(&mut segment, diag);
+        } else if self.known.iter().any(|k| !k) {
+            // An event where the machine is not known to be: it is placed at
+            // the last known position, so say so.
+            segment.flags.insert(SegFlags::POSITION_UNKNOWN);
         }
         self.pos = end;
         self.segments.push(segment);

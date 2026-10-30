@@ -13,6 +13,18 @@
     },
     {
       "line": 5,
+      "kind": "SpindleCw",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 5,
       "kind": "Rapid",
       "end": {
         "X": -380.0,
@@ -186,6 +198,28 @@
         "Z": -395.0
       },
       "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 33,
+      "kind": "SpindleStop",
+      "end": {
+        "X": -280.0,
+        "Y": -195.0,
+        "Z": -395.0
+      },
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 34,
+      "kind": "ProgramEnd",
+      "end": {
+        "X": -280.0,
+        "Y": -195.0,
+        "Z": -395.0
+      },
       "tool": 2,
       "work_offset": 1
     }
