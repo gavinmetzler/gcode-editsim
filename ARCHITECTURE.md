@@ -431,6 +431,16 @@ Layout is versioned from day one. Changing it means bumping `version` and updati
 
 The layout is defined **once**, in `core/ir` (Rust), with a generated TypeScript constants file (`ui/src/generated/render_buffer.ts`) produced by a small build step. A golden `.bin` fixture is decoded by both a Rust test and a TypeScript test. If the two ever disagree, CI fails.
 
+### 8.4a The desktop app's commands (M2.3)
+
+The Tauri shell (`app/shell`) forwards to `app-backend` and holds no G-code logic. Bulk data is raw bytes in **both** directions:
+
+- `interpret`: the program is the raw request body; the reply is the render buffer as raw bytes (`tauri::ipc::Response`). The machine, dialect and options are chosen beforehand (`select_machine`, `set_run_options`) and kept in the app's state, so a run carries only the program.
+- `load_file` replies with the file's raw bytes; `save_file` takes them as the raw body, with the path in an `x-path` header (percent-encoded UTF-8, as `encodeURIComponent` writes it, since header values cannot carry arbitrary text).
+- `list_dialects`, `list_machines`, `machine_folder` and the two setters are small JSON.
+
+Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. File paths come from the user (file dialogs arrive with the UI).
+
 ### 8.5 Large programs
 
 Interpretation runs off the UI thread (Rust thread on desktop/mobile; Web Worker if the core is ever compiled to WASM). Results stream in chunks (`RenderBuffer` per chunk) for programs of millions of blocks, with progress events. Chunking is a later optimisation but the header's `flags` reserve a bit for "partial / more follows".

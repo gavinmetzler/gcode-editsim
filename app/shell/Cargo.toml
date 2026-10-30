@@ -1,0 +1,32 @@
+[package]
+name = "gcode-editsim"
+description = "GCode EditSim desktop app: a thin Tauri shell over app-backend."
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+license = "AGPL-3.0-only"
+publish = false
+
+# Its own workspace: building Tauri needs WebKit (and later the mobile
+# toolchains), which the core workspace and its CI must not need.
+[workspace]
+
+[lib]
+name = "gcode_editsim"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+app-backend = { path = "../backend" }
+serde = { version = "1.0.219", features = ["derive"] }
+tauri = { version = "2.12.5", features = [] }
+
+[dev-dependencies]
+serde_json = "1.0.140"
+tauri = { version = "2.12.5", features = ["test"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
