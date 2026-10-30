@@ -44,8 +44,8 @@ Every axis letter and arc-offset letter must be different.
 ## `[work_offsets]`
 
 Where each work coordinate system's zero point is, in machine coordinates.
-Number `1` is the first work offset (`G54` on Fanuc), `2` the second
-(`G55`), and so on. Axes you leave out are 0.
+Number `1` is the first work offset (`G54` on Fanuc, `(UAO,1)` on Osai),
+`2` the second (`G55`, `(UAO,2)`), and so on. Axes you leave out are 0.
 
 ```toml
 [work_offsets]

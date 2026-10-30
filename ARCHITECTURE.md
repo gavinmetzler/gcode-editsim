@@ -61,6 +61,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 │  ├─ ir/                      # Segment types, Diagnostic, render-buffer encoding
 │  ├─ dialect-api/             # Dialect trait, Command enum, ModalState, CodeTable loader
 │  ├─ dialect-fanuc/           # first real dialect (+ data/fanuc.toml)
+│  ├─ dialect-osai/            # Osai 10 Series stub (M2), to exercise the dialect traits
 │  ├─ machine-api/             # Machine trait, AxisDef, Kinematics, Tool, Stock traits
 │  ├─ machine-mill/            # first real machine (3-axis)
 │  ├─ machine-lathe/           # 2-axis lathe stub (M2), to exercise the machine traits
@@ -80,7 +81,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `gcode-syntax` | nothing in the workspace |
 | `ir` | nothing in the workspace |
 | `dialect-api` | `gcode-syntax`, `ir` |
-| `dialect-fanuc` (and future dialects) | `dialect-api`, `gcode-syntax`, `ir` |
+| `dialect-fanuc`, `dialect-osai` (and future dialects) | `dialect-api`, `gcode-syntax`, `ir` |
 | `machine-api` | `ir` |
 | `machine-mill`, `machine-lathe` (and future machines) | `machine-api`, `ir` |
 | `interpreter` | `dialect-api`, `machine-api`, `gcode-syntax`, `ir` |
@@ -176,7 +177,11 @@ pub enum Command {
 }
 
 pub struct AxisWord { pub axis: usize, pub value: f64, pub incremental: bool }  // axis = index into AxisSet
-pub enum ArcCenter { Offset(Vec<AxisOffset>), Radius(f64) }  // offsets from start; negative R = long arc
+pub enum ArcCenter {
+    Offset(Vec<AxisOffset>),   // offsets from the start (Fanuc I/J/K)
+    Radius(f64),               // negative R = long arc
+    Position(Vec<AxisWord>),   // a point, like an end point: absolute in work coordinates or incremental from the start (Osai I/J)
+}
 ```
 
 Resolving axis words to absolute positions is the interpreter's job, since it owns the machine position and work offsets. Commands carry no `SourceRef`: the caller attaches the source block's reference to every command the block produced.
@@ -189,6 +194,7 @@ Differences from the first draft, and why:
 - **`Stop` was added** for operator stops and optional stops.
 - **`ReturnToReference`, `MachineRapid` and `PositionUnknown` were added** (M1 hardening) so that reference returns and machine-coordinate moves are simulated, and so that a move the dialect cannot simulate never leaves the interpreter drawing later moves from the wrong place.
 - **Deferred until their milestones**: tool length and cutter compensation (M4/M5) and multi-channel `Sync`.
+- **`ArcCenter::Position` was added** (M2.2) because the Osai 10 Series programs the centre as a position in G90. The dialect cannot turn that into an offset, since only the interpreter knows the start point and the work offset. The interpreter converts its values like axis words (work offset, `normalize_axis_value`), so a centre on a diameter axis is a diameter, as on that control. `Offset` values are not converted by the machine (Fanuc gives I as a radius on lathes).
 
 ### 6.6 Segments (the IR)
 
@@ -331,6 +337,15 @@ pub trait Dialect {
 `AxisSet` is the machine's ordered axis list as the dialect sees it: each axis's address letter, whether it is rotary, and optionally the letter for its arc-centre offset (e.g. `I` for `X`). Index *i* in the set is index *i* in `Pos`. The dialect looks letters up there instead of assuming X/Y/Z exist; it cannot depend on `machine-api` (which comes later in the dependency order), so the caller builds the `AxisSet` from the user's machine definition (§9).
 
 A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferred until macros are in scope (M4); see §7.4.
+
+**What the second dialect showed (M2.2).** `dialect-osai`, a stub of the Osai 10 Series, implements the same `Dialect` trait from its own code table, with no Fanuc code. G17-G19 there pick planes by position in the axis list rather than by letter, which `AxisSet` supports as it is. One interface change was needed: `ArcCenter::Position` (§6.5). Other findings, recorded rather than fixed:
+
+- **The parser's lexical rules are Fanuc-shaped.** On the 10 Series, parentheses hold commands (`(UAO,1)`), not comments. The dialect reads them from the parser's parenthesis comments, but a `)` inside a quoted message breaks the line. Labels (`"START"`), axis names without a value (`G X Y`), `>>` and `E10=5` are syntax errors. Letters are folded to upper case, so Osai's lower-case `r` (corner radius) and `t` (block time) arrive as `R` and `T`. A real Osai dialect (M7) needs a per-dialect lexical profile in `gcode-syntax` (comment characters, case, labels, assignments). Until then the Osai stub treats an unreadable line as "position unknown", because the control may well have moved there.
+- **`arc_offset_letter` is a Fanuc-family idea.** Osai names the centre I and J by plane position whatever the axes, so it ignores the machine's arc-offset letters. They stay in the machine file for dialects that name centres per axis.
+- **`Command::Arc` cannot say how many turns.** Osai's helix pitch K can mean several turns; `Arc` has no turns field (the IR's `ArcGeom::turns` exists). The stub refuses K.
+- **Tolerances belong to the control.** Osai's full-circle threshold (FCT, 0.001 mm by default) differs from the interpreter's fixed 1e-6 mm; its radius tolerance (CET, 0.01 mm) matches. Both may need to come from the dialect or the machine.
+- **Coolant kinds.** `CoolantState` has flood and mist; Osai's M7 "auxiliary coolant" is shown as mist.
+- **Shared block skeleton.** Both dialects collect words, check groups, start and end motion blockers and report unused words in nearly the same way. That code could move to `dialect-api` helpers, as a separate refactoring once the second real dialect exists.
 
 ### 7.3 Canned cycles
 
@@ -479,7 +494,7 @@ Not started until stages 1–3 are done. Dexels are the leading candidate for mi
 
 | Risk | Mitigation |
 |---|---|
-| Traits designed from one implementation are wrong in ways only a second one reveals | Add a stub `machine-lathe` and a stub second dialect (a handful of tests) in milestone 2 purely to stress the traits. Budget for revising them. |
+| Traits designed from one implementation are wrong in ways only a second one reveals | Done in M2.2: a stub `machine-lathe` and a stub Osai 10 Series dialect. Findings are in §7.2 and §9; one interface change (`ArcCenter::Position`). |
 | Fanuc behaviour varies by series, options and parameters | Target one documented profile first; surface everything unsupported as a Diagnostic; keep parameters in the dialect TOML. |
 | Cutter compensation (G41/G42) is genuinely hard | Defer to after the basic backplot. Emit a `Warning` diagnostic and ignore compensation until implemented. |
 | Tauri mobile maturity | Prototype a hello-world with the buffer boundary on Android + iOS *before* building the UI. |

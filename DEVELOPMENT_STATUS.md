@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M2.2, part 1 (lathe stub). M2 is planned in
+Last updated: M2.2 (lathe and Osai stubs). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -77,6 +77,7 @@ in ARCHITECTURE.md §5).
 | `core/gcode-syntax` | Bytes to blocks (one per non-blank line). Knows no G-code meaning. | `parse(&[u8]) -> Program`; `Block { line, block_skip, sequence_number, words, assignments, comments, program_delimiter, errors }`; `Expr` tree (never evaluated); `MAX_DEPTH` = 64. Fuzz target in `fuzz/` |
 | `core/ir` | The neutral output data model | `Pos = [f64; 9]`; `SegKind` (values fixed for the render buffer); `Segment`; `ArcGeom { center, plane: ArcPlane { first, second }, radius, turns }`; `DiagCode` (u16 values fixed); `Diagnostics`; `segments_for_line`; `bounding_box`; `tessellate`; `render::encode_render_buffer` + `render::layout`; `serde` feature |
 | `core/dialect-api` | What every dialect shares | `Dialect` trait (`initial_state`, `interpret_block(block, &BlockContext { axes, src }, state, out, diag)`); `Command`; `ModalState` (incl. `motion_blockers`, `first_report`); `CodeTable` (TOML); `AxisSet`; `CodeKey` (G1 = G01 = G1.0) |
+| `core/dialect-osai` | Osai 10 Series milling **stub** (M2.2) | `data/osai.toml`; `src/block.rs`; three-letter commands in `src/three_letter.rs`; notes in `docs/dialect-notes/osai.md` |
 | `core/dialect-fanuc` | Fanuc milling | `data/fanuc.toml` (75 codes with handlers); `src/block.rs` (all block logic); `FanucOptions { decimal_input }` |
 | `core/machine-api` | Machine trait and definition-file loader | `MachineDef::from_toml_str` (rejects unknown settings); `AxisDef` (letter, kind, travel, arc_offset_letter, direction, rapid_rate, reference, diameter_mode); `Machine` trait; `check_limits`; `work_offset(id)` |
 | `core/machine-mill` | 3-axis mill | `Mill::new(def)`, `Mill::generic()`; example file `data/generic_3axis_mill.toml` |
@@ -128,6 +129,9 @@ Changing any of these is a deliberate, documented change.
 - Feed, spindle speed and spindle state are separate commands. So are tool
   select and tool change. `Stop` exists.
 - Commands carry no `SourceRef`: the caller attaches the block's reference.
+- `ArcCenter::Position` (M2.2): a centre programmed as a point (absolute
+  in work coordinates, or incremental from the start). Its values go
+  through `normalize_axis_value`, unlike `ArcCenter::Offset`.
 - Axis words use indices into the `AxisSet`, never letters. The arc-offset
   letter (I for X) comes from the **machine file**.
 - Macros: literal numbers only. `#var` or `[...]` in a word gives an error
@@ -224,8 +228,9 @@ was asked to try a few real programs with the `summary` example.
   - G30 positions
   - coordinate rotation, scaling, mirroring and polar input
   - rotary axes on the mill
-- One dialect (Fanuc), one real machine type (3-axis mill); the lathe is a
-  stub.
+- One real dialect (Fanuc) and one real machine type (3-axis mill). The
+  Osai 10 Series dialect and the lathe are stubs; what they found is in
+  ARCHITECTURE.md §7.2 and §9.
 
 ---
 
@@ -285,5 +290,7 @@ Left to the agent's judgement, and decided as follows:
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their
    control's manual?
-2. Does the owner have the Osai 10 Series programming manual? The Osai
-   stub depends on it.
+2. The Osai 10 Series manual is in the owner's private repository
+   `gcode-editsim-manuals` (not in this one, for copyright reasons).
+   Items marked *(unverified)* in `docs/dialect-notes/osai.md` need a
+   real control.

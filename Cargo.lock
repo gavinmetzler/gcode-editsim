@@ -133,6 +133,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dialect-osai"
+version = "0.1.0"
+dependencies = [
+ "dialect-api",
+ "gcode-syntax",
+ "ir",
+ "proptest",
+ "thiserror",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -202,6 +213,7 @@ version = "0.1.0"
 dependencies = [
  "dialect-api",
  "dialect-fanuc",
+ "dialect-osai",
  "gcode-syntax",
  "ir",
  "machine-api",

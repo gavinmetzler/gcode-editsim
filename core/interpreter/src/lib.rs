@@ -500,7 +500,7 @@ impl<'m> Executor<'m> {
         // float arithmetic) is a full circle: make it match exactly, so the
         // IR's coincident-end-points rule applies.
         let mut end = end;
-        if let (ArcCenter::Offset(_), Some((sa, sb)), Some((ea, eb))) = (
+        if let (ArcCenter::Offset(_) | ArcCenter::Position(_), Some((sa, sb)), Some((ea, eb))) = (
             center,
             arc::plane_coords(&self.pos, plane),
             arc::plane_coords(&end, plane),
@@ -521,6 +521,27 @@ impl<'m> Executor<'m> {
                     if let Some(slot) = c.get_mut(off.axis) {
                         *slot += off.value;
                     }
+                }
+                arc::plane_coords(&c, plane)
+                    .ok_or(ArcProblem::BadPlane)
+                    .and_then(|cc| Ok((cc, arc::from_center(&self.pos, &end, cc, plane)?)))
+            }
+            ArcCenter::Position(words) => {
+                let mut c = self.pos;
+                for word in words {
+                    let value = self.machine.normalize_axis_value(word.axis, word.value);
+                    let (Some(slot), Some(current), Some(origin)) = (
+                        c.get_mut(word.axis),
+                        self.pos.get(word.axis),
+                        self.origin.get(word.axis),
+                    ) else {
+                        continue;
+                    };
+                    *slot = if word.incremental {
+                        current + value
+                    } else {
+                        origin + value
+                    };
                 }
                 arc::plane_coords(&c, plane)
                     .ok_or(ArcProblem::BadPlane)

@@ -7,6 +7,7 @@ members = [
     "core/ir",
     "core/dialect-api",
     "core/dialect-fanuc",
+    "core/dialect-osai",
     "core/machine-api",
     "core/machine-mill",
     "core/machine-lathe",
