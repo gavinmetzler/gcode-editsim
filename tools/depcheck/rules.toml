@@ -1,0 +1,32 @@
+# Dependency rules for the workspace (ARCHITECTURE.md section 5).
+#
+# Checked in CI by `cargo run -p depcheck`. Every workspace crate must be
+# listed here; a crate that is not listed fails the check, so new crates
+# have to be placed in the architecture deliberately.
+
+# Which workspace crates each crate may use as a normal or build dependency
+# (including platform-specific ones). Anything not listed is forbidden.
+#
+# - gcode-syntax and ir depend on nothing in the workspace.
+# - The dialect side (dialect-*) and the machine side (machine-*) never
+#   depend on each other.
+# - The interpreter and simulation use only the *-api crates, never a
+#   concrete dialect or machine, so those stay swappable.
+# - Nothing in core/ depends on app/, ui/ or tools/.
+[allowed]
+gcode-syntax = []
+ir = []
+dialect-api = ["gcode-syntax", "ir"]
+dialect-fanuc = ["dialect-api", "gcode-syntax", "ir"]
+machine-api = ["ir"]
+machine-mill = ["ir", "machine-api"]
+interpreter = ["dialect-api", "gcode-syntax", "ir", "machine-api"]
+sim = ["ir", "machine-api"]
+testkit = ["ir"]
+depcheck = []
+
+# Test-only (dev) dependencies may use any workspace crate in these
+# directories: tests wire concrete dialects and machines together. They may
+# still never reach outside them (e.g. core/ tests must not use app/).
+[dev]
+allowed_dirs = ["core"]

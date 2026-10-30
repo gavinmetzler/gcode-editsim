@@ -230,7 +230,8 @@ Correctness is a priority, because the application deals with CNC machine moveme
 - **Unit tests,** and **conformance tests** for each dialect, one file per behaviour.
 - **Golden-file tests:** sample programs in `tests/golden/`, each with reviewed expected output for the parser (`.syntax.txt`) and for the whole pipeline (`.ir.json`).
 - **Property tests (proptest):** for example, the parser never panics on any input, and arc bounding boxes are exact.
-- **Fuzzing (cargo-fuzz):** of the parser, because G-code files come from untrusted sources.
+- **Fuzzing (cargo-fuzz):** of the parser, because G-code files come from untrusted sources. CI runs a short (60 s) fuzz session on every change.
+- **Architecture checks:** CI fails if a crate depends on something the architecture forbids. For example, the machine model may not depend on a dialect. The rules are in `tools/depcheck/rules.toml` and are explained in [ARCHITECTURE.md §5](ARCHITECTURE.md#5-workspace-layout).
 - **Checks:** formatting (`cargo fmt`), linting (`cargo clippy`, warnings as errors) and continuous integration through GitHub Actions.
 
 Unsupported or invalid G-code produces explicit diagnostics rather than being silently discarded. Every feature ships with tests.

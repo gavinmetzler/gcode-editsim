@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-# Core library crates (see ARCHITECTURE.md §5). `app/` (Tauri shell) joins
-# the workspace in a later milestone.
+# Core library crates (see ARCHITECTURE.md §5), plus development tools.
+# `app/` (Tauri shell) joins the workspace in a later milestone.
 members = [
     "core/gcode-syntax",
     "core/ir",
@@ -12,6 +12,7 @@ members = [
     "core/interpreter",
     "core/sim",
     "core/testkit",
+    "tools/depcheck",
 ]
 
 [workspace.package]

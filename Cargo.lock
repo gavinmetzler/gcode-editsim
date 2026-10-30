@@ -102,6 +102,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "depcheck"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "dialect-api"
 version = "0.1.0"
 dependencies = [
