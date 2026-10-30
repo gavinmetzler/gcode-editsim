@@ -183,6 +183,23 @@ Linux CI build job).
   source line.
 - The UI contains **no G-code meaning** (CLAUDE.md): it only renders the
   buffer.
+- **As built (M2.5a):** `ui/src/viewport/`.
+  - `toolpath.ts` (pure, tested) builds the index lists (each segment's own
+    vertices, never joined across segments), per-vertex colours by kind
+    and flags, event markers and a vertex-to-segment map.
+  - `viewport.ts` draws feeds solid, rapids dashed (dashes scaled to the
+    toolpath) and events as markers, with orbit, pan and zoom.
+  - **Camera:** an **orthographic** camera, as backplots usually are. A
+    perspective camera made heights shift positions in the top view.
+  - **Standard views:** Top, Front, Right and Iso, all with Z up, plus Fit.
+  - **Picking:** shows the segment's source line.
+  - **Axes marker:** at machine zero.
+  - **Sample program:** the shipped `basic_mill.nc` loads at start.
+  - **Checking:** checked visually in the real app under Xvfb with
+    screenshots, as well as by unit tests of the pure parts.
+- **M2.5b** (needs the owner's permission for a workflow change): serve
+  `ui/dist` from the app shell instead of the placeholder, so the shell's
+  CI job must build the UI first.
 
 ### M2.6: CodeMirror editor and line ↔ segment sync
 

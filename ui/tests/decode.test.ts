@@ -2,20 +2,11 @@
 // decoder reads the same fixture as core/ir/tests/render_buffer.rs and must
 // find the same hand-worked values listed there.
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
 import { describe, expect, it } from "vitest";
 
 import { DecodeError, decodeRenderBuffer } from "../src/buffer/decode";
 import { DIAG_CODE, HEADER, SEG_FLAG, SEG_KIND, SEVERITY } from "../src/generated/render_buffer";
-
-function fixture(): ArrayBuffer {
-  const path = fileURLToPath(new URL("../../tests/golden/render_buffer_v1.bin", import.meta.url));
-  const bytes = readFileSync(path);
-  // A standalone ArrayBuffer, as the IPC layer delivers.
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-}
+import { fixture } from "./fixture";
 
 describe("render_buffer_v1.bin", () => {
   const rb = decodeRenderBuffer(fixture());
