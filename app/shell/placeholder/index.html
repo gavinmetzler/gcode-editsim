@@ -2,15 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GCode EditSim</title>
+    <link rel="stylesheet" href="selftest.css" />
   </head>
   <body>
     <h1>GCode EditSim</h1>
-    <p>The user interface arrives in the next step (M2.4).</p>
-    <p>
+    <p>Boundary self-test (Android spike). It runs by itself when the app starts; tap to run it again.</p>
+    <button id="run" type="button">Run self-test</button>
+    <pre id="out">Running...</pre>
+    <p class="note">
       This software visualizes and analyzes G-code. It is not a safety
       verification tool. Always verify programs independently before running
       them on a machine.
     </p>
+    <script src="selftest.js"></script>
   </body>
 </html>

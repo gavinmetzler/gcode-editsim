@@ -285,6 +285,12 @@ async fn save_file(request: Request<'_>) -> Result<(), String> {
         .map_err(message)
 }
 
+/// Spike only: prints the self-test result to the log (stderr / logcat).
+#[tauri::command]
+fn report(text: String) {
+    eprintln!("SELFTEST\n{text}");
+}
+
 /// Adds the app's commands to `builder`. The caller manages an
 /// [`AppState`] (see [`run`]; tests use their own folder).
 pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
@@ -297,6 +303,7 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
         interpret,
         load_file,
         save_file,
+        report,
     ])
 }
 
@@ -331,5 +338,14 @@ mod tests {
         for bad in ["%", "%4", "%zz", "%C3", "%FF", "%%41"] {
             assert_eq!(percent_decode(bad), None, "{bad}");
         }
+    }
+}
+
+/// Entry point on Android and iOS (spike).
+#[cfg(mobile)]
+#[tauri::mobile_entry_point]
+fn mobile_main() {
+    if let Err(e) = run() {
+        eprintln!("GCode EditSim could not start: {e}");
     }
 }
