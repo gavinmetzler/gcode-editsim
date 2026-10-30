@@ -1,0 +1,57 @@
+line 1: %
+line 2:
+  words: O2000
+  comment (paren): "INTERPRETER FEATURES"
+line 3:
+  words: G21 G17 G40 G49 G80 G90 G94
+line 4:
+  words: T2 M6
+line 5:
+  words: G54 G0 X0. Y0. S2000 M3
+line 6:
+  words: Z5.
+line 7:
+  words: G1 Z-1. F150.
+line 8:
+  comment (paren): "R arcs: short and long way round"
+line 9:
+  words: G2 X20. Y0. R10.
+line 10:
+  words: G3 X0. Y0. R-10.
+line 11:
+  comment (paren): "full circle and helix"
+line 12:
+  words: G2 I10.
+line 13:
+  words: G3 X0. Y0. Z-3. I10.
+line 14:
+  comment (paren): "incremental square"
+line 15:
+  words: G91 G1 X10.
+line 16:
+  words: Y10.
+line 17:
+  words: X-10.
+line 18:
+  words: G90 G0 Z5.
+line 19:
+  comment (paren): "second work offset"
+line 20:
+  words: G55 X0. Y0.
+line 21:
+  comment (paren): "inch mode"
+line 22:
+  words: G20 G0 X1. Y1.
+line 23:
+  words: G21
+line 24:
+  comment (paren): "beyond the X travel limit: G55 X origin is -200"
+line 25:
+  words: G0 X250.
+line 26:
+  words: M5
+line 27:
+  words: M30
+line 28:
+  words: G0 X0.
+line 29: %

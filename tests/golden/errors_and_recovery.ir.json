@@ -1,0 +1,61 @@
+{
+  "segments": [],
+  "diagnostics": [
+    {
+      "line": 2,
+      "severity": "Error",
+      "code": "SyntaxError",
+      "message": "address Y has no value"
+    },
+    {
+      "line": 3,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "X20 has no decimal point, so it is read as 0.02 mm (Fanuc default, parameter DPI = 0). Machines set to calculator-type input (DPI = 1) read it as 20 mm. Further cases are not reported."
+    },
+    {
+      "line": 3,
+      "severity": "Error",
+      "code": "MissingFeedRate",
+      "message": "G1 with no feed rate (F) programmed; block not moved"
+    },
+    {
+      "line": 4,
+      "severity": "Error",
+      "code": "SyntaxError",
+      "message": "comment is not closed with ')'"
+    },
+    {
+      "line": 5,
+      "severity": "Error",
+      "code": "SyntaxError",
+      "message": "unexpected character '@'"
+    },
+    {
+      "line": 6,
+      "severity": "Error",
+      "code": "SyntaxError",
+      "message": "sequence number must be a whole number from 0 to 4294967295"
+    },
+    {
+      "line": 7,
+      "severity": "Error",
+      "code": "SyntaxError",
+      "message": "block-skip level must be 1 to 9"
+    },
+    {
+      "line": 8,
+      "severity": "Error",
+      "code": "SyntaxError",
+      "message": "missing ']'"
+    },
+    {
+      "line": 9,
+      "severity": "Error",
+      "code": "MissingFeedRate",
+      "message": "G1 with no feed rate (F) programmed; block not moved"
+    }
+  ],
+  "tools_used": [],
+  "bbox": null
+}

@@ -1,0 +1,43 @@
+{
+  "segments": [],
+  "diagnostics": [
+    {
+      "line": 2,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "macro variable assignment is not simulated yet"
+    },
+    {
+      "line": 3,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "macro variable assignment is not simulated yet"
+    },
+    {
+      "line": 4,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "macro variable assignment is not simulated yet"
+    },
+    {
+      "line": 5,
+      "severity": "Error",
+      "code": "NotYetSimulated",
+      "message": "X: macro variables and expressions are not supported yet; block skipped"
+    },
+    {
+      "line": 6,
+      "severity": "Error",
+      "code": "NotYetSimulated",
+      "message": "X: macro variables and expressions are not supported yet; block skipped"
+    },
+    {
+      "line": 7,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "macro variable assignment is not simulated yet"
+    }
+  ],
+  "tools_used": [],
+  "bbox": null
+}

@@ -8,3 +8,15 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+dialect-api = { path = "../dialect-api" }
+gcode-syntax = { path = "../gcode-syntax" }
+ir = { path = "../ir" }
+machine-api = { path = "../machine-api" }
+
+[dev-dependencies]
+dialect-fanuc = { path = "../dialect-fanuc" }
+machine-mill = { path = "../machine-mill" }
+proptest = "1.9"
+testkit = { path = "../testkit" }
