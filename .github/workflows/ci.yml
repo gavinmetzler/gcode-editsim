@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+# Runner image and action versions are pinned, like the Rust toolchains, so
+# CI does not change underneath us (e.g. when ubuntu-latest moves to a new
+# release). Bump them deliberately, in their own PR.
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
@@ -15,9 +19,9 @@ env:
 jobs:
   rust:
     name: fmt, clippy, dependency rules, test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # rustup reads rust-toolchain.toml and installs the pinned version
       # (with rustfmt and clippy) on first use.
       - name: Install pinned toolchain
@@ -36,7 +40,7 @@ jobs:
 
   fuzz:
     name: fuzz parser (60 s)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       # Pinned so CI does not break when nightly or cargo-fuzz change; bump
@@ -47,7 +51,7 @@ jobs:
       # the fuzz build.
       RUSTFLAGS: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install nightly toolchain
         run: rustup toolchain install "$FUZZ_TOOLCHAIN" --profile minimal
       - uses: Swatinem/rust-cache@v2
@@ -71,7 +75,7 @@ jobs:
           -max_total_time=60 -max_len=4096 -timeout=10 -rss_limit_mb=2048
       - name: Upload crashing input
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-crash
           path: core/gcode-syntax/fuzz/artifacts/
