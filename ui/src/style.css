@@ -1,0 +1,14 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+html, body, #app { height: 100%; margin: 0; }
+#app { display: flex; flex-direction: column; background: #14171c; color: #e6e6e6; }
+header, footer { display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: #1d2128; }
+header .spacer { flex: 1; }
+.viewport { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+.viewport canvas { display: block; }
+footer { justify-content: space-between; font-size: 12px; }
+.disclaimer { color: #9aa0a6; }
+button, select { font: inherit; }
