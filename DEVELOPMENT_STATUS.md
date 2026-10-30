@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M2.3b (Tauri app shell). M2 is planned in
+Last updated: end of M2.3 (app shell, Android spike passed). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -22,6 +22,7 @@ Last updated: M2.3b (Tauri app shell). M2 is planned in
 | Tests | 327 pass (`cargo test --workspace`); 36 in `ir` with `--all-features` |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, and a Tauri app-shell job (WebKit installed; fmt, clippy, tests) |
 | UI | Tauri shell runs (placeholder page); the UI itself is M2.4 |
+| Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
 
 **What works headlessly:** a Fanuc milling program plus a machine

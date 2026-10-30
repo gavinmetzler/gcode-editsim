@@ -145,6 +145,12 @@ Linux CI build job).
 - **Tests:** Rust tests for the command layer that don't need a window.
 - **Then the mobile spike** (decisions 1 and 8): the same command returning
   the buffer on Android. A throw-away branch unless it is cheap to keep.
+  **Done:** ALL PASSED on the owner's arm64 phone (2026-10-30). The
+  program went in as a raw body, the render buffer came back as raw bytes
+  matching the desktop build, a 20 000-block program ran, and save/load
+  round-tripped all 256 byte values. Kept on branch `claude/android-spike`
+  with `app/shell/SPIKE.md` (tool versions, the mobile changes, and how to
+  rebuild the APK) for M3.
 
 ### M2.4: UI scaffold and buffer decoding (`ui/`)
 

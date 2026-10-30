@@ -510,7 +510,7 @@ Not started until stages 1–3 are done. Dexels are the leading candidate for mi
 | Traits designed from one implementation are wrong in ways only a second one reveals | Done in M2.2: a stub `machine-lathe` and a stub Osai 10 Series dialect. Findings are in §7.2 and §9; one interface change (`ArcCenter::Position`). |
 | Fanuc behaviour varies by series, options and parameters | Target one documented profile first; surface everything unsupported as a Diagnostic; keep parameters in the dialect TOML. |
 | Cutter compensation (G41/G42) is genuinely hard | Defer to after the basic backplot. Emit a `Warning` diagnostic and ignore compensation until implemented. |
-| Tauri mobile maturity | Prototype a hello-world with the buffer boundary on Android + iOS *before* building the UI. |
+| Tauri mobile maturity | **Android: done (M2.3 spike).** The app's own commands ran on a real arm64 phone: the program crossed as a raw request body and the render buffer came back as raw bytes, identical in every checked value to the desktop build, and file save/load round-tripped raw bytes. Branch `claude/android-spike`, `app/shell/SPIKE.md`. **iOS: not yet tried** (needs a Mac); planned much later. |
 | Heidenhain conversational / non-G-code formats | Parser crate is isolated; a non-G-code front end can produce the same `Command` stream. Not in scope yet. |
 | `f32` GPU precision | Origin-relative vertices (§8.2). |
 
