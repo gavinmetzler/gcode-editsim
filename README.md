@@ -202,7 +202,13 @@ See [Trying it out](#trying-it-out).
 
 ## Trying it out
 
-There is no graphical application yet. With [Rust](https://rustup.rs) installed, you can run a program through the engine and see the result as JSON:
+The desktop app is a shell so far: it starts and its commands work, but its window shows only a placeholder until the user interface arrives (M2.4). On Linux it needs the WebKit libraries (on Ubuntu 24.04: `sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev`); then:
+
+```bash
+cd app/shell && cargo run
+```
+
+With [Rust](https://rustup.rs) installed, you can also run a program through the engine and see the result as JSON:
 
 ```bash
 cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc
@@ -221,6 +227,8 @@ To run the full test suite:
 ```bash
 cargo test --workspace
 ```
+
+The app shell is a separate Cargo workspace (so the engine builds without WebKit); its tests run with `cd app/shell && cargo test`.
 
 ---
 

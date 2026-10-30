@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M2.3a (app backend). M2 is planned in
+Last updated: M2.3b (Tauri app shell). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -20,8 +20,8 @@ Last updated: M2.3a (app backend). M2 is planned in
 | Area | Status |
 |---|---|
 | Tests | 327 pass (`cargo test --workspace`); 36 in `ir` with `--all-features` |
-| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, and a 60 s parser fuzz job |
-| UI | none yet; M2 starts it |
+| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, and a Tauri app-shell job (WebKit installed; fmt, clippy, tests) |
+| UI | Tauri shell runs (placeholder page); the UI itself is M2.4 |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
 
 **What works headlessly:** a Fanuc milling program plus a machine
@@ -86,6 +86,7 @@ in ARCHITECTURE.md §5).
 | `core/testkit` | Golden helpers (no file access) | `summary(&Program, letters)`: compact JSON rounded to 1e-6; `compare`; `UPDATE_GOLDEN` |
 | `core/sim` | Empty placeholder (M6) | |
 | `app/backend` | The app's behaviour without Tauri (M2.3a) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, list_machine_files}` |
+| `app/shell` | The Tauri 2 desktop shell (M2.3b), **its own Cargo workspace** | Commands in `src/lib.rs` (`interpret` raw body → raw render buffer, `load_file`, `save_file`, machine and dialect choice); IPC tests on Tauri's mock runtime in `tests/ipc.rs`; placeholder page until M2.4 |
 | `tools/depcheck` | The dependency-rule checker | `cargo run -p depcheck` |
 
 User-facing documentation:

@@ -1,0 +1,280 @@
+//! The commands through Tauri's IPC layer, on Tauri's mock runtime (no
+//! window or WebKit needed at run time). Checks that bulk data crosses as
+//! raw bytes in both directions, never JSON.
+
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+use gcode_editsim::{with_commands, AppState};
+use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
+use tauri::test::{
+    get_ipc_response, mock_builder, mock_context, noop_assets, MockRuntime, INVOKE_KEY,
+};
+use tauri::webview::InvokeRequest;
+use tauri::{WebviewWindow, WebviewWindowBuilder};
+
+/// A new empty folder for one test, removed when dropped.
+struct TempDir(PathBuf);
+
+impl TempDir {
+    fn new(name: &str) -> Self {
+        static COUNT: AtomicU32 = AtomicU32::new(0);
+        let n = COUNT.fetch_add(1, Ordering::Relaxed);
+        let dir =
+            std::env::temp_dir().join(format!("editsim-shell-{}-{name}-{n}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("create temp dir");
+        Self(dir)
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn window(machine_dir: PathBuf) -> WebviewWindow<MockRuntime> {
+    let app = with_commands(mock_builder())
+        .manage(AppState::new(machine_dir))
+        .build(mock_context(noop_assets()))
+        .expect("app builds");
+    WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .expect("window builds")
+}
+
+fn call(
+    w: &WebviewWindow<MockRuntime>,
+    cmd: &str,
+    body: InvokeBody,
+    headers: &[(&'static str, &str)],
+) -> Result<InvokeResponseBody, serde_json::Value> {
+    // The app's own origin on Linux and macOS.
+    call_from(w, "tauri://localhost", cmd, body, headers)
+}
+
+fn call_from(
+    w: &WebviewWindow<MockRuntime>,
+    origin: &str,
+    cmd: &str,
+    body: InvokeBody,
+    headers: &[(&'static str, &str)],
+) -> Result<InvokeResponseBody, serde_json::Value> {
+    let mut map = tauri::http::HeaderMap::new();
+    for (k, v) in headers {
+        map.insert(*k, v.parse().expect("header value"));
+    }
+    get_ipc_response(
+        w,
+        InvokeRequest {
+            cmd: cmd.into(),
+            callback: CallbackFn(0),
+            error: CallbackFn(1),
+            url: origin.parse().expect("url"),
+            body,
+            headers: map,
+            invoke_key: INVOKE_KEY.to_string(),
+        },
+    )
+}
+
+fn json(
+    w: &WebviewWindow<MockRuntime>,
+    cmd: &str,
+    args: serde_json::Value,
+) -> Result<serde_json::Value, serde_json::Value> {
+    match call(w, cmd, InvokeBody::Json(args), &[])? {
+        InvokeResponseBody::Json(text) => Ok(serde_json::from_str(&text).expect("json")),
+        InvokeResponseBody::Raw(_) => panic!("{cmd}: expected JSON"),
+    }
+}
+
+fn raw(response: Result<InvokeResponseBody, serde_json::Value>) -> Vec<u8> {
+    match response.expect("ok") {
+        InvokeResponseBody::Raw(bytes) => bytes,
+        InvokeResponseBody::Json(text) => panic!("expected raw bytes, got JSON {text}"),
+    }
+}
+
+fn select_mill(w: &WebviewWindow<MockRuntime>) {
+    let name = json(
+        w,
+        "select_machine",
+        serde_json::json!({ "source": { "kind": "shipped", "id": "generic_3axis_mill" } }),
+    )
+    .expect("selects");
+    assert_eq!(name, "Generic 3-axis VMC");
+}
+
+fn u32_at(b: &[u8], at: usize) -> u32 {
+    u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+}
+
+#[test]
+fn dialects_are_listed() {
+    let dir = TempDir::new("dialects");
+    let w = window(dir.0.clone());
+    let list = json(&w, "list_dialects", serde_json::json!({})).expect("ok");
+    assert_eq!(list[0]["id"], "fanuc");
+    assert_eq!(list[1]["id"], "osai");
+    assert_eq!(list[1]["stub"], true);
+}
+
+#[test]
+fn interpret_returns_the_render_buffer_as_raw_bytes() {
+    let dir = TempDir::new("interpret");
+    let w = window(dir.0.clone());
+    select_mill(&w);
+    let program = b"G21 G90 G54 G0 X0. Y0. Z5.\nG1 Z-1. F100.\nM30\n".to_vec();
+    let b = raw(call(
+        &w,
+        "interpret",
+        InvokeBody::Raw(program),
+        &[("x-file-name", "part%20one.nc")],
+    ));
+    assert_eq!(&b[0..4], b"RPCG");
+    assert_eq!(u32_at(&b, 12), 3, "rapid, linear, program end");
+}
+
+#[test]
+fn interpret_needs_a_machine_and_a_raw_body() {
+    let dir = TempDir::new("needs");
+    let w = window(dir.0.clone());
+    let err =
+        call(&w, "interpret", InvokeBody::Raw(b"G0 X1.\n".to_vec()), &[]).expect_err("no machine");
+    assert!(err.to_string().contains("select a machine"), "{err}");
+    select_mill(&w);
+    let err = call(
+        &w,
+        "interpret",
+        InvokeBody::Json(serde_json::json!({ "program": "G0 X1." })),
+        &[],
+    )
+    .expect_err("JSON body");
+    assert!(err.to_string().contains("raw bytes"), "{err}");
+}
+
+#[test]
+fn run_options_choose_the_dialect() {
+    let dir = TempDir::new("options");
+    let w = window(dir.0.clone());
+    select_mill(&w);
+    json(
+        &w,
+        "set_run_options",
+        serde_json::json!({ "dialect": "osai", "blockDelete": false, "tolerance": 0.05 }),
+    )
+    .expect("set");
+    // (UAO,1) is a command on Osai; on Fanuc it would be a comment.
+    let b = raw(call(
+        &w,
+        "interpret",
+        InvokeBody::Raw(b"G71\n(UAO,1)\nX10 Y20\n".to_vec()),
+        &[],
+    ));
+    assert_eq!(u32_at(&b, 12), 1);
+    for bad in [
+        serde_json::json!({ "dialect": "haas", "blockDelete": false }),
+        serde_json::json!({ "dialect": "fanuc", "blockDelete": false, "tolerance": 0.0 }),
+    ] {
+        assert!(json(&w, "set_run_options", bad).is_err());
+    }
+}
+
+#[test]
+fn files_round_trip_as_raw_bytes_with_unicode_paths() {
+    let dir = TempDir::new("files");
+    let w = window(dir.0.clone());
+    let path = dir.0.join("Teil ü 1.nc");
+    let encoded: String = path
+        .display()
+        .to_string()
+        .bytes()
+        .map(|b| {
+            if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) {
+                (b as char).to_string()
+            } else {
+                format!("%{b:02X}")
+            }
+        })
+        .collect();
+    let contents = b"G0 X1.\n\xff not UTF-8 \n".to_vec();
+    match call(
+        &w,
+        "save_file",
+        InvokeBody::Raw(contents.clone()),
+        &[("x-path", &encoded)],
+    )
+    .expect("saved")
+    {
+        InvokeResponseBody::Json(text) => assert_eq!(text, "null"),
+        InvokeResponseBody::Raw(_) => panic!("save returns nothing"),
+    }
+    let loaded = raw(call(
+        &w,
+        "load_file",
+        InvokeBody::Json(serde_json::json!({ "path": path.display().to_string() })),
+        &[],
+    ));
+    assert_eq!(loaded, contents);
+}
+
+#[test]
+fn bad_save_requests_are_errors() {
+    let dir = TempDir::new("badsave");
+    let w = window(dir.0.clone());
+    assert!(
+        call(&w, "save_file", InvokeBody::Raw(vec![1]), &[]).is_err(),
+        "no path"
+    );
+    assert!(call(
+        &w,
+        "save_file",
+        InvokeBody::Raw(vec![1]),
+        &[("x-path", "%zz")]
+    )
+    .is_err());
+}
+
+#[test]
+fn user_machine_files_are_listed_and_selectable() {
+    let dir = TempDir::new("machines");
+    let w = window(dir.0.join("machines"));
+    let folder = json(&w, "machine_folder", serde_json::json!({})).expect("folder");
+    assert!(dir.0.join("machines").is_dir(), "created: {folder}");
+    std::fs::write(dir.0.join("machines/lathe.toml"), machine_lathe_text()).expect("write");
+    let list = json(&w, "list_machines", serde_json::json!({})).expect("list");
+    let user = &list[2];
+    assert_eq!(user["label"], "Generic 2-axis lathe");
+    assert_eq!(user["source"]["kind"], "user");
+    let name = json(
+        &w,
+        "select_machine",
+        serde_json::json!({ "source": user["source"] }),
+    )
+    .expect("select");
+    assert_eq!(name, "Generic 2-axis lathe");
+}
+
+fn machine_lathe_text() -> String {
+    // The shipped lathe example, fetched through the app itself.
+    app_backend::files::shipped_machine("generic_2axis_lathe")
+        .expect("shipped")
+        .to_owned()
+}
+
+#[test]
+fn a_remote_page_cannot_call_the_commands() {
+    let dir = TempDir::new("remote");
+    let w = window(dir.0.clone());
+    let err = call_from(
+        &w,
+        "https://example.com",
+        "list_dialects",
+        InvokeBody::Json(serde_json::json!({})),
+        &[],
+    )
+    .expect_err("refused");
+    assert!(err.to_string().contains("not allowed"), "{err}");
+}
