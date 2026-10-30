@@ -43,6 +43,12 @@ pub enum ArcCenter {
     Offset(Vec<AxisOffset>),
     /// Radius in mm. Negative selects the arc longer than half a circle.
     Radius(f64),
+    /// The centre as a point, programmed like an end point: an absolute
+    /// word is a coordinate in the active work coordinate system, an
+    /// incremental word a distance from the arc's start. Values are
+    /// converted by the machine like axis words (e.g. diameter to radius).
+    /// A plane axis not listed takes the start's coordinate.
+    Position(Vec<AxisWord>),
 }
 
 /// One machine-neutral intent. A block may produce several, in the order

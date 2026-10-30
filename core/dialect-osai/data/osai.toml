@@ -1,0 +1,377 @@
+# Osai 10 Series dialect (milling): code table. A stub (M2) to exercise the
+# dialect interfaces; see docs/dialect-notes/osai.md.
+#
+# Source for every entry: "10 Series CNC Programming Manual" (Osai), chapter
+# 1 "G Codes" (G code summary, p. 1-11/1-12), chapter 2 and chapter 6
+# "Miscellaneous Functions". Group numbers follow the manual's group letters
+# (a = 1, b = 2, ..., m = 13); 0 = one-shot. The machine builder can change
+# the default configuration (AMP).
+#
+# `handler` names the routine in src/block.rs:
+#
+#   rapid, linear, arc_cw, arc_ccw    motion (group a)
+#   plane_12, plane_31, plane_23      G17/G18/G19: the plane of the 1st and
+#                                     2nd, 3rd and 1st, 2nd and 3rd axes in
+#                                     the machine's axis order (p. 2-47)
+#   units_inch, units_metric, absolute, incremental, feed_per_minute
+#   machine_coords G79: this block's coordinates refer to the home position
+#   dwell          G04: dwell at the end of the block (time set by DWT)
+#   no_effect      changes only feed, cornering or acceleration, or cancels
+#                  something never active here
+#   not_simulated  accepted with a warning; the path is shown without it
+#   blocker        not supported, and changes where later blocks move: an
+#                  error, and no motion is shown until the cancel_blocker
+#                  code of its group (or the end of the program)
+#   cancel_blocker ends the blocker of its group
+#
+# G codes not listed are unknown: an error, and no motion is shown from
+# there to the end of the program. This includes G16 (plane by axis
+# names), G20/G21 (GTL profiles), G33 (threading), G60-G67 (HSM profiles)
+# and G72-G74 (probing).
+
+[dialect]
+id = "osai"
+variant = "10 Series (mill)"
+
+# ---- group a: motion (power-up G00) --------------------------------------
+
+[[g]]
+code = "G00"
+group = 1
+modal = true
+handler = "rapid"
+description = "Rapid axes positioning"
+
+[[g]]
+code = "G01"
+group = 1
+modal = true
+handler = "linear"
+description = "Linear interpolation"
+
+[[g]]
+code = "G02"
+group = 1
+modal = true
+handler = "arc_cw"
+description = "Circular interpolation CW"
+words = { optional = ["I", "J", "R", "K"] }
+
+[[g]]
+code = "G03"
+group = 1
+modal = true
+handler = "arc_ccw"
+description = "Circular interpolation CCW"
+words = { optional = ["I", "J", "R", "K"] }
+
+# ---- group b: plane (power-up G17 on mills) ------------------------------
+
+[[g]]
+code = "G17"
+group = 2
+modal = true
+handler = "plane_12"
+description = "Plane of axes 1 and 2"
+
+[[g]]
+code = "G18"
+group = 2
+modal = true
+handler = "plane_31"
+description = "Plane of axes 3 and 1"
+
+[[g]]
+code = "G19"
+group = 2
+modal = true
+handler = "plane_23"
+description = "Plane of axes 2 and 3"
+
+# ---- group c: dynamic mode (power-up G27). Feed and cornering only. ------
+
+[[g]]
+code = "G27"
+group = 3
+modal = true
+handler = "no_effect"
+description = "Continuous, with speed reduction on corners"
+
+[[g]]
+code = "G28"
+group = 3
+modal = true
+handler = "no_effect"
+description = "Continuous, without speed reduction on corners"
+
+[[g]]
+code = "G29"
+group = 3
+modal = true
+handler = "no_effect"
+description = "Point-to-point"
+
+# ---- group d: axis presetting (power-up G99) -----------------------------
+
+[[g]]
+code = "G92"
+group = 4
+modal = false
+handler = "blocker"
+description = "Axis presetting without mirror"
+
+[[g]]
+code = "G98"
+group = 4
+modal = false
+handler = "blocker"
+description = "Axis presetting with mirror"
+
+[[g]]
+code = "G99"
+group = 4
+modal = true
+handler = "cancel_blocker"
+description = "Delete G92"
+
+# ---- group e: cutter diameter compensation (power-up G40) ----------------
+
+[[g]]
+code = "G40"
+group = 5
+modal = true
+handler = "no_effect"
+description = "Cutter diameter compensation disable"
+
+[[g]]
+code = "G41"
+group = 5
+modal = true
+handler = "not_simulated"
+description = "Cutter diameter compensation, tool left"
+
+[[g]]
+code = "G42"
+group = 5
+modal = true
+handler = "not_simulated"
+description = "Cutter diameter compensation, tool right"
+
+# ---- group f: units (power-up G71) ---------------------------------------
+
+[[g]]
+code = "G70"
+group = 6
+modal = true
+handler = "units_inch"
+description = "Programming in inches"
+
+[[g]]
+code = "G71"
+group = 6
+modal = true
+handler = "units_metric"
+description = "Programming in millimetres"
+
+# ---- group g: canned cycles (power-up G80) -------------------------------
+
+[[g]]
+code = "G80"
+group = 7
+modal = true
+handler = "cancel_blocker"
+description = "Disable canned cycles"
+
+[[g]]
+code = "G81"
+group = 7
+modal = true
+handler = "blocker"
+description = "Drilling cycle"
+
+[[g]]
+code = "G82"
+group = 7
+modal = true
+handler = "blocker"
+description = "Spot-facing cycle"
+
+[[g]]
+code = "G83"
+group = 7
+modal = true
+handler = "blocker"
+description = "Deep hole drilling cycle"
+
+[[g]]
+code = "G84"
+group = 7
+modal = true
+handler = "blocker"
+description = "Tapping cycle"
+
+[[g]]
+code = "G85"
+group = 7
+modal = true
+handler = "blocker"
+description = "Reaming cycle"
+
+[[g]]
+code = "G86"
+group = 7
+modal = true
+handler = "blocker"
+description = "Boring cycle"
+
+[[g]]
+code = "G89"
+group = 7
+modal = true
+handler = "blocker"
+description = "Boring cycle with dwell"
+
+# ---- group h: distance mode (power-up G90) -------------------------------
+
+[[g]]
+code = "G90"
+group = 8
+modal = true
+handler = "absolute"
+description = "Absolute programming"
+
+[[g]]
+code = "G91"
+group = 8
+modal = true
+handler = "incremental"
+description = "Incremental programming"
+
+# ---- groups i, j: one-shot -----------------------------------------------
+
+[[g]]
+code = "G79"
+handler = "machine_coords"
+description = "Programming referred to the home position"
+
+[[g]]
+code = "G04"
+handler = "dwell"
+description = "Dwell at end of block"
+
+[[g]]
+code = "G09"
+handler = "no_effect"
+description = "Deceleration at end of block"
+
+# ---- group l: feed mode (power-up G94 on mills) --------------------------
+
+[[g]]
+code = "G93"
+group = 12
+modal = true
+handler = "not_simulated"
+description = "Inverse time feed rate"
+
+[[g]]
+code = "G94"
+group = 12
+modal = true
+handler = "feed_per_minute"
+description = "Feed rate per minute"
+
+[[g]]
+code = "G95"
+group = 12
+modal = true
+handler = "not_simulated"
+description = "Feed rate per revolution"
+
+# ---- group m: spindle speed mode (power-up G97 on mills) -----------------
+
+[[g]]
+code = "G96"
+group = 13
+modal = true
+handler = "not_simulated"
+description = "Constant surface speed"
+
+[[g]]
+code = "G97"
+group = 13
+modal = true
+handler = "no_effect"
+description = "Spindle speed in rpm"
+
+# ---- M codes (chapter 6, "Standard M functions"). The machine builder
+# ---- defines the M codes of a real machine; these are the standard ones.
+
+[[m]]
+code = "M00"
+handler = "stop"
+description = "Program stop"
+
+[[m]]
+code = "M01"
+handler = "optional_stop"
+description = "Optional program stop"
+
+[[m]]
+code = "M02"
+handler = "program_end"
+description = "End of program"
+
+[[m]]
+code = "M03"
+handler = "spindle_cw"
+description = "Spindle CW"
+
+[[m]]
+code = "M04"
+handler = "spindle_ccw"
+description = "Spindle CCW"
+
+[[m]]
+code = "M05"
+handler = "spindle_stop"
+description = "Spindle stop"
+
+[[m]]
+code = "M06"
+handler = "tool_change"
+description = "Tool change"
+
+[[m]]
+code = "M07"
+handler = "coolant_auxiliary"
+description = "Auxiliary coolant on"
+
+[[m]]
+code = "M08"
+handler = "coolant_main"
+description = "Main coolant on"
+
+[[m]]
+code = "M09"
+handler = "coolant_off"
+description = "Coolant off"
+
+[[m]]
+code = "M13"
+handler = "spindle_cw_coolant"
+description = "Spindle CW and coolant on"
+
+[[m]]
+code = "M14"
+handler = "spindle_ccw_coolant"
+description = "Spindle CCW and coolant on"
+
+[[m]]
+code = "M19"
+handler = "spindle_orient"
+description = "Spindle stop and angular orientation"
+
+[[m]]
+code = "M30"
+handler = "program_end_rewind"
+description = "End of program and reset to first block"
