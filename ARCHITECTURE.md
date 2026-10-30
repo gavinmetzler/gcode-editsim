@@ -68,7 +68,9 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 │  ├─ interpreter/             # glue: dialect + machine + state → IR
 │  ├─ sim/                     # material removal, per machine family (mill first)
 │  └─ testkit/                 # golden-file helpers, fixtures loader
-├─ app/                        # Tauri 2 shell: thin command layer over core
+├─ app/
+│  ├─ backend/                 # the app's behaviour without Tauri: machine/dialect choice, interpret → render buffer, file access
+│  └─ shell/                   # Tauri 2 shell: thin commands over backend (its own Cargo workspace, so the rest builds without WebKit)
 ├─ ui/                         # TypeScript: three.js viewport, CodeMirror editor
 └─ tests/
    └─ golden/                  # *.nc input + expected .json / .bin output
@@ -87,13 +89,14 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `interpreter` | `dialect-api`, `machine-api`, `gcode-syntax`, `ir` |
 | `sim` | `machine-api`, `ir` |
 | `testkit` | `ir` |
+| `app-backend` (`app/backend`) | `interpreter`, `ir`, the `*-api` crates, and the concrete dialects and machines |
 
 The principles behind the table:
 
 - The dialect side and the machine side never depend on each other.
 - `interpreter` and `sim` use only the `*-api` crates, never a concrete dialect or machine, so those stay swappable.
 - Test-only (dev) dependencies may use any `core/` crate, because tests wire concrete dialects and machines together, but never anything outside `core/`.
-- `app` and `ui` may depend on `core`; `core` never depends on them.
+- `app` and `ui` may depend on `core`; `core` never depends on them. `app-backend` is the one place that wires concrete dialects and machines together for the app: it picks the machine type from the machine file's `family` and the dialect from its id. It may use the file system; `core` may not. The Tauri shell (`app/shell`) is a separate Cargo workspace that depends only on `app-backend` and Tauri, so it is not in this table.
 
 The table lives in `tools/depcheck/rules.toml`. The check reads `cargo metadata`, so renamed, platform-specific and workspace-inherited dependencies are covered. A new crate must be added to the table before CI passes. Changing the table is an architecture change: update this section in the same PR.
 

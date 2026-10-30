@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 # Core library crates (see ARCHITECTURE.md §5), plus development tools.
-# `app/` (Tauri shell) joins the workspace in a later milestone.
+# `app/backend` holds the app's behaviour; the Tauri shell (`app/shell`) is
+# its own workspace so that building and testing the rest needs no WebKit.
 members = [
     "core/gcode-syntax",
     "core/ir",
@@ -15,6 +16,7 @@ members = [
     "core/sim",
     "core/testkit",
     "tools/depcheck",
+    "app/backend",
 ]
 
 [workspace.package]

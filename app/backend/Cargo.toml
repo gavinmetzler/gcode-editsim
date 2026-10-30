@@ -1,0 +1,22 @@
+[package]
+name = "app-backend"
+description = "Everything the desktop app does, without Tauri: machine and dialect selection, interpretation to a render buffer, and file access."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dialect-api = { path = "../../core/dialect-api" }
+dialect-fanuc = { path = "../../core/dialect-fanuc" }
+dialect-osai = { path = "../../core/dialect-osai" }
+interpreter = { path = "../../core/interpreter" }
+ir = { path = "../../core/ir" }
+machine-api = { path = "../../core/machine-api" }
+machine-lathe = { path = "../../core/machine-lathe" }
+machine-mill = { path = "../../core/machine-mill" }
+thiserror = "2.0.17"

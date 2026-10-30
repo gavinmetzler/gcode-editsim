@@ -26,6 +26,18 @@ interpreter = ["dialect-api", "gcode-syntax", "ir", "machine-api"]
 sim = ["ir", "machine-api"]
 testkit = ["ir"]
 depcheck = []
+# The app's behaviour, without Tauri. It wires concrete dialects and
+# machines together; nothing in core/ may use it.
+app-backend = [
+    "dialect-api",
+    "dialect-fanuc",
+    "dialect-osai",
+    "interpreter",
+    "ir",
+    "machine-api",
+    "machine-lathe",
+    "machine-mill",
+]
 
 # Test-only (dev) dependencies may use any workspace crate in these
 # directories: tests wire concrete dialects and machines together. They may

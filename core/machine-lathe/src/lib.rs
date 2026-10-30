@@ -22,8 +22,9 @@ use thiserror::Error;
 /// The `family` value this machine type accepts.
 pub const FAMILY: &str = "lathe";
 
-/// The example definition shipped with this crate.
-const GENERIC: &str = include_str!("../data/generic_2axis_lathe.toml");
+/// The example definition shipped with this crate
+/// (`data/generic_2axis_lathe.toml`), as text.
+pub const EXAMPLE_DEFINITION: &str = include_str!("../data/generic_2axis_lathe.toml");
 
 /// Why a definition is not a valid 2-axis lathe.
 #[derive(Debug, Error)]
@@ -121,7 +122,7 @@ impl Lathe {
     /// The example machine shipped with this crate
     /// (`data/generic_2axis_lathe.toml`).
     pub fn generic() -> Result<Self, LatheError> {
-        Self::from_toml_str(GENERIC)
+        Self::from_toml_str(EXAMPLE_DEFINITION)
     }
 
     /// The definition this lathe was built from.
