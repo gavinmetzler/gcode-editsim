@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M2.1 (tessellation and render buffer). M2 is planned in
+Last updated: M2.2, part 1 (lathe stub). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -80,6 +80,7 @@ in ARCHITECTURE.md §5).
 | `core/dialect-fanuc` | Fanuc milling | `data/fanuc.toml` (75 codes with handlers); `src/block.rs` (all block logic); `FanucOptions { decimal_input }` |
 | `core/machine-api` | Machine trait and definition-file loader | `MachineDef::from_toml_str` (rejects unknown settings); `AxisDef` (letter, kind, travel, arc_offset_letter, direction, rapid_rate, reference, diameter_mode); `Machine` trait; `check_limits`; `work_offset(id)` |
 | `core/machine-mill` | 3-axis mill | `Mill::new(def)`, `Mill::generic()`; example file `data/generic_3axis_mill.toml` |
+| `core/machine-lathe` | 2-axis lathe **stub** (M2.2) | `Lathe::new(def)`, `Lathe::generic()`; X diameter → radius in `normalize_axis_value`; example file `data/generic_2axis_lathe.toml` |
 | `core/interpreter` | Dialect + machine to IR | `interpret(source, file, &dyn Dialect, &dyn Machine, Options) -> ir::Program`; `examples/summary.rs` |
 | `core/testkit` | Golden helpers (no file access) | `summary(&Program, letters)`: compact JSON rounded to 1e-6; `compare`; `UPDATE_GOLDEN` |
 | `core/sim` | Empty placeholder (M6) | |
@@ -166,7 +167,12 @@ Changing any of these is a deliberate, documented change.
 - TOML; always in mm.
 - Work offsets are numbered 1, 2, … (Fanuc G54 = 1); 0 means machine
   coordinates.
-- `family = "mill"` selects the machine type.
+- `family = "mill"` or `"lathe"` selects the machine type. The caller picks
+  the type today; the app (M2.3) will look it up from `family`.
+- On a lathe, `diameter_mode` X values are halved; machine coordinates are
+  radius. What the lathe stub found about the traits is in ARCHITECTURE.md
+  §9 (assumed G17 plane on a machine without Y; fixed diameter mode;
+  where the `family` lookup lives; tool direction).
 
 **Golden files**
 - `<name>.syntax.txt` (parser) and `<name>.ir.json` (pipeline, Fanuc on
@@ -218,7 +224,8 @@ was asked to try a few real programs with the `summary` example.
   - G30 positions
   - coordinate rotation, scaling, mirroring and polar input
   - rotary axes on the mill
-- One dialect (Fanuc), one machine type (3-axis mill).
+- One dialect (Fanuc), one real machine type (3-axis mill); the lathe is a
+  stub.
 
 ---
 

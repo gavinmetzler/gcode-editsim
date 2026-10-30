@@ -19,7 +19,7 @@ your programs use.
 | Setting | Required | Meaning |
 |---|---|---|
 | `name` | yes | Display name |
-| `family` | yes | Machine type that reads the file. Currently only `"mill"` (3-axis mill). |
+| `family` | yes | Machine type that reads the file: `"mill"` (3-axis mill) or `"lathe"` (2-axis lathe, an early stub). |
 | `max_feed` | no | Fastest cutting feed, mm/min |
 | `max_spindle_rpm` | no | Fastest spindle speed, rpm |
 
@@ -37,7 +37,7 @@ separate `[[axis]]` block.
 | `travel` | no | Soft limits in machine coordinates: `[min, max]`. Moves outside are flagged. |
 | `rapid` | no | Rapid traverse rate, mm/min. |
 | `reference` | no | Reference (home) position in machine coordinates. Reference returns (G28) go here, and the simulation starts here. It must lie within `travel`. Without it, the axis starts at 0 and its position after a reference return is unknown. |
-| `diameter_mode` | no | `true` if this axis can be programmed as a diameter (turning). Default `false`. A mill rejects `true`. |
+| `diameter_mode` | no | `true` if this axis is programmed as a diameter (turning): programmed values are halved, and everything in this file (travel, reference, work offsets) is a radius. Default `false`. A mill rejects `true`; a lathe allows it on the x axis only. |
 
 Every axis letter and arc-offset letter must be different.
 
@@ -67,6 +67,19 @@ a typo can't silently do nothing.
 - Exactly three linear axes, moving along x, y and z (one each).
 - No rotary axes or diameter mode yet.
 - The tool always points along +z.
+
+## 2-axis lathe rules (`family = "lathe"`)
+
+**Example:** [`core/machine-lathe/data/generic_2axis_lathe.toml`](../core/machine-lathe/data/generic_2axis_lathe.toml)
+
+This machine type is an early stub, there to check the simulator's design;
+turning support is planned for a later milestone.
+
+- Exactly two linear axes: one moving along x (across the spindle, the
+  radius) and one along z (along the spindle). X and Z default to x and z.
+- `diameter_mode = true` is allowed on the x axis only.
+- No Y or rotary (C) axes yet. Tool nose radius and tool orientation are
+  not modelled; the toolpath is drawn as the profile in the x–z plane.
 
 The simulator is a visualisation aid. A program that stays within these
 limits in the simulator is not thereby safe to run on the machine.
