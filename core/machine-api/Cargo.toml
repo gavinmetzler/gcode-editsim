@@ -8,3 +8,9 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+ir = { path = "../ir" }
+serde = { version = "1.0.219", features = ["derive"] }
+thiserror = "2.0.17"
+toml = { version = "1.1", default-features = false, features = ["std", "parse", "serde"] }

@@ -1,6 +1,20 @@
-//! Machine trait, axis definitions, kinematics, tool and stock traits.
+//! Machine trait, axis definitions, kinematics and the machine definition
+//! file format.
 //!
-//! Placeholder crate created in M1 step 1 (workspace skeleton); see
-//! `ARCHITECTURE.md` for the intended design.
+//! A *machine type* (such as a 3-axis mill) implements [`Machine`]. The
+//! specific machine a user owns is described by a [`MachineDef`], loaded
+//! from a TOML text file that the user writes (see
+//! `docs/machine-definition.md`). The machine type checks that the
+//! definition makes sense for it.
+//!
+//! All values are in internal units: mm, degrees, mm/min, rpm.
 
 #![forbid(unsafe_code)]
+
+mod def;
+mod machine;
+
+pub use def::{
+    AxisDef, AxisKind, CartesianAxis, LimitViolation, MachineDef, MachineDefError, SpeedLimits,
+};
+pub use machine::{Machine, ToolPose};

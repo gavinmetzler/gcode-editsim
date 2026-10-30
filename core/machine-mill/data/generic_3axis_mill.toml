@@ -1,0 +1,42 @@
+# Example machine definition: a generic 3-axis vertical machining centre.
+#
+# Copy this file and change it to match your machine. All lengths are in mm,
+# speeds in mm/min, spindle speed in rpm. See docs/machine-definition.md.
+
+[machine]
+name = "Generic 3-axis VMC"
+family = "mill"          # which machine type reads this file
+max_feed = 10000.0       # fastest cutting feed, mm/min
+max_spindle_rpm = 12000.0
+
+# Axes, in the order positions are stored.
+[[axis]]
+letter = "X"
+kind = "linear"
+direction = "x"          # optional for X/Y/Z: taken from the letter
+arc_offset = "I"         # letter giving arc-centre offsets along this axis
+travel = [-760.0, 0.0]   # soft limits in machine coordinates
+rapid = 30000.0          # rapid traverse, mm/min
+
+[[axis]]
+letter = "Y"
+kind = "linear"
+direction = "y"
+arc_offset = "J"
+travel = [-410.0, 0.0]
+rapid = 30000.0
+
+[[axis]]
+letter = "Z"
+kind = "linear"
+direction = "z"
+arc_offset = "K"
+travel = [-510.0, 0.0]
+rapid = 24000.0
+
+# Work coordinate systems, as machine-coordinate positions of the part zero.
+# Number 1 is the first one (G54 on Fanuc), 2 the second (G55), and so on.
+# Axes not listed are 0.
+[work_offsets]
+1 = { X = -380.0, Y = -205.0, Z = -400.0 }
+2 = { X = -200.0, Y = -205.0, Z = -400.0 }
