@@ -72,7 +72,28 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
    └─ golden/                  # *.nc input + expected .json / .bin output
 ```
 
-Dependency rule (enforced in CI): arrows only point downward in the list above. `ir` depends on nothing in the workspace. `app` and `ui` may depend on `core`; `core` never depends on them.
+**Dependency rules (enforced in CI by `tools/depcheck`).** Each crate may use only the workspace crates listed for it below, as a normal or build dependency (platform-specific ones included):
+
+| Crate | May depend on |
+|---|---|
+| `gcode-syntax` | nothing in the workspace |
+| `ir` | nothing in the workspace |
+| `dialect-api` | `gcode-syntax`, `ir` |
+| `dialect-fanuc` (and future dialects) | `dialect-api`, `gcode-syntax`, `ir` |
+| `machine-api` | `ir` |
+| `machine-mill` (and future machines) | `machine-api`, `ir` |
+| `interpreter` | `dialect-api`, `machine-api`, `gcode-syntax`, `ir` |
+| `sim` | `machine-api`, `ir` |
+| `testkit` | `ir` |
+
+The principles behind the table:
+
+- The dialect side and the machine side never depend on each other.
+- `interpreter` and `sim` use only the `*-api` crates, never a concrete dialect or machine, so those stay swappable.
+- Test-only (dev) dependencies may use any `core/` crate, because tests wire concrete dialects and machines together, but never anything outside `core/`.
+- `app` and `ui` may depend on `core`; `core` never depends on them.
+
+The table lives in `tools/depcheck/rules.toml`. The check reads `cargo metadata`, so renamed, platform-specific and workspace-inherited dependencies are covered. A new crate must be added to the table before CI passes. Changing the table is an architecture change: update this section in the same PR.
 
 ## 6. Core concepts
 
@@ -428,7 +449,7 @@ Not started until stages 1–3 are done. Dexels are the leading candidate for mi
 - **Property tests** (`proptest`): parser never panics on arbitrary bytes; arc tessellation stays within tolerance; incremental/absolute equivalence.
 - **Cross-boundary test:** the §8.4 `.bin` fixture decoded in Rust and TS.
 - **Dialect conformance:** one test file per modal-group behaviour (e.g. "G91 persists across blocks", "G83 peck depths").
-- **Fuzzing** (`cargo-fuzz`) on the lexer/parser from the start. G-code files come from untrusted sources.
+- **Fuzzing** (`cargo-fuzz`) on the lexer/parser from the start. G-code files come from untrusted sources. CI runs the parser target for 60 seconds on every push and PR. It is seeded with the golden programs and uses a pinned nightly and cargo-fuzz version. Any panic, stack overflow, input taking over 10 s, or memory use over 2 GB fails the job, and the crashing input is uploaded. Longer runs are done locally.
 
 ## 12. Known risks and how we handle them
 

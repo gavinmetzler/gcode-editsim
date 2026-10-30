@@ -14,7 +14,7 @@ env:
 
 jobs:
   rust:
-    name: fmt, clippy, test
+    name: fmt, clippy, dependency rules, test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,5 +27,52 @@ jobs:
         run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+      # Fails if any crate depends on something ARCHITECTURE.md section 5
+      # forbids (rules in tools/depcheck/rules.toml).
+      - name: Dependency rules
+        run: cargo run -p depcheck
       - name: Test
         run: cargo test --workspace
+
+  fuzz:
+    name: fuzz parser (60 s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Pinned so CI does not break when nightly or cargo-fuzz change; bump
+      # both deliberately.
+      FUZZ_TOOLCHAIN: nightly-2026-10-29
+      CARGO_FUZZ_VERSION: 0.13.2
+      # Lints are enforced by the main job; a nightly lint must not fail
+      # the fuzz build.
+      RUSTFLAGS: ""
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly toolchain
+        run: rustup toolchain install "$FUZZ_TOOLCHAIN" --profile minimal
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core/gcode-syntax/fuzz -> target
+          key: fuzz
+      - name: Install cargo-fuzz
+        run: cargo +"$FUZZ_TOOLCHAIN" install cargo-fuzz --version "$CARGO_FUZZ_VERSION" --locked
+      - name: Seed corpus from the golden programs
+        working-directory: core/gcode-syntax
+        run: |
+          mkdir -p fuzz/corpus/parser
+          cp ../../tests/golden/*.nc fuzz/corpus/parser/
+      # Any panic, stack overflow, hang (>10 s for one input) or memory blow-up
+      # (>2 GB) fails the job. The crashing input is uploaded below; reproduce
+      # locally with `cargo +nightly fuzz run parser <file>` in core/gcode-syntax.
+      - name: Fuzz the parser
+        working-directory: core/gcode-syntax
+        run: >
+          cargo +"$FUZZ_TOOLCHAIN" fuzz run parser --
+          -max_total_time=60 -max_len=4096 -timeout=10 -rss_limit_mb=2048
+      - name: Upload crashing input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash
+          path: core/gcode-syntax/fuzz/artifacts/
+          if-no-files-found: ignore
