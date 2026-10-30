@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M2.0 (IR events). M2 is planned in
+Last updated: M2.1 (tessellation and render buffer). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -75,7 +75,7 @@ in ARCHITECTURE.md §5).
 | Crate | What it does | Key items |
 |---|---|---|
 | `core/gcode-syntax` | Bytes to blocks (one per non-blank line). Knows no G-code meaning. | `parse(&[u8]) -> Program`; `Block { line, block_skip, sequence_number, words, assignments, comments, program_delimiter, errors }`; `Expr` tree (never evaluated); `MAX_DEPTH` = 64. Fuzz target in `fuzz/` |
-| `core/ir` | The neutral output data model | `Pos = [f64; 9]`; `SegKind` (values fixed for the render buffer); `Segment`; `ArcGeom { center, plane: ArcPlane { first, second }, radius, turns }`; `DiagCode` (u16 values fixed); `Diagnostics`; `segments_for_line`; `bounding_box`; `serde` feature |
+| `core/ir` | The neutral output data model | `Pos = [f64; 9]`; `SegKind` (values fixed for the render buffer); `Segment`; `ArcGeom { center, plane: ArcPlane { first, second }, radius, turns }`; `DiagCode` (u16 values fixed); `Diagnostics`; `segments_for_line`; `bounding_box`; `tessellate`; `render::encode_render_buffer` + `render::layout`; `serde` feature |
 | `core/dialect-api` | What every dialect shares | `Dialect` trait (`initial_state`, `interpret_block(block, &BlockContext { axes, src }, state, out, diag)`); `Command`; `ModalState` (incl. `motion_blockers`, `first_report`); `CodeTable` (TOML); `AxisSet`; `CodeKey` (G1 = G01 = G1.0) |
 | `core/dialect-fanuc` | Fanuc milling | `data/fanuc.toml` (75 codes with handlers); `src/block.rs` (all block logic); `FanucOptions { decimal_input }` |
 | `core/machine-api` | Machine trait and definition-file loader | `MachineDef::from_toml_str` (rejects unknown settings); `AxisDef` (letter, kind, travel, arc_offset_letter, direction, rapid_rate, reference, diameter_mode); `Machine` trait; `check_limits`; `work_offset(id)` |
@@ -113,6 +113,11 @@ Changing any of these is a deliberate, documented change.
   once collapsed G2 full circles.
 - Positions are **machine coordinates**: work offsets are applied by the
   interpreter.
+- **Render buffer v1** (M2.1): `ir::encode_render_buffer(program, tol,
+  to_xyz)`, layout exactly as ARCHITECTURE.md §8.3. Origin = centre of
+  the vertices' bounding box. The caller passes the arc tolerance and the
+  axis → x/y/z mapping (`machine.forward_kinematics(p).position`). Fixture
+  `tests/golden/render_buffer_v1.bin`. Single channel only in v1.
 - **Events are zero-length segments** (M2.0): stops, spindle, coolant
   and program end each have their own `SegKind` (7–15), one segment per
   command, in program order. Events while the position is unknown get

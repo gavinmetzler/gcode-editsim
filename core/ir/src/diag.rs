@@ -56,6 +56,18 @@ pub enum DiagCode {
     NotYetSimulated = 13,
 }
 
+impl Severity {
+    /// The stable numeric id stored in the render buffer: 0 info,
+    /// 1 warning, 2 error.
+    pub fn id(self) -> u8 {
+        match self {
+            Severity::Info => 0,
+            Severity::Warning => 1,
+            Severity::Error => 2,
+        }
+    }
+}
+
 impl DiagCode {
     /// The stable numeric id.
     pub fn id(self) -> u16 {

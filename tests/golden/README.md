@@ -9,6 +9,13 @@
   generic 3-axis mill (`core/machine-mill/data/generic_3axis_mill.toml`),
   as a compact summary, checked by `core/interpreter/tests/golden.rs`.
 
+`render_buffer_v1.bin` is the shared render-buffer fixture (ARCHITECTURE.md
+§8.4). It is built from a hand-made program in
+`core/ir/tests/render_buffer.rs`, which also lists every value it holds;
+the TypeScript decoder test checks the same values. Regenerate it with
+`UPDATE_GOLDEN=1 cargo test -p ir --test render_buffer` only together with
+a layout version bump.
+
 Do not regenerate expected files to make a failing test pass. If output
 changes on purpose, regenerate with
 `UPDATE_GOLDEN=1 cargo test -p gcode-syntax --test golden` (or
