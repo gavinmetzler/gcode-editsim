@@ -256,6 +256,8 @@ The project is in active development. Architectural decisions and development co
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture and technical design (the source of truth).
 - [CLAUDE.md](CLAUDE.md): development rules, including for AI-assisted development.
+- [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md): where the project stands, the decisions made so far, open issues and lessons learned. Start here when picking up work.
+- [docs/plans/M2_PLAN.md](docs/plans/M2_PLAN.md): the plan for the next milestone.
 - [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
 - [docs/machine-definition.md](docs/machine-definition.md): the machine definition file format.
 
