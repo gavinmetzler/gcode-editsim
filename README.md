@@ -202,14 +202,14 @@ See [Trying it out](#trying-it-out).
 
 ## Trying it out
 
-The desktop app shows a program's toolpath in 3D (the editor and panels come next). On Linux it needs the WebKit libraries (on Ubuntu 24.04: `sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev`); then:
+The desktop app shows a program in an editor beside its 3D toolpath (the diagnostics and statistics panels come next). On Linux it needs the WebKit libraries (on Ubuntu 24.04: `sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev`); then:
 
 ```bash
 cd ui && npm ci && npm run build && cd ..   # the app embeds the built UI
 cd app/shell && cargo run
 ```
 
-The app opens with a sample program. Use **Open…** to load your own, choose the machine and dialect in the toolbar, and click the toolpath to see which line made it.
+The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. Edits re-run the program as you type (saving comes in a later step).
 
 With [Rust](https://rustup.rs) installed, you can also run a program through the engine and see the result as JSON:
 

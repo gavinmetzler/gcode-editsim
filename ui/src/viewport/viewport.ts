@@ -55,6 +55,7 @@ export class Viewport {
   /** GPU resources of what is shown, released by clear(). */
   private disposables: { dispose(): void }[] = [];
   private axes: AxesHelper | null = null;
+  private highlighted: { objects: (LineSegments | Points)[]; resources: { dispose(): void }[] } | null = null;
   private view: ViewName = "iso";
   private readonly resizeObserver: ResizeObserver;
   private frame = 0;
@@ -94,8 +95,9 @@ export class Viewport {
     this.resize();
   }
 
-  /** Shows `toolpath`, replacing what was shown, and fits the view to it. */
-  show(toolpath: Toolpath): void {
+  /** Shows `toolpath`, replacing what was shown. With `fit` (a new
+   *  program) the view is fitted to it; without (an edit) the camera stays. */
+  show(toolpath: Toolpath, fit = true): void {
     this.clear();
     this.toolpath = toolpath;
     const [ox, oy, oz] = toolpath.origin;
@@ -145,7 +147,50 @@ export class Viewport {
     this.scene.add(axes);
     this.axes = axes;
     this.disposables.push(axes);
-    this.fit();
+    if (fit) this.fit();
+    else this.requestRender();
+  }
+
+  /** Highlights `segments` (indices) on top of the toolpath, replacing any
+   *  earlier highlight; an empty list clears it. */
+  highlight(segments: readonly number[]): void {
+    this.clearHighlight();
+    const toolpath = this.toolpath;
+    if (!toolpath || segments.length === 0) {
+      this.requestRender();
+      return;
+    }
+    const pairs: number[] = [];
+    const points: number[] = [];
+    for (const s of segments) {
+      const range = toolpath.segmentVertices(s);
+      if (!range) continue;
+      if (range.count === 1) {
+        points.push(...toolpath.positions.subarray(range.first * 3, range.first * 3 + 3));
+      }
+      for (let v = range.first; v + 1 < range.first + range.count; v += 1) pairs.push(v, v + 1);
+    }
+    const lineGeometry = new BufferGeometry();
+    lineGeometry.setAttribute("position", new BufferAttribute(toolpath.positions, 3));
+    lineGeometry.setIndex(new BufferAttribute(Uint32Array.from(pairs), 1));
+    const lineMaterial = new LineBasicMaterial({ color: 0xffffff, depthTest: false });
+    const pointGeometry = new BufferGeometry();
+    pointGeometry.setAttribute("position", new BufferAttribute(Float32Array.from(points), 3));
+    const pointMaterial = new PointsMaterial({ color: 0xffffff, size: 11, sizeAttenuation: false, depthTest: false });
+    const lines = new LineSegments(lineGeometry, lineMaterial);
+    const marks = new Points(pointGeometry, pointMaterial);
+    lines.renderOrder = 10;
+    marks.renderOrder = 10;
+    this.group.add(lines, marks);
+    this.highlighted = { objects: [lines, marks], resources: [lineGeometry, lineMaterial, pointGeometry, pointMaterial] };
+    this.requestRender();
+  }
+
+  private clearHighlight(): void {
+    if (!this.highlighted) return;
+    for (const o of this.highlighted.objects) this.group.remove(o);
+    for (const r of this.highlighted.resources) r.dispose();
+    this.highlighted = null;
   }
 
   /** Points the camera at the toolpath from the current standard view. */
@@ -218,6 +263,7 @@ export class Viewport {
   }
 
   private clear(): void {
+    this.clearHighlight();
     this.group.clear();
     if (this.axes) this.scene.remove(this.axes);
     this.axes = null;

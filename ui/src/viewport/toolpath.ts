@@ -81,6 +81,8 @@ export interface Toolpath {
   readonly vertexSegment: Uint32Array;
   /** Where vertex coordinates are measured from (machine coordinates, mm). */
   readonly origin: readonly [number, number, number];
+  /** The vertices of segment `index`, or null if there is no such segment. */
+  segmentVertices(index: number): { readonly first: number; readonly count: number } | null;
   /** Bounds of the motion vertices relative to `origin`, or null if none. */
   readonly bounds: { readonly min: Rgb; readonly max: Rgb } | null;
 }
@@ -146,6 +148,11 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     eventSegment: Uint32Array.from(events),
     vertexSegment,
     origin: rb.header.origin,
+    segmentVertices: (index: number) => {
+      if (!Number.isInteger(index) || index < 0 || index >= segmentCount) return null;
+      const s = rb.segment(index);
+      return { first: s.firstVertex, count: s.vertexCount };
+    },
     bounds: hasBounds
       ? {
           min: [min[0] ?? 0, min[1] ?? 0, min[2] ?? 0],
