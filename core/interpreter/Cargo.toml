@@ -19,5 +19,6 @@ machine-api = { path = "../machine-api" }
 [dev-dependencies]
 dialect-fanuc = { path = "../dialect-fanuc" }
 machine-mill = { path = "../machine-mill" }
+machine-lathe = { path = "../machine-lathe" }
 proptest = "1.9"
 testkit = { path = "../testkit" }

@@ -84,6 +84,7 @@ The full design, including the dependency rules between crates, is in [ARCHITECT
 | `core/dialect-fanuc` | The first dialect: Fanuc milling. |
 | `core/machine-api` | The machine trait: axis definitions, kinematics, limits, tools. |
 | `core/machine-mill` | The first machine type: 3-axis mill. |
+| `core/machine-lathe` | A 2-axis lathe stub, used to check the machine interfaces. |
 | `core/interpreter` | Combines dialect, machine and state to produce the IR. |
 | `core/sim` | Material removal simulation, per machine family. |
 | `core/testkit` | Golden-file test helpers. |

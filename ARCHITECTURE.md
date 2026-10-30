@@ -63,6 +63,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 │  ├─ dialect-fanuc/           # first real dialect (+ data/fanuc.toml)
 │  ├─ machine-api/             # Machine trait, AxisDef, Kinematics, Tool, Stock traits
 │  ├─ machine-mill/            # first real machine (3-axis)
+│  ├─ machine-lathe/           # 2-axis lathe stub (M2), to exercise the machine traits
 │  ├─ interpreter/             # glue: dialect + machine + state → IR
 │  ├─ sim/                     # material removal, per machine family (mill first)
 │  └─ testkit/                 # golden-file helpers, fixtures loader
@@ -81,7 +82,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `dialect-api` | `gcode-syntax`, `ir` |
 | `dialect-fanuc` (and future dialects) | `dialect-api`, `gcode-syntax`, `ir` |
 | `machine-api` | `ir` |
-| `machine-mill` (and future machines) | `machine-api`, `ir` |
+| `machine-mill`, `machine-lathe` (and future machines) | `machine-api`, `ir` |
 | `interpreter` | `dialect-api`, `machine-api`, `gcode-syntax`, `ir` |
 | `sim` | `machine-api`, `ir` |
 | `testkit` | `ir` |
@@ -441,7 +442,14 @@ pub trait Machine {
 }
 ```
 
-`machine-mill` implements the trivial case. `tool_model` (tool geometry and the tool table) is deferred to M4, when tool changes and length compensation are simulated.
+`machine-mill` implements the trivial case. `machine-lathe` is a stub (M2) with two linear axes, x (radius) and z (along the spindle). It does diameter programming through `normalize_axis_value`: a `diameter_mode` axis is halved, for absolute and incremental values alike, and machine coordinates (travel, reference, work offsets) are radius values. Arc-centre offsets and `R` are not converted, so they are radius values.
+
+**What the lathe stub showed about the traits (M2.2).** A Fanuc program ran on the lathe through the unchanged `Machine`, `Dialect` and interpreter interfaces, including diameter moves, ZX-plane arcs, limits, reference returns and kinematics. The problems it found are recorded here and not fixed yet:
+
+- **The dialect's assumed power-on plane depends on the machine.** The Fanuc dialect assumes G17 (XY) when a program sets no plane. A lathe has no Y axis, so an arc without G18 has no plane and is rejected (with an error, never drawn wrongly). A lathe dialect would assume G18. The power-on modal state may need the machine's say, e.g. a default plane in `AxisSet`. To be decided with the first real lathe dialect (M7).
+- **Diameter mode is fixed per axis.** `normalize_axis_value` has no program state, so a control whose programs can switch between diameter and radius input cannot be modelled through it. If one is needed, the dialect would convert instead, or the trait would take a mode.
+- **Choosing the machine type from `family` has no home yet.** It cannot live in `machine-api`, which may not depend on concrete machines. The app (M2.3) will hold the small `family` → machine-type lookup.
+- **The tool direction is a guess.** `ToolPose::direction` is fixed per machine type (a lathe tool points +x). Real tool orientation comes with tool geometry (M4). `tool_model` (tool geometry and the tool table) is deferred to M4, when tool changes and length compensation are simulated.
 
 Machine definitions are **user-editable text files** (TOML) describing the user's own machine: name, machine family, axis list (letters, kinds, directions, arc-offset letters, travel limits, rapid rates), maximum feed and spindle speed, and work offsets. `machine-api` loads and validates the file into a `MachineDef` (unknown settings are rejected, not ignored); the machine type named by `family` then checks it makes sense for that type (e.g. `Mill::new`). The format is documented for users in `docs/machine-definition.md`. A UI for editing them comes later; until then users edit the file directly. The dialect's `AxisSet` (§7.2) is built from this definition by the interpreter.
 

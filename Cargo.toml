@@ -9,6 +9,7 @@ members = [
     "core/dialect-fanuc",
     "core/machine-api",
     "core/machine-mill",
+    "core/machine-lathe",
     "core/interpreter",
     "core/sim",
     "core/testkit",

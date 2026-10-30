@@ -1,0 +1,16 @@
+[package]
+name = "machine-lathe"
+description = "2-axis lathe machine implementation (stub, to exercise the machine traits)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+ir = { path = "../ir" }
+machine-api = { path = "../machine-api" }
+thiserror = "2.0.17"

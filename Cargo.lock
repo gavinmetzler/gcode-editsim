@@ -205,6 +205,7 @@ dependencies = [
  "gcode-syntax",
  "ir",
  "machine-api",
+ "machine-lathe",
  "machine-mill",
  "proptest",
  "testkit",
@@ -246,6 +247,15 @@ dependencies = [
  "serde",
  "thiserror",
  "toml",
+]
+
+[[package]]
+name = "machine-lathe"
+version = "0.1.0"
+dependencies = [
+ "ir",
+ "machine-api",
+ "thiserror",
 ]
 
 [[package]]

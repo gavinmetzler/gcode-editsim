@@ -1,0 +1,37 @@
+# Example machine definition: a generic 2-axis turning centre (X and Z).
+#
+# This machine type is a stub: enough to check that the simulator's
+# machine interfaces work for turning. See docs/machine-definition.md.
+# All lengths are in mm, speeds in mm/min, spindle speed in rpm.
+
+[machine]
+name = "Generic 2-axis lathe"
+family = "lathe"
+max_feed = 5000.0
+max_spindle_rpm = 4000.0
+
+# X: across the spindle axis. Machine coordinates (travel, reference, work
+# offsets) are radius values; programs give diameters (diameter_mode).
+[[axis]]
+letter = "X"
+kind = "linear"
+direction = "x"
+arc_offset = "I"
+diameter_mode = true
+travel = [-5.0, 150.0]
+rapid = 20000.0
+reference = 150.0
+
+# Z: along the spindle axis.
+[[axis]]
+letter = "Z"
+kind = "linear"
+direction = "z"
+arc_offset = "K"
+travel = [-300.0, 200.0]
+rapid = 24000.0
+reference = 200.0
+
+# Part zero on the spindle centre line, 100 mm from machine zero in Z.
+[work_offsets]
+1 = { X = 0.0, Z = 100.0 }
