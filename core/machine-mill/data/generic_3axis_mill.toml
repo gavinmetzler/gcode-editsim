@@ -17,6 +17,7 @@ direction = "x"          # optional for X/Y/Z: taken from the letter
 arc_offset = "I"         # letter giving arc-centre offsets along this axis
 travel = [-760.0, 0.0]   # soft limits in machine coordinates
 rapid = 30000.0          # rapid traverse, mm/min
+reference = 0.0          # reference (home) position, machine coordinates
 
 [[axis]]
 letter = "Y"
@@ -25,6 +26,7 @@ direction = "y"
 arc_offset = "J"
 travel = [-410.0, 0.0]
 rapid = 30000.0
+reference = 0.0
 
 [[axis]]
 letter = "Z"
@@ -33,6 +35,7 @@ direction = "z"
 arc_offset = "K"
 travel = [-510.0, 0.0]
 rapid = 24000.0
+reference = 0.0
 
 # Work coordinate systems, as machine-coordinate positions of the part zero.
 # Number 1 is the first one (G54 on Fanuc), 2 the second (G55), and so on.

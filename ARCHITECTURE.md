@@ -39,7 +39,10 @@ G-code text
 The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dyn Machine, Options) -> Program`. It never fails: every problem is a diagnostic. Behaviour decided in M1:
 
 - **Positions are machine coordinates.** Work offsets come from the machine definition and are applied by the interpreter; incremental moves are relative to the current machine position. An undefined work offset is reported once and machine coordinates are used.
-- **The machine starts at machine zero** on every axis (a home position setting can be added to the machine definition later).
+- **The machine starts at its reference (home) position** from the machine definition (machine zero on axes that give none).
+- **A move is only drawn from a known position.** When the dialect reports that the machine went somewhere it cannot model (`Command::PositionUnknown`: an unsupported canned cycle, subprogram or coordinate mode, an unknown G code, a return to a reference position the machine file does not describe), those axes become unknown. Later moves are left out, with one warning, until every axis has been given an absolute position again. Nothing is drawn from a stale starting point.
+- **Reference returns and machine-coordinate moves** (`ReturnToReference`, `MachineRapid`) are carried out against the machine definition's reference positions and machine coordinates.
+- **Full circles are decided exactly.** An offset-style arc whose end is within 1e-6 mm of its start (floating-point drift from incremental moves is ~1e-10 mm; the smallest programmable step is 0.001 mm) has its end set exactly to the start, so the IR's coincident-end-points rule applies. Without this, drift could turn a full circle into a near-zero arc.
 - **Arc centres** are computed here. Offset-style centres are checked so that start and end lie within 0.01 mm of the same radius (real controls make this a parameter); R-style centres are solved for the short or long arc by the sign of R. An impossible arc is an error and the block does not move.
 - **Travel limits** are checked for every motion segment, including arc bulges (via the segment's bounding box). Offending segments get `OUT_OF_LIMITS` and a warning; after 50 warnings the rest are only flagged.
 - **Program end** stops execution: later blocks with content are not run, with one info note.
@@ -94,6 +97,7 @@ pub struct AxisDef {                    // in machine-api
     pub arc_offset_letter: Option<char>,// e.g. 'I' for X; None = not in any arc plane
     pub direction: Option<CartesianAxis>, // x | y | z: travel direction (linear) or rotation axis (rotary)
     pub rapid_rate: Option<f64>,        // mm/min or deg/min
+    pub reference: Option<f64>,         // reference (home) position, machine coords
     pub diameter_mode_capable: bool,    // turning X
 }
 ```
@@ -140,6 +144,9 @@ pub enum Command {
     SetSpindleState { spindle: u8, state: SpindleState },   // off / cw / ccw
     SelectTool(u32),                    // choose the next tool
     ToolChange { tool: u32 },           // change tools now
+    ReturnToReference { via: Vec<AxisWord>, position: u8 }, // rapid via a point to reference position n
+    MachineRapid { target: Vec<AxisWord> }, // rapid in machine coordinates
+    PositionUnknown { axes: Vec<usize>, reason: String },   // the machine moved somewhere not simulated
     Coolant(CoolantState),
     Stop { optional: bool },            // operator stop / optional stop
     ProgramEnd { rewind: bool },
@@ -158,6 +165,7 @@ Differences from the first draft, and why:
 - **Spindle speed and spindle state are separate**, because `S` and the start/stop codes are independent and often appear on different blocks.
 - **Tool selection and tool change are separate** (`T` chooses, a change code changes), which most controllers distinguish. A dialect whose `T` word changes immediately just emits both.
 - **`Stop` was added** for operator stops and optional stops.
+- **`ReturnToReference`, `MachineRapid` and `PositionUnknown` were added** (M1 hardening) so that reference returns and machine-coordinate moves are simulated, and so that a move the dialect cannot simulate never leaves the interpreter drawing later moves from the wrong place.
 - **Deferred until their milestones**: tool length and cutter compensation (M4/M5) and multi-channel `Sync`.
 
 ### 6.6 Segments (the IR)
@@ -295,6 +303,10 @@ A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferr
 ### 7.3 Canned cycles
 
 Expanded inside the dialect layer into primitive `Command`s (Rapid / Linear / Dwell), each tagged with a `CycleStep`. Downstream code never sees `G81`. The renderer can still colour or filter by `cycle_step`.
+
+### 7.3a Unsupported modes that affect later blocks
+
+Some unsupported codes change how *later* blocks move: coordinate shifts (G92, G52, G10), rotation, scaling, mirroring, polar input, subprograms, and unknown G codes. Reporting only the code's own block would leave every following move drawn in the wrong place without a diagnostic. Such codes start a **motion blocker** (`ModalState::motion_blockers`): an error explains, once, that moves are not shown from that line until the matching cancel code (or the end of the program). While a blocker is in effect the dialect emits no motion, only `PositionUnknown`, so when the blocker ends the interpreter waits for a known position before drawing again.
 
 ### 7.4 Macros and expressions
 

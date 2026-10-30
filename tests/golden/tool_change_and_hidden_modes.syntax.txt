@@ -1,0 +1,69 @@
+line 1: %
+line 2:
+  words: O3000
+  comment (paren): "REVIEW FINDINGS: TOOL CHANGE, CANNED CYCLE, ROTATION, FULL CIRCLE"
+line 3:
+  words: G21 G17 G40 G49 G80 G90 G94
+line 4:
+  words: T1 M6
+line 5:
+  words: G54 G0 X0. Y0. S2000 M3
+line 6:
+  words: G43 H1 Z5.
+line 7:
+  words: G1 Z-2. F200.
+line 8:
+  comment (paren): "incremental steps, then a full circle back at the start"
+line 9:
+  words: G91 X0.1
+line 10:
+  words: X0.1
+line 11:
+  words: X0.1
+line 12:
+  words: G90 G2 X0.3 Y0. J5.
+line 13:
+  words: G0 Z5.
+line 14:
+  comment (paren): "standard Fanuc tool change: retract Z, then X and Y, to the reference"
+line 15:
+  words: G91 G28 Z0.
+line 16:
+  words: G28 X0. Y0.
+line 17:
+  words: G90
+line 18:
+  words: T2 M6
+line 19:
+  words: G54 G0 X50. Y0.
+line 20:
+  words: G43 H2 Z5.
+line 21:
+  comment (paren): "drilling cycle, cancelled by G00 instead of G80"
+line 22:
+  words: G99 G81 X50. Y0. Z-10. R2. F100.
+line 23:
+  words: X60.
+line 24:
+  words: G0 Z50.
+line 25:
+  words: X70. Y0. Z5.
+line 26:
+  comment (paren): "rotation: hidden until G69 and a fully specified position"
+line 27:
+  words: G68 X0. Y0. R45.
+line 28:
+  words: G1 X80. F300.
+line 29:
+  words: G69
+line 30:
+  words: G0 X90.
+line 31:
+  words: X90. Y10. Z5.
+line 32:
+  words: X100.
+line 33:
+  words: M5
+line 34:
+  words: M30
+line 35: %

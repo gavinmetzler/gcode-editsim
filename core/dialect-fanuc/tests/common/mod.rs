@@ -30,9 +30,14 @@ pub fn axes(spec: &[(char, Option<char>, bool)]) -> AxisSet {
 }
 
 /// Commands and diagnostics produced by a program.
+///
+/// Most tests leave units, plane, distance and motion mode unset to stay
+/// short, so the "assumed ..." warnings for those are kept apart in
+/// `assumed`; `tests/assumed_defaults.rs` checks them.
 pub struct Run {
     pub commands: Vec<Command>,
     pub diags: Vec<Diagnostic>,
+    pub assumed: Vec<Diagnostic>,
 }
 
 impl Run {
@@ -44,6 +49,23 @@ impl Run {
         self.diags
             .iter()
             .filter(|d| d.severity == Severity::Error)
+            .collect()
+    }
+
+    /// Motion commands and reference returns.
+    pub fn moves_and_returns(&self) -> Vec<&Command> {
+        self.commands
+            .iter()
+            .filter(|c| {
+                matches!(
+                    c,
+                    Command::Rapid { .. }
+                        | Command::Linear { .. }
+                        | Command::Arc { .. }
+                        | Command::ReturnToReference { .. }
+                        | Command::MachineRapid { .. }
+                )
+            })
             .collect()
     }
 
@@ -81,9 +103,13 @@ pub fn run_with(options: FanucOptions, axes: &AxisSet, src: &str) -> Run {
         };
         dialect.interpret_block(block, &ctx, &mut state, &mut commands, &mut diag);
     }
+    let (assumed, diags) = diag.into_vec().into_iter().partition(|d| {
+        d.code == DiagCode::ControllerDependent && d.message.starts_with("assumed ")
+    });
     Run {
         commands,
-        diags: diag.into_vec(),
+        diags,
+        assumed,
     }
 }
 

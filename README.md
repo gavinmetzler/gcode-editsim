@@ -152,7 +152,7 @@ See `Cargo.toml` and [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 Development is organised into milestones (details in [ARCHITECTURE.md §13](ARCHITECTURE.md#13-milestones)).
 
-### M1 – Core Skeleton (complete)
+### M1 – Core Skeleton (complete, with known limitations)
 
 The complete headless pipeline from G-code text to IR, with no UI.
 
@@ -162,8 +162,31 @@ The complete headless pipeline from G-code text to IR, with no UI.
 - [x] `dialect-api` and the Fanuc dialect (M1 subset)
 - [x] `machine-api` and `machine-mill`, including user-editable machine definitions
 - [x] `interpreter` and end-to-end golden tests
+- [x] Hardening after an independent review of CNC correctness (see below)
 
-What works today, headlessly: a Fanuc milling program plus a machine definition file produce the toolpath in machine coordinates, with work offsets applied, exact arcs (I/J/K, R, full circles, helices), travel-limit checks including arc bulges, and diagnostics for everything unsupported. See [Trying it out](#trying-it-out).
+What works today, headlessly: a Fanuc milling program plus a machine definition file produce the toolpath in machine coordinates. That includes:
+
+- work offsets applied
+- reference returns (G28) and machine-coordinate moves (G53)
+- exact arcs: I/J/K, R, full circles and helices
+- travel-limit checks, including arc bulges
+- diagnostics for everything unsupported
+
+See [Trying it out](#trying-it-out).
+
+**Never drawing a misleading toolpath** is the rule the review hardened.
+
+- **Hidden moves.** Unsupported codes that change where *later* moves go (G92, G52, G68, scaling, mirroring, polar input, subprograms, canned cycles, unknown G codes) hide the moves they affect. This is explained once, where the code appears. Nothing is drawn in the wrong place.
+- **Unknown position.** After the machine has gone somewhere that isn't simulated, nothing is drawn until the position is known again.
+- **Assumed defaults.** Modes a program relies on without setting them (units, G90/G91, plane, motion mode) are warned about. On a real control they depend on parameters or on the state at power-off.
+
+**Known limitations**, tracked for later milestones:
+
+- **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length (M4).
+- **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M5).
+- **Pauses, spindle direction, coolant and program end are not yet in the IR,** so the UI can't show them (M2).
+- **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used.
+- **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 
 ### Later Milestones
 

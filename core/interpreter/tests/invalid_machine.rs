@@ -43,6 +43,7 @@ fn duplicate_axis_letters_give_a_diagnostic() {
         arc_offset_letter: None,
         direction: None,
         rapid_rate: None,
+        reference: None,
         diameter_mode_capable: false,
     };
     let machine = Broken {
