@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: end of M2.3 (app shell, Android spike passed). M2 is planned in
+Last updated: M2.4 (UI scaffold and buffer decoding). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -20,8 +20,8 @@ Last updated: end of M2.3 (app shell, Android spike passed). M2 is planned in
 | Area | Status |
 |---|---|
 | Tests | 327 pass (`cargo test --workspace`); 36 in `ir` with `--all-features` |
-| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, and a Tauri app-shell job (WebKit installed; fmt, clippy, tests) |
-| UI | Tauri shell runs (placeholder page); the UI itself is M2.4 |
+| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), and a UI job (lint, typecheck, test, build) |
+| UI | Scaffold and render-buffer decoder (M2.4); the app shell still shows its placeholder page until the viewport (M2.5) |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
 
@@ -88,6 +88,8 @@ in ARCHITECTURE.md §5).
 | `core/sim` | Empty placeholder (M6) | |
 | `app/backend` | The app's behaviour without Tauri (M2.3a) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, list_machine_files}` |
 | `app/shell` | The Tauri 2 desktop shell (M2.3b), **its own Cargo workspace** | Commands in `src/lib.rs` (`interpret` raw body → raw render buffer, `load_file`, `save_file`, machine and dialect choice); IPC tests on Tauri's mock runtime in `tests/ipc.rs`; placeholder page until M2.4 |
+| `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
+| `ui/` | TypeScript UI (M2.4: scaffold) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test) |
 | `tools/depcheck` | The dependency-rule checker | `cargo run -p depcheck` |
 
 User-facing documentation:

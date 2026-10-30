@@ -195,6 +195,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "gen-ts"
+version = "0.1.0"
+dependencies = [
+ "ir",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

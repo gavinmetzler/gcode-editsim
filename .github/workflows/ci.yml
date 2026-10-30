@@ -66,6 +66,34 @@ jobs:
       - name: Test
         run: cargo test
 
+  ui:
+    name: UI (lint, typecheck, test, build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Install (exact versions from the lock file)
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      # Includes the cross-boundary test: the TypeScript decoder reads the
+      # same render_buffer_v1.bin fixture as the Rust test. The generated
+      # constants are checked against core/ir by `cargo test` in the job
+      # above.
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
   fuzz:
     name: fuzz parser (60 s)
     runs-on: ubuntu-24.04

@@ -57,6 +57,9 @@ pub enum DiagCode {
 }
 
 impl Severity {
+    /// Every severity, in id order.
+    pub const ALL: [Severity; 3] = [Severity::Info, Severity::Warning, Severity::Error];
+
     /// The stable numeric id stored in the render buffer: 0 info,
     /// 1 warning, 2 error.
     pub fn id(self) -> u8 {
@@ -69,6 +72,24 @@ impl Severity {
 }
 
 impl DiagCode {
+    /// Every code, in id order. Used to generate the TypeScript constants
+    /// (`tools/gen-ts`).
+    pub const ALL: [DiagCode; 13] = [
+        DiagCode::SyntaxError,
+        DiagCode::UnsupportedGCode,
+        DiagCode::UnsupportedMCode,
+        DiagCode::UnsupportedWord,
+        DiagCode::ModalGroupConflict,
+        DiagCode::MissingWord,
+        DiagCode::MissingFeedRate,
+        DiagCode::ArcRadiusMismatch,
+        DiagCode::InvalidArc,
+        DiagCode::InvalidValue,
+        DiagCode::OutOfLimits,
+        DiagCode::ControllerDependent,
+        DiagCode::NotYetSimulated,
+    ];
+
     /// The stable numeric id.
     pub fn id(self) -> u16 {
         self as u16
