@@ -1,0 +1,31 @@
+// Use Google's official Maven Central mirror: Maven Central rate-limits
+// this environment (HTTP 429). Local to this container, not in the repo.
+def MIRROR = "https://maven-central.storage-download.googleapis.com/maven2/"
+def central = { String u -> u.startsWith("https://repo.maven.apache.org") || u.startsWith("https://repo1.maven.org") }
+def redirect = { RepositoryHandler repos ->
+    repos.withType(MavenArtifactRepository).configureEach { r ->
+        if (central(r.url.toString())) { r.url = MIRROR }
+    }
+}
+def mirrorFirst = { RepositoryHandler repos ->
+    def r = repos.maven { url = MIRROR; name = "MavenCentralMirror" }
+    repos.remove(r)
+    repos.addFirst(r)
+}
+beforeSettings { settings ->
+    mirrorFirst(settings.pluginManagement.repositories)
+    redirect(settings.pluginManagement.repositories)
+    redirect(settings.dependencyResolutionManagement.repositories)
+}
+// Declaring a repository turns off the default plugin portal; keep it,
+// after the mirror.
+settingsEvaluated { settings ->
+    def repos = settings.pluginManagement.repositories
+    if (!repos.any { it instanceof MavenArtifactRepository && it.url.toString().contains("plugins.gradle.org") }) {
+        repos.gradlePluginPortal()
+    }
+}
+allprojects {
+    redirect(buildscript.repositories)
+    redirect(repositories)
+}
