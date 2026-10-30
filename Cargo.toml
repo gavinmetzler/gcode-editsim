@@ -20,6 +20,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.97"
 publish = false
+license = "AGPL-3.0-only"
 
 # Applied to every member via `[lints] workspace = true`.
 [workspace.lints.rust]

@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: end of M1 (PRs #1–#11 merged). Next: M2, planned in
+Last updated: start of M2 (owner's answers recorded). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
 
 ---
@@ -22,7 +22,7 @@ Last updated: end of M1 (PRs #1–#11 merged). Next: M2, planned in
 | Tests | 327 pass (`cargo test --workspace`); 36 in `ir` with `--all-features` |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, and a 60 s parser fuzz job |
 | UI | none yet; M2 starts it |
-| Licence | AGPL-3.0 (`LICENSE`). The Cargo manifests have no `license` field yet: the owner has not said "-only" or "-or-later" |
+| Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
 
 **What works headlessly:** a Fanuc milling program plus a machine
 definition file produce IR segments in machine coordinates. That covers:
@@ -57,9 +57,11 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
   large or ambiguous work; CLAUDE.md requires a plan first for large tasks.
 - **Be conservative about CNC correctness.** Never claim Fanuc behaviour
   is correct unless it is tested *and* sourced. Mark everything else
-  *(unverified)* in `docs/dialect-notes/fanuc.md`.
+  *(unverified)* in `docs/dialect-notes/fanuc.md`. The same applies to
+  Osai (`docs/dialect-notes/osai.md`).
 - **Workflow and CI files** (`.github/workflows/`) change only with
-  explicit instruction (CLAUDE.md rule 9).
+  explicit instruction (CLAUDE.md rule 9). The owner allowed the M2 UI
+  and Tauri CI jobs as a one-off; ask again for anything else.
 
 ---
 
@@ -124,8 +126,7 @@ Changing any of these is a deliberate, documented change.
 **Fanuc dialect**
 - No-decimal numbers use the least input increment by default (DPI = 0:
   `X10` = 0.010 mm), with a one-time warning; `DecimalInput::Calculator`
-  is the alternative. The owner has not chosen a default; it may move into
-  the machine file.
+  is the alternative. The owner chose to keep this Fanuc default.
 - Group 1/2/3/6 modes are **not** set at power-on. The first time a
   program relies on one, there is an "assumed …" warning and G00, G17,
   G90 or G21 is used.
@@ -249,16 +250,25 @@ was asked to try a few real programs with the `summary` example.
 
 ---
 
-## 8. Open questions for the owner
+## 8. Owner decisions and open questions
 
-1. Licence field: AGPL-3.0-**only** or **-or-later**?
-2. Update CLAUDE.md's "Current milestone" to M2? (The agent has not
-   edited the instruction file.)
-3. Default decimal-point input: keep the Fanuc factory default (DPI = 0),
-   or switch to calculator input, or make it a machine-file setting?
-4. Add a scheduled nightly long fuzz run, and a whole-pipeline fuzz target?
-5. Pin Actions to commit SHAs (with Dependabot), or keep major tags?
-6. When to move CI to Ubuntu 26?
-7. Can the owner verify the *(unverified)* Fanuc items against their
+Decided (2026-10-30):
+- Licence: **AGPL-3.0-only**.
+- CLAUDE.md "Current milestone" is now M2 (the agent updated it).
+- Decimal-point input: **keep the Fanuc default** (DPI = 0).
+- **No** scheduled long fuzz run. The 60 s CI job stays. A
+  whole-pipeline fuzz target is not planned.
+- M2 sequencing: see `docs/plans/M2_PLAN.md` section 2. The second
+  dialect is **Osai 10 Series**.
+
+Left to the agent's judgement, and decided as follows:
+- GitHub Actions stay on the pinned major tags (no SHA pinning or
+  Dependabot for now). Changing this means editing workflows, which needs
+  the owner's permission.
+- CI stays on Ubuntu 24.04 until a tool needs newer packages.
+
+Still open:
+1. Can the owner verify the *(unverified)* Fanuc items against their
    control's manual?
-8. M2 sequencing questions: see `docs/plans/M2_PLAN.md` section 2.
+2. Does the owner have the Osai 10 Series programming manual? The Osai
+   stub depends on it.

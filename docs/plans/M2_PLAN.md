@@ -1,6 +1,7 @@
 # M2 plan: render buffer and minimal UI
 
-**Status:** proposed, awaiting the owner's answers to the questions in section 2.
+**Status:** agreed. The owner answered the section 2 questions on 2026-10-30
+(recorded there); work proceeds one PR at a time from M2.0.
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (especially §8 and
 §13) and `DEVELOPMENT_STATUS.md`.
 
@@ -28,32 +29,30 @@ data (CLAUDE.md rule 4).
 - playback animation, unless it is cheap once the events exist
 - editing features beyond basic text editing
 
-## 2. Questions for the owner before work starts
+## 2. Decisions (owner's answers, 2026-10-30)
 
-1. **Mobile spike timing.** ARCHITECTURE.md §12 says to prototype "a
-   hello-world with the buffer boundary on Android + iOS *before*
-   building the UI", but §13 puts mobile in M3. **Recommendation:** do a
-   small spike right after PR M2.3 (Tauri shell). If Tauri mobile can't
-   pass the binary buffer, we find out before building UI on top of it.
-2. **Stub lathe and second dialect timing.** **Recommendation:** early
-   (PR M2.2). They exist to find trait design mistakes, and those are
-   cheaper to fix before the app and UI depend on the traits. Which
-   second dialect: a small **LinuxCNC** or **Haas** stub? (Haas is
-   Fanuc-like, so it tests the "table overlay" idea in §7.1. LinuxCNC
-   differs more, so it tests the trait boundary harder.) Recommendation:
-   Haas as a table overlay, because it is the next real dialect in M7.
-3. **New dependencies** (CLAUDE.md rule 7). Each PR will justify its own,
-   but agree in principle to: `tauri` 2 (+ CLI), `three`, `@codemirror/*`,
-   `vite`, `typescript`, `eslint`, `vitest`. Any preference, e.g. a UI
-   framework (plain TS vs React or Svelte)? **Recommendation:** plain
-   TypeScript with no UI framework for M2, to keep it small. Revisit if
-   the UI grows.
-4. **CI for the app and UI.** This needs workflow changes (CLAUDE.md rule
-   9) and Linux system packages for Tauri (webkit2gtk). Please confirm a
-   UI job (`npm ci`, lint, typecheck, test) and a Tauri build check on
-   Linux are wanted.
-5. **CLAUDE.md "Current milestone"** should change to M2. May the agent
-   edit it, or will the owner?
+1. **Mobile spike: yes.** A small Android/iOS test of the binary boundary
+   right after the Tauri shell (M2.3), before building UI on top of it.
+2. **Stub lathe: yes, early (M2.2).** **Second dialect: Osai 10 Series**
+   (not Haas or LinuxCNC). Osai differs from Fanuc more than Haas does, so
+   it tests the dialect trait harder; it is a stub, not a full dialect.
+   Every Osai behaviour must be sourced from the Osai 10 Series
+   programming manual or marked *(unverified)* in a new
+   `docs/dialect-notes/osai.md`; nothing is assumed from Fanuc.
+3. **Dependencies: agreed in principle,** left to the agent's judgement.
+   Each PR still justifies its own (CLAUDE.md rule 7). **Plain TypeScript,
+   no UI framework.**
+4. **CI: yes, on this occasion only.** The agent may add the UI job and
+   the Linux Tauri build check in M2. Any later workflow change needs the
+   owner's permission again (CLAUDE.md rule 9).
+5. **CLAUDE.md "Current milestone":** the agent updates it (done with this
+   plan).
+
+Smaller choices left to the agent's judgement:
+- **M2.0:** Option A, new zero-length `SegKind` values, to keep program
+  order and the line lookup.
+- **M2.1:** the render-buffer origin is the bounding-box centre (least
+  `f32` error).
 
 ## 3. PR sequence
 
@@ -105,8 +104,10 @@ access).
 - `core/machine-lathe` (stub): X/Z axes, `diameter_mode` on X,
   `normalize_axis_value` converts diameter to radius. Just enough to
   exercise the `Machine` trait and the machine file (`family = "lathe"`).
-- `core/dialect-haas` (stub) as a Fanuc table overlay, or a minimal
-  LinuxCNC (owner's choice, question 2). A handful of conformance tests.
+- `core/dialect-osai` (stub): Osai 10 Series, a handful of codes with
+  conformance tests and sourced notes in `docs/dialect-notes/osai.md`.
+  Its own code table, not a Fanuc overlay, so the shared parts must be
+  in `dialect-api`.
 - **Expect to revise the traits.** That is the point of this step.
   Record every change in ARCHITECTURE.md (the §7.2 and §9 "provisional"
   notes).
@@ -126,7 +127,8 @@ access).
 - **Off the UI thread** (§8.5): run interpretation on a worker thread.
   Chunking is deferred, but keep the header's "partial" flag reserved.
 - **Tests:** Rust tests for the command layer that don't need a window.
-- *(Optional, question 1)* a mobile spike branch.
+- **Then the mobile spike** (decision 1): the same command returning the
+  buffer on Android and iOS. A throw-away branch unless it is cheap to keep.
 
 ### M2.4: UI scaffold and buffer decoding (`ui/`)
 
@@ -141,7 +143,7 @@ access).
   `render_buffer_v1.bin` fixture and checks the same values as the Rust
   test.
 - **CI job** for `npm ci && npm run lint && npm run typecheck && npm test`
-  (needs approval, question 4).
+  (approved for M2, decision 4).
 
 ### M2.5: three.js viewport
 
@@ -194,6 +196,7 @@ access).
 | `f32` precision far from origin | Origin-relative vertices (§8.2); a test with coordinates around ±10 000 mm |
 | Large programs freeze the UI | Worker thread now; chunked buffers later (§8.5 flag reserved) |
 | Trait changes ripple through the code | The stubs come early (M2.2), before the app depends on the traits |
+| No Osai 10 Series manual to hand; behaviour guessed from Fanuc | Ask the owner for the programming manual; mark unsourced behaviour *(unverified)*; keep the stub to a few codes |
 | Scope creep into playback, editing or time estimation | Keep to the M2 list; note ideas in `DEVELOPMENT_STATUS.md` |
 
 ## 5. Carry-overs from M1 (not M2 scope unless the owner says so)
@@ -204,6 +207,3 @@ See `DEVELOPMENT_STATUS.md` sections 5–8:
 - speed-limit checks
 - unverified Fanuc items
 - the minor diagnostic-code clean-ups
-- the decimal-point default
-- the licence field
-- nightly long fuzzing
