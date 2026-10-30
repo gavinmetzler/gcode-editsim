@@ -107,11 +107,13 @@ impl Fanuc {
     }
 }
 
-/// Codes active when the control is switched on (with factory-default
-/// parameters).
-const POWER_ON_CODES: &[&str] = &[
-    "G00", "G17", "G90", "G94", "G21", "G40", "G49", "G80", "G54", "G98",
-];
+/// Codes active when the control is switched on.
+///
+/// Motion mode (group 1), plane (2), distance mode (3) and units (6) are
+/// left unset: they depend on parameters or on the state at power-off, so
+/// the dialect warns when a program relies on them without setting them,
+/// and then assumes G00, G17, G90 and G21.
+const POWER_ON_CODES: &[&str] = &["G94", "G40", "G49", "G80", "G54", "G98"];
 
 impl Dialect for Fanuc {
     fn id(&self) -> &str {

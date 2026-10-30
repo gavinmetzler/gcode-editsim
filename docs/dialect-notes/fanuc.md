@@ -72,13 +72,17 @@ to run on a machine.
 
 ## Power-on modal state
 
-G00, G17, G90, G94, G21, G40, G49, G80, G54, G98. *(unverified)*
+- **Set at power-on:** G94, G40, G49, G80, G54, G98. *(unverified)*
+- **Not set, because they depend on the machine:**
+  - motion mode (parameter 3402 bit 0)
+  - plane (3402 bits 1–2)
+  - G90/G91 (3402 bit 3)
+  - units (whatever was active at power-off)
 
-These are factory-default parameter settings. On real controls:
-- G00/G01 at power-on is set by parameter 3402 bit 0.
-- The plane is set by 3402 bits 1–2.
-- G90/G91 is set by 3402 bit 3.
-- Units are whatever was active at power-off.
+  *(unverified)* If a program relies on one of these without setting it,
+  we assume the factory default (G00, G17, G90, G21) and give a
+  `ControllerDependent` warning, once per program for each mode. The
+  warning text starts with "assumed".
 
 Programs normally set all of these explicitly in a safety line.
 
@@ -106,6 +110,50 @@ M code acts with or after motion. *(unverified)*
   (parameter 3404 bit 7, M3B). We apply them all in order and give one
   `ControllerDependent` warning per program. *(unverified)*
 
+## Reference returns and machine coordinates
+
+- **G28:** a rapid through the intermediate point (programmed in the
+  current G90/G91 mode), then to the reference position, on the named
+  axes only. The reference position comes from the machine definition
+  (`reference`). If an axis has none, its position becomes unknown.
+  *(unverified, but standard)*
+- **G30 (P2–P4):** goes to the intermediate point, then to the 2nd–4th
+  reference position. The machine definition does not describe those
+  positions yet, so the axes become unknown and later moves are not drawn
+  until they are given absolute positions. *(unverified)*
+- **G53:** a rapid in machine coordinates, for one block. G53 in G91 is
+  ignored, with a `ControllerDependent` warning. *(unverified)*
+- **G28, G30 and G53 do not use the motion mode,** and they leave it
+  unchanged.
+
+## Canned cycles cancelled by G00–G03
+
+G80 **or any group 01 code** (G00, G01, G02, G03) cancels a canned cycle.
+*(unverified, but widely documented)*
+
+## Unsupported modes that affect later blocks
+
+These codes change where *later* moves go, and are not simulated yet:
+G92, G52, G10, G65, G68, G51, G51.1, G16, M98, M99 and any unknown G
+code. Each reports one error. No moves are shown after it until:
+
+| Code | Shown again after |
+|---|---|
+| G68 | G69 |
+| G51 | G50 |
+| G51.1 | G50.1 |
+| G16 | G15 |
+| G52 | G52 with all axes 0 |
+| G92, G10, G65, M98, M99, unknown G codes | never (the end of the program) |
+
+After the mode ends, the position is unknown until every axis has been
+given an absolute position, because the machine moved while its moves
+were hidden.
+
+G05.1, G08, G09 and G61–G64 change feed, acceleration or cornering, not
+the programmed path. They are accepted without a diagnostic.
+*(unverified)*
+
 ## Not supported yet
 
 Each of these produces a diagnostic, never silence:
@@ -113,10 +161,13 @@ Each of these produces a diagnostic, never silence:
 | Code(s) | Severity | Does the block still move? | Notes |
 |---|---|---|---|
 | G41/G42 (cutter compensation), G43/G44 (tool length compensation) | warning (`NotYetSimulated`) | yes | Shown without the compensation |
-| G04, G10, G28, G53, G65, G92 | error | no | Their axis words don't mean "move here" |
-| Canned cycles G73, G74, G76, G81–G89 | error | no | Every following block is also not moved until G80 |
+| G04 | error | no | X/P is a dwell time, not a move |
+| G10, G52, G65, G68, G51, G51.1, G16, G92 | error | no, and later moves are hidden | See "Unsupported modes that affect later blocks" |
+| Canned cycles G73, G74, G76, G81–G89 | error | no | Later blocks are not moved until G80 or G00–G03, and the position is then unknown |
 | G95 (feed per revolution) | error | yes | The path is still drawn |
-| M98/M99 (subprograms), any unknown G/M code | error | an unknown G code blocks motion | |
+| M98/M99 (subprograms) | error | later moves are hidden until the end of the program | |
+| Unknown G code | error | no, and later moves are hidden | Its effect is unknown |
+| Unknown M code | error | yes | |
 | Macro variables and expressions (`#100`, `[...]`) | error | no | The block is skipped |
 | Macro assignments (`#100 = 5`) | warning | n/a | Has no effect |
 

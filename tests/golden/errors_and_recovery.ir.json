@@ -11,6 +11,18 @@
       "line": 3,
       "severity": "Warning",
       "code": "ControllerDependent",
+      "message": "assumed G90 (absolute): the program has not selected this mode yet. The power-on mode is set by a parameter (3402 bit 3). Add G90 (absolute) near the start of the program to make it explicit."
+    },
+    {
+      "line": 3,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
+    },
+    {
+      "line": 3,
+      "severity": "Warning",
+      "code": "ControllerDependent",
       "message": "X20 has no decimal point, so it is read as 0.02 mm (Fanuc default, parameter DPI = 0). Machines set to calculator-type input (DPI = 1) read it as 20 mm. Further cases are not reported."
     },
     {

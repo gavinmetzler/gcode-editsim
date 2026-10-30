@@ -14,7 +14,22 @@ pub fn run(src: &str) -> Program {
     run_opts(src, Options::default())
 }
 
+/// Like [`run`], with options.
+///
+/// Most tests leave units, plane, distance and motion mode unset to stay
+/// short. The dialect's "assumed ..." warnings for those are removed here;
+/// `dialect-fanuc/tests/assumed_defaults.rs` and the golden files cover
+/// them. Use [`run_unfiltered`] to keep them.
 pub fn run_opts(src: &str, options: Options) -> Program {
+    let mut p = run_unfiltered(src, options);
+    p.diagnostics.retain(|d| {
+        !(d.code == DiagCode::ControllerDependent && d.message.starts_with("assumed "))
+    });
+    p
+}
+
+/// Runs without removing any diagnostics.
+pub fn run_unfiltered(src: &str, options: Options) -> Program {
     let fanuc = Fanuc::new().expect("dialect loads");
     let mill = Mill::generic().expect("machine loads");
     interpret(src.as_bytes(), "test.nc", &fanuc, &mill, options)

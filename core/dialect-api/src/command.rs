@@ -73,6 +73,31 @@ pub enum Command {
         /// Plane of rotation.
         plane: ArcPlane,
     },
+    /// Return to a reference position, as a rapid via an intermediate
+    /// point. Only the listed axes move.
+    ReturnToReference {
+        /// The intermediate point, programmed like a rapid target. Each
+        /// listed axis goes there first, then to the reference position.
+        via: Vec<AxisWord>,
+        /// Which reference position: 1 is the machine's home position (from
+        /// its definition); 2 and up are further positions the machine
+        /// definition does not describe yet.
+        position: u8,
+    },
+    /// Rapid move to absolute machine coordinates, ignoring work offsets.
+    MachineRapid {
+        /// Target in machine coordinates (always absolute).
+        target: Vec<AxisWord>,
+    },
+    /// The machine moved these axes somewhere the dialect cannot model, so
+    /// their position is unknown until they are next given an absolute
+    /// position.
+    PositionUnknown {
+        /// Indices into the machine's [`AxisSet`](crate::AxisSet).
+        axes: Vec<usize>,
+        /// What made the position unknown, for diagnostics.
+        reason: String,
+    },
     /// Pause for a fixed time.
     Dwell {
         /// Seconds.

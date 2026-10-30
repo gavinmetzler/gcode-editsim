@@ -57,6 +57,10 @@ pub struct AxisDef {
     pub direction: Option<CartesianAxis>,
     /// Rapid traverse rate in mm/min (deg/min for rotary axes), if known.
     pub rapid_rate: Option<f64>,
+    /// The axis's reference (home) position in machine coordinates, if
+    /// known. Reference-return commands move here, and the simulation
+    /// starts here.
+    pub reference: Option<f64>,
     /// `true` if values for this axis may be programmed as a diameter.
     pub diameter_mode_capable: bool,
 }
@@ -114,6 +118,9 @@ pub enum MachineDefError {
         /// Which setting.
         what: String,
     },
+    /// A reference position that is not finite or lies outside the travel.
+    #[error("axis {0}: reference must be a finite number within the travel limits")]
+    InvalidReference(char),
     /// An arc-offset letter on a rotary axis.
     #[error("axis {0}: rotary axes cannot have an arc offset letter")]
     ArcOffsetOnRotary(char),
@@ -173,6 +180,8 @@ struct RawAxis {
     #[serde(default)]
     rapid: Option<f64>,
     #[serde(default)]
+    reference: Option<f64>,
+    #[serde(default)]
     diameter_mode: bool,
 }
 
@@ -225,6 +234,12 @@ impl MachineDef {
                 Some(_) => return Err(MachineDefError::InvalidTravel { axis: name }),
                 None => None,
             };
+            if let Some(r) = a.reference {
+                let inside = travel.is_none_or(|(min, max)| r >= min && r <= max);
+                if !(r.is_finite() && inside) {
+                    return Err(MachineDefError::InvalidReference(name));
+                }
+            }
             axes.push(AxisDef {
                 name,
                 kind: a.kind,
@@ -232,6 +247,7 @@ impl MachineDef {
                 arc_offset_letter,
                 direction: a.direction,
                 rapid_rate: speed(a.rapid, || format!("axis {name}: rapid"))?,
+                reference: a.reference,
                 diameter_mode_capable: a.diameter_mode,
             });
         }

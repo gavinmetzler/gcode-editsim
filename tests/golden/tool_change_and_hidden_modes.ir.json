@@ -1,0 +1,253 @@
+{
+  "segments": [
+    {
+      "line": 4,
+      "kind": "ToolChange",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 5,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": 0.0
+      },
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 6,
+      "kind": "Rapid",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 7,
+      "kind": "Linear",
+      "end": {
+        "X": -380.0,
+        "Y": -205.0,
+        "Z": -402.0
+      },
+      "feed": 200.0,
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 9,
+      "kind": "Linear",
+      "end": {
+        "X": -379.9,
+        "Y": -205.0,
+        "Z": -402.0
+      },
+      "feed": 200.0,
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 10,
+      "kind": "Linear",
+      "end": {
+        "X": -379.8,
+        "Y": -205.0,
+        "Z": -402.0
+      },
+      "feed": 200.0,
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 11,
+      "kind": "Linear",
+      "end": {
+        "X": -379.7,
+        "Y": -205.0,
+        "Z": -402.0
+      },
+      "feed": 200.0,
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 12,
+      "kind": "ArcCw",
+      "end": {
+        "X": -379.7,
+        "Y": -205.0,
+        "Z": -402.0
+      },
+      "center": {
+        "X": -379.7,
+        "Y": -200.0
+      },
+      "radius": 5.0,
+      "feed": 200.0,
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 13,
+      "kind": "Rapid",
+      "end": {
+        "X": -379.7,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 15,
+      "kind": "Rapid",
+      "end": {
+        "X": -379.7,
+        "Y": -205.0,
+        "Z": 0.0
+      },
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 16,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "rpm": 2000.0,
+      "tool": 1,
+      "work_offset": 1
+    },
+    {
+      "line": 18,
+      "kind": "ToolChange",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 19,
+      "kind": "Rapid",
+      "end": {
+        "X": -330.0,
+        "Y": -205.0,
+        "Z": 0.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 20,
+      "kind": "Rapid",
+      "end": {
+        "X": -330.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 32,
+      "kind": "Rapid",
+      "end": {
+        "X": -280.0,
+        "Y": -195.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "line": 6,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "G43 (Tool length compensation +) is not simulated yet; the path is shown without it"
+    },
+    {
+      "line": 20,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "G43 (Tool length compensation +) is not simulated yet; the path is shown without it"
+    },
+    {
+      "line": 22,
+      "severity": "Error",
+      "code": "UnsupportedGCode",
+      "message": "G81 (Drilling cycle) is not supported yet; moves are not shown until G80 or G00-G03 cancels the cycle"
+    },
+    {
+      "line": 24,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "the position of X, Y, Z is unknown after canned cycle G81, so moves are not shown until every axis has been given an absolute position"
+    },
+    {
+      "line": 27,
+      "severity": "Error",
+      "code": "UnsupportedGCode",
+      "message": "G68 (Coordinate system rotation) is not supported yet. It changes where later moves go, so moves are not shown from here until G69"
+    },
+    {
+      "line": 29,
+      "severity": "Info",
+      "code": "NotYetSimulated",
+      "message": "G69 ends the mode started on line 27; moves are shown again once the position is known"
+    },
+    {
+      "line": 30,
+      "severity": "Warning",
+      "code": "NotYetSimulated",
+      "message": "the position of X, Y, Z is unknown after G68 mode from line 27, so moves are not shown until every axis has been given an absolute position"
+    }
+  ],
+  "tools_used": [
+    1,
+    2
+  ],
+  "bbox": {
+    "min": {
+      "X": -384.7,
+      "Y": -205.0,
+      "Z": -402.0
+    },
+    "max": {
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 0.0
+    }
+  }
+}

@@ -37,6 +37,11 @@ fn golden_programs() {
         let name = input.file_name().unwrap().to_string_lossy().into_owned();
         let source = fs::read(input).unwrap();
         let program = interpret(&source, &name, &fanuc, &mill, Options::default());
+        // Messages are shown to users: no stray whitespace from string
+        // continuation mistakes.
+        for d in &program.diagnostics {
+            assert!(!d.message.contains("  "), "{name}: {:?}", d.message);
+        }
         let actual = testkit::summary(&program, &letters);
         let expected_path = input.with_extension("ir.json");
         if testkit::update_requested() {

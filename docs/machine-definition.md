@@ -36,6 +36,7 @@ separate `[[axis]]` block.
 | `arc_offset` | no | Letter giving arc-centre offsets along this axis (usually `"I"`, `"J"`, `"K"` for X, Y, Z). Without it, the axis cannot be part of an arc plane. Linear axes only. |
 | `travel` | no | Soft limits in machine coordinates: `[min, max]`. Moves outside are flagged. |
 | `rapid` | no | Rapid traverse rate, mm/min. |
+| `reference` | no | Reference (home) position in machine coordinates. Reference returns (G28) go here, and the simulation starts here. It must lie within `travel`. Without it, the axis starts at 0 and its position after a reference return is unknown. |
 | `diameter_mode` | no | `true` if this axis can be programmed as a diameter (turning). Default `false`. A mill rejects `true`. |
 
 Every axis letter and arc-offset letter must be different.

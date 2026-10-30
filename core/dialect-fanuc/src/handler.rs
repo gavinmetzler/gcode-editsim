@@ -23,6 +23,19 @@ pub(crate) enum Handler {
     NotSimulated,
     /// Reported as an error.
     Unsupported,
+    /// Not supported, and changes how later blocks move: hides motion until
+    /// the matching [`Handler::CancelBlocker`] (or the end of the program).
+    Blocker,
+    /// Ends the blocker of its modal group.
+    CancelBlocker,
+    /// G28: rapid via an intermediate point to the reference position.
+    ReferenceReturn,
+    /// G30: as G28 but to another reference position, which is not modelled.
+    ReferenceReturnOther,
+    /// G53: rapid in machine coordinates.
+    MachineRapid,
+    /// G52: local coordinate system; a blocker unless every axis is zero.
+    LocalOffset,
     Stop,
     OptionalStop,
     ProgramEnd,
@@ -54,6 +67,12 @@ impl Handler {
             "no_effect" => Self::NoEffect,
             "not_simulated" => Self::NotSimulated,
             "unsupported" => Self::Unsupported,
+            "blocker" => Self::Blocker,
+            "cancel_blocker" => Self::CancelBlocker,
+            "reference_return" => Self::ReferenceReturn,
+            "reference_return_other" => Self::ReferenceReturnOther,
+            "machine_rapid" => Self::MachineRapid,
+            "local_offset" => Self::LocalOffset,
             "stop" => Self::Stop,
             "optional_stop" => Self::OptionalStop,
             "program_end" => Self::ProgramEnd,

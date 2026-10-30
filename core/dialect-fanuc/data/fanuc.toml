@@ -6,12 +6,21 @@
 #   rapid, linear, arc_cw, arc_ccw   motion (group 1)
 #   plane_*, units_*, absolute, incremental, work_offset, feed_per_minute
 #                                    modal settings
-#   no_effect      cancel/setting codes that cannot change the path here
-#                  because what they cancel is never active (G40, G49, G80)
+#   no_effect      codes that cannot change the path here: cancels of modes
+#                  that are never active (G40, G49, G80), and modes that only
+#                  affect feed, acceleration or cornering (G61-G64, G05.1...)
 #   not_simulated  accepted, but the effect is not modelled yet: a warning is
 #                  reported and the block still moves (G41-G44)
 #   unsupported    recognised but not supported: an error is reported, and if
 #                  the code could change motion the block does not move
+#   blocker        not supported, and changes how *later* blocks move
+#                  (coordinate shifts, rotation, scaling, mirroring, polar
+#                  input, subprograms): an error is reported and no motion is
+#                  shown until the matching cancel_blocker code (same group)
+#                  or, for one-shot codes, until the end of the program
+#   cancel_blocker ends the blocker of its group
+#   reference_return, reference_return_other, machine_rapid, local_offset
+#                  G28, G30, G53 and G52; see src/block.rs
 #
 # Codes not listed here are unknown: an error is reported and the block does
 # not move. Group numbers follow the Fanuc G-code list (group 0 = one-shot).
@@ -65,7 +74,7 @@ words = { optional = ["P", "X"] }
 code = "G10"
 group = 0
 modal = false
-handler = "unsupported"
+handler = "blocker"
 description = "Programmable data input"
 words = { optional = ["L", "P", "R"] }
 
@@ -108,7 +117,7 @@ description = "Metric input"
 code = "G28"
 group = 0
 modal = false
-handler = "unsupported"
+handler = "reference_return"
 description = "Return to reference position"
 
 [[g]]
@@ -161,7 +170,7 @@ description = "Tool length compensation cancel"
 code = "G53"
 group = 0
 modal = false
-handler = "unsupported"
+handler = "machine_rapid"
 description = "Machine coordinate system selection"
 
 [[g]]
@@ -210,7 +219,7 @@ description = "Work coordinate system 6"
 code = "G65"
 group = 0
 modal = false
-handler = "unsupported"
+handler = "blocker"
 description = "Macro call"
 words = { optional = ["P", "L"] }
 
@@ -335,7 +344,7 @@ description = "Incremental programming"
 code = "G92"
 group = 0
 modal = false
-handler = "unsupported"
+handler = "blocker"
 description = "Workpiece coordinate system setting"
 
 [[g]]
@@ -365,6 +374,130 @@ group = 10
 modal = true
 handler = "no_effect"
 description = "Canned cycle: return to R level"
+
+[[g]]
+code = "G05.1"
+group = 0
+modal = false
+handler = "no_effect"
+description = "AI contour control (feed and acceleration only)"
+words = { optional = ["Q"] }
+
+[[g]]
+code = "G08"
+group = 0
+modal = false
+handler = "no_effect"
+description = "Look-ahead control (feed and acceleration only)"
+words = { optional = ["P"] }
+
+[[g]]
+code = "G09"
+group = 0
+modal = false
+handler = "no_effect"
+description = "Exact stop (cornering only)"
+
+[[g]]
+code = "G15"
+group = 17
+modal = true
+handler = "cancel_blocker"
+description = "Polar coordinate command cancel"
+
+[[g]]
+code = "G16"
+group = 17
+modal = true
+handler = "blocker"
+description = "Polar coordinate command"
+
+[[g]]
+code = "G30"
+group = 0
+modal = false
+handler = "reference_return_other"
+description = "Return to 2nd, 3rd or 4th reference position"
+words = { optional = ["P"] }
+
+[[g]]
+code = "G50"
+group = 11
+modal = true
+handler = "cancel_blocker"
+description = "Scaling cancel"
+
+[[g]]
+code = "G50.1"
+group = 22
+modal = true
+handler = "cancel_blocker"
+description = "Programmable mirror image cancel"
+
+[[g]]
+code = "G51"
+group = 11
+modal = true
+handler = "blocker"
+description = "Scaling"
+words = { optional = ["P", "I", "J", "K"] }
+
+[[g]]
+code = "G51.1"
+group = 22
+modal = true
+handler = "blocker"
+description = "Programmable mirror image"
+
+[[g]]
+code = "G52"
+group = 0
+modal = false
+handler = "local_offset"
+description = "Local coordinate system setting"
+
+[[g]]
+code = "G61"
+group = 15
+modal = true
+handler = "no_effect"
+description = "Exact stop mode (cornering only)"
+
+[[g]]
+code = "G62"
+group = 15
+modal = true
+handler = "no_effect"
+description = "Automatic corner override (feed only)"
+
+[[g]]
+code = "G63"
+group = 15
+modal = true
+handler = "no_effect"
+description = "Tapping mode (feed only)"
+
+[[g]]
+code = "G64"
+group = 15
+modal = true
+handler = "no_effect"
+description = "Cutting mode (cornering only)"
+
+[[g]]
+code = "G68"
+group = 16
+modal = true
+handler = "blocker"
+description = "Coordinate system rotation"
+words = { optional = ["R"] }
+
+[[g]]
+code = "G69"
+group = 16
+modal = true
+handler = "cancel_blocker"
+description = "Coordinate system rotation cancel"
 
 [[m]]
 code = "M00"
@@ -418,12 +551,12 @@ description = "End of program and rewind"
 
 [[m]]
 code = "M98"
-handler = "unsupported"
+handler = "blocker"
 description = "Subprogram call"
 words = { optional = ["P", "L"] }
 
 [[m]]
 code = "M99"
-handler = "unsupported"
+handler = "blocker"
 description = "Subprogram end"
 words = { optional = ["P"] }

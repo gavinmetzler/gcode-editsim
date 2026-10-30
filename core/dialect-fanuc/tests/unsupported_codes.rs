@@ -12,7 +12,17 @@ fn unknown_g_code_is_an_error_and_the_block_does_not_move() {
     assert_eq!(r.codes(), vec![DiagCode::UnsupportedGCode]);
     assert_eq!(r.diags[0].severity, Severity::Error);
     assert!(r.moves().is_empty());
-    assert_eq!(r.commands, vec![Command::Unsupported { what: "G5".into() }]);
+    // The machine may have moved, so its position is no longer known.
+    assert_eq!(
+        r.commands,
+        vec![
+            Command::Unsupported { what: "G5".into() },
+            Command::PositionUnknown {
+                axes: vec![0, 1, 2],
+                reason: "unknown code G5 on line 1".into()
+            }
+        ]
+    );
 }
 
 #[test]
@@ -30,14 +40,21 @@ fn unknown_m_code_is_an_error_but_motion_continues() {
 #[test]
 fn canned_cycle_blocks_motion_until_cancelled() {
     let r = run("G81 X1. Y1. Z-5. R2. F100.\nX2.\nG80\nG0 X3.\n");
+    // Explained once, where the cycle starts; the later hole is hidden too
+    // and makes the position unknown.
     let errors: Vec<(u32, DiagCode)> = r.errors().iter().map(|d| (d.src.line, d.code)).collect();
-    assert_eq!(
-        errors,
-        vec![
-            (1, DiagCode::UnsupportedGCode),
-            (2, DiagCode::UnsupportedGCode)
-        ]
+    assert_eq!(errors, vec![(1, DiagCode::UnsupportedGCode)]);
+    assert!(
+        r.errors()[0].message.contains("until G80"),
+        "{}",
+        r.errors()[0].message
     );
+    let unknown = r
+        .commands
+        .iter()
+        .filter(|c| matches!(c, Command::PositionUnknown { .. }))
+        .count();
+    assert_eq!(unknown, 2);
     assert_eq!(
         r.moves(),
         vec![&Command::Rapid {
@@ -47,11 +64,18 @@ fn canned_cycle_blocks_motion_until_cancelled() {
 }
 
 #[test]
-fn one_shot_codes_block_motion() {
-    // G4 X is a dwell time and G28 X/Y is an intermediate point, not moves.
-    for src in ["G4 X1.\n", "G28 X0 Y0\n", "G53 Z0\n", "G92 X0\n"] {
+fn one_shot_codes_use_axis_words_as_data() {
+    // G4 X is a dwell time and G92/G10/G52 X set coordinates: none is a
+    // move. (G28 and G53 are supported; see tests/reference_and_machine_moves.rs.)
+    for src in ["G4 X1.\n", "G92 X0\n", "G10 L2 P1 X-100.\n", "G52 X5.\n"] {
         let r = run(src);
         assert!(r.moves().is_empty(), "{src}");
+        assert!(
+            !r.commands
+                .iter()
+                .any(|c| matches!(c, Command::PositionUnknown { .. })),
+            "{src}: data codes do not move the machine"
+        );
         assert_eq!(r.codes(), vec![DiagCode::UnsupportedGCode], "{src}");
     }
 }

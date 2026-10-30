@@ -11,10 +11,12 @@ fn power_on_defaults() {
     let fanuc = Fanuc::new().unwrap();
     let state = fanuc.initial_state(&common::xyz());
     let key = |t| CodeKey::parse(t).unwrap();
-    assert_eq!(state.active_code(1), Some(key("G0")));
-    assert_eq!(state.active_code(2), Some(key("G17")));
-    assert_eq!(state.active_code(3), Some(key("G90")));
-    assert_eq!(state.active_code(6), Some(key("G21")));
+    // Motion mode, plane, distance mode and units depend on parameters or
+    // on the state at power-off, so they are not set (see
+    // assumed_defaults.rs); the values below are what is assumed.
+    for group in [1, 2, 3, 6] {
+        assert_eq!(state.active_code(group), None, "group {group}");
+    }
     assert_eq!(state.active_code(9), Some(key("G80")));
     assert_eq!(state.active_code(14), Some(key("G54")));
     assert_eq!(state.units, LengthUnit::Metric);

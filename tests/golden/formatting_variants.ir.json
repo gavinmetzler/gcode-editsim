@@ -61,6 +61,18 @@
   ],
   "diagnostics": [
     {
+      "line": 1,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "assumed G90 (absolute): the program has not selected this mode yet. The power-on mode is set by a parameter (3402 bit 3). Add G90 (absolute) near the start of the program to make it explicit."
+    },
+    {
+      "line": 1,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
+    },
+    {
       "line": 3,
       "severity": "Warning",
       "code": "ControllerDependent",
@@ -70,7 +82,7 @@
       "line": 8,
       "severity": "Error",
       "code": "UnsupportedGCode",
-      "message": "G54.1 is not supported; block not moved"
+      "message": "G54.1 is not supported; its effect on later blocks is unknown, so moves from here to the end of the program are not shown"
     },
     {
       "line": 8,

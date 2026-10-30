@@ -6,6 +6,11 @@ use ir::{ArcPlane, Pos};
 /// before the arc is rejected. Real controls make this a parameter.
 pub(crate) const RADIUS_TOLERANCE: f64 = 0.01;
 
+/// Points closer than this (mm) are the same point. Far below any
+/// programmable increment (0.001 mm, 0.0001 inch), far above floating-point
+/// drift from long chains of incremental moves (~1e-10 mm).
+pub(crate) const SAME_POINT: f64 = 1e-6;
+
 /// The two plane coordinates of `p`.
 pub(crate) fn plane_coords(p: &Pos, plane: ArcPlane) -> Option<(f64, f64)> {
     Some((
@@ -61,7 +66,7 @@ pub(crate) fn from_radius(
     let (ea, eb) = plane_coords(end, plane).ok_or(ArcProblem::BadPlane)?;
     let (ua, ub) = (ea - sa, eb - sb);
     let chord = ua.hypot(ub);
-    if chord < 1e-9 {
+    if chord < SAME_POINT {
         return Err(ArcProblem::ZeroLength);
     }
     let r = radius.abs();

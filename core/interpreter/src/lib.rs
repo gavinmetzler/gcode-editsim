@@ -7,8 +7,13 @@
 //! checks travel limits and emits [`ir::Segment`]s in program order.
 //!
 //! Positions in the output are **machine coordinates** (work offsets
-//! already applied), in internal units. The machine starts at machine
-//! coordinate zero on every axis.
+//! already applied), in internal units. The machine starts at its reference
+//! position (machine coordinate zero on axes whose definition gives none).
+//!
+//! A move is only drawn if the position it starts from is known. After the
+//! dialect reports that the machine moved somewhere it cannot model
+//! ([`Command::PositionUnknown`]), moves are left out, with one warning,
+//! until every axis has been given an absolute position again.
 
 #![forbid(unsafe_code)]
 
@@ -28,7 +33,7 @@ use ir::{
 };
 use machine_api::{AxisKind, Machine};
 
-use crate::arc::{ArcProblem, RADIUS_TOLERANCE};
+use crate::arc::{ArcProblem, RADIUS_TOLERANCE, SAME_POINT};
 
 /// Settings for one interpretation run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -166,14 +171,24 @@ struct Executor<'m> {
     tools_used: Vec<u32>,
     checked_offsets: BTreeSet<WorkOffsetId>,
     limit_reports: usize,
+    /// Whether each axis's position is known.
+    known: [bool; MAX_AXES],
+    /// Why some axis position became unknown.
+    unknown_reason: String,
+    /// Whether the current unknown-position episode has been reported.
+    unknown_reported: bool,
 }
 
 impl<'m> Executor<'m> {
     fn new(state: ModalState, machine: &'m dyn Machine) -> Self {
         let work_offset = state.work_offset;
+        let mut pos = [0.0; MAX_AXES];
+        for (slot, axis) in pos.iter_mut().zip(machine.axes()) {
+            *slot = axis.reference.unwrap_or(0.0);
+        }
         Self {
             machine,
-            pos: [0.0; MAX_AXES],
+            pos,
             work_offset,
             origin: machine.work_offset(work_offset).unwrap_or([0.0; MAX_AXES]),
             feed: state.feed_rate.unwrap_or(0.0),
@@ -187,6 +202,9 @@ impl<'m> Executor<'m> {
             tools_used: Vec::new(),
             checked_offsets: BTreeSet::new(),
             limit_reports: 0,
+            known: [true; MAX_AXES],
+            unknown_reason: String::new(),
+            unknown_reported: false,
         }
     }
 
@@ -194,11 +212,11 @@ impl<'m> Executor<'m> {
         match command {
             Command::Rapid { target } => {
                 let end = self.resolve(target, src, diag);
-                self.push(SegKind::Rapid, end, None, src, diag);
+                self.move_to(SegKind::Rapid, end, target, src, diag);
             }
             Command::Linear { target } => {
                 let end = self.resolve(target, src, diag);
-                self.push(SegKind::Linear, end, None, src, diag);
+                self.move_to(SegKind::Linear, end, target, src, diag);
             }
             Command::Arc {
                 target,
@@ -207,7 +225,33 @@ impl<'m> Executor<'m> {
                 plane,
             } => {
                 let end = self.resolve(target, src, diag);
-                self.arc(end, center, *dir, *plane, src, diag);
+                if self.start_known(src, diag) {
+                    self.arc(end, center, *dir, *plane, src, diag);
+                } else {
+                    self.skip_to(end, target);
+                }
+            }
+            Command::MachineRapid { target } => {
+                let mut end = self.pos;
+                for word in target {
+                    let value = self.machine.normalize_axis_value(word.axis, word.value);
+                    if let Some(slot) = end.get_mut(word.axis) {
+                        *slot = value;
+                    }
+                }
+                self.move_to(SegKind::Rapid, end, target, src, diag);
+            }
+            Command::ReturnToReference { via, position } => {
+                self.return_to_reference(via, *position, src, diag);
+            }
+            Command::PositionUnknown { axes, reason } => {
+                for &axis in axes {
+                    if let Some(k) = self.known.get_mut(axis) {
+                        *k = false;
+                    }
+                }
+                self.unknown_reason.clone_from(reason);
+                self.unknown_reported = false;
             }
             Command::Dwell { .. } => self.push(SegKind::Dwell, self.pos, None, src, diag),
             Command::SetFeedRate(f) => self.feed = *f,
@@ -244,6 +288,142 @@ impl<'m> Executor<'m> {
             | Command::Coolant(_)
             | Command::Stop { .. }
             | Command::Unsupported { .. } => {}
+        }
+    }
+
+    /// `true` if every axis's position is known, so a move can be drawn
+    /// from here. Otherwise reports, once per episode, that moves are not
+    /// shown.
+    fn start_known(&mut self, src: SourceRef, diag: &mut Diagnostics) -> bool {
+        let axes = self.machine.axes();
+        let unknown: Vec<char> = axes
+            .iter()
+            .zip(&self.known)
+            .filter(|(_, known)| !**known)
+            .map(|(a, _)| a.name)
+            .collect();
+        if unknown.is_empty() {
+            self.unknown_reported = false;
+            return true;
+        }
+        if !self.unknown_reported {
+            self.unknown_reported = true;
+            let letters = unknown
+                .iter()
+                .map(char::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            diag.warning(
+                DiagCode::NotYetSimulated,
+                format!(
+                    "the position of {letters} is unknown after {}, so moves are not shown \
+                     until every axis has been given an absolute position",
+                    self.unknown_reason
+                ),
+                src,
+            );
+        }
+        false
+    }
+
+    /// Moves without drawing (the start is unknown). Axes given absolute
+    /// values become known.
+    fn skip_to(&mut self, end: Pos, words: &[AxisWord]) {
+        self.mark_known(words);
+        self.pos = end;
+    }
+
+    fn mark_known(&mut self, words: &[AxisWord]) {
+        for word in words.iter().filter(|w| !w.incremental) {
+            if let Some(k) = self.known.get_mut(word.axis) {
+                *k = true;
+            }
+        }
+    }
+
+    /// A straight move: drawn if the start is known.
+    fn move_to(
+        &mut self,
+        kind: SegKind,
+        end: Pos,
+        words: &[AxisWord],
+        src: SourceRef,
+        diag: &mut Diagnostics,
+    ) {
+        if self.start_known(src, diag) {
+            self.push(kind, end, None, src, diag);
+        } else {
+            self.skip_to(end, words);
+        }
+    }
+
+    /// Rapid to the intermediate point, then to the reference position on
+    /// the same axes. Zero-length legs are not drawn.
+    fn return_to_reference(
+        &mut self,
+        via: &[AxisWord],
+        position: u8,
+        src: SourceRef,
+        diag: &mut Diagnostics,
+    ) {
+        let intermediate = self.resolve(via, src, diag);
+        if intermediate != self.pos {
+            self.move_to(SegKind::Rapid, intermediate, via, src, diag);
+        }
+        if position != 1 {
+            // Only the first reference position is in the machine definition.
+            for word in via {
+                if let Some(k) = self.known.get_mut(word.axis) {
+                    *k = false;
+                }
+            }
+            self.unknown_reason = format!(
+                "the return to reference position {position} on line {} (not in the machine \
+                 file)",
+                src.line
+            );
+            self.unknown_reported = false;
+            return;
+        }
+        let mut end = self.pos;
+        let mut reached = Vec::new();
+        let mut missing = Vec::new();
+        for word in via {
+            let axis = self.machine.axes().get(word.axis);
+            match (axis.and_then(|a| a.reference), end.get_mut(word.axis)) {
+                (Some(reference), Some(slot)) => {
+                    *slot = reference;
+                    reached.push(AxisWord {
+                        axis: word.axis,
+                        value: reference,
+                        incremental: false,
+                    });
+                }
+                _ => missing.push((word.axis, axis.map_or('?', |a| a.name))),
+            }
+        }
+        if end != self.pos {
+            self.move_to(SegKind::Rapid, end, &reached, src, diag);
+        } else {
+            self.mark_known(&reached);
+        }
+        if !missing.is_empty() {
+            let letters: String = missing.iter().map(|(_, l)| *l).collect();
+            diag.error(
+                DiagCode::InvalidValue,
+                format!(
+                    "the machine file gives no reference position for {letters}, so where the \
+                     reference return leaves it is unknown"
+                ),
+                src,
+            );
+            for (axis, _) in missing {
+                if let Some(k) = self.known.get_mut(axis) {
+                    *k = false;
+                }
+            }
+            self.unknown_reason = format!("the reference return on line {}", src.line);
+            self.unknown_reported = false;
         }
     }
 
@@ -293,6 +473,24 @@ impl<'m> Executor<'m> {
         diag: &mut Diagnostics,
     ) {
         let (ia, ib) = (usize::from(plane.first), usize::from(plane.second));
+        // An end point that matches the start (within rounding error from
+        // float arithmetic) is a full circle: make it match exactly, so the
+        // IR's coincident-end-points rule applies.
+        let mut end = end;
+        if let (ArcCenter::Offset(_), Some((sa, sb)), Some((ea, eb))) = (
+            center,
+            arc::plane_coords(&self.pos, plane),
+            arc::plane_coords(&end, plane),
+        ) {
+            if (ea - sa).hypot(eb - sb) < SAME_POINT {
+                if let Some(a) = end.get_mut(ia) {
+                    *a = sa;
+                }
+                if let Some(b) = end.get_mut(ib) {
+                    *b = sb;
+                }
+            }
+        }
         let result = match center {
             ArcCenter::Offset(offsets) => {
                 let mut c = self.pos;

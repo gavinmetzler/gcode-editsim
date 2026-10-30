@@ -16,6 +16,7 @@ direction = "x"
 arc_offset = "I"
 travel = [-500.0, 0.0]
 rapid = 30000.0
+reference = 0.0
 
 [[axis]]
 letter = "z"
@@ -53,6 +54,7 @@ fn loads_every_setting() {
     assert_eq!(x.arc_offset_letter, Some('I'));
     assert_eq!(x.travel, Some((-500.0, 0.0)));
     assert_eq!(x.rapid_rate, Some(30000.0));
+    assert_eq!(x.reference, Some(0.0));
     assert!(!x.diameter_mode_capable);
 
     // Lower-case letters are accepted and upper-cased; optional settings
@@ -63,6 +65,7 @@ fn loads_every_setting() {
     assert_eq!(z.travel, None);
     assert_eq!(z.direction, None);
     assert_eq!(z.rapid_rate, None);
+    assert_eq!(z.reference, None);
 
     assert_eq!(def.axes[2].kind, AxisKind::Rotary);
     assert_eq!(def.axis_index('A'), Some(2));
@@ -206,4 +209,20 @@ fn rejects_bad_work_offsets() {
         e,
         MachineDefError::InvalidWorkOffsetValue { id: 1, axis: 'X' }
     ));
+}
+
+#[test]
+fn rejects_reference_outside_travel() {
+    for extra in [
+        "travel = [-500.0, 0.0]\nreference = 10.0",
+        "reference = nan",
+    ] {
+        let e = err(&minimal(&format!(
+            "[[axis]]\nletter = \"X\"\nkind = \"linear\"\n{extra}"
+        )));
+        assert!(
+            matches!(e, MachineDefError::InvalidReference('X')),
+            "{extra}"
+        );
+    }
 }
