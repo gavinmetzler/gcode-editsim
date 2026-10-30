@@ -88,3 +88,11 @@ fn defaults() {
     assert_eq!(WorkOffsetId::default(), WorkOffsetId(0));
     assert_eq!(MAX_AXES, 9);
 }
+
+#[test]
+fn severity_ids_are_stable() {
+    // Stored in the render buffer; must not change.
+    assert_eq!(ir::Severity::Info.id(), 0);
+    assert_eq!(ir::Severity::Warning.id(), 1);
+    assert_eq!(ir::Severity::Error.id(), 2);
+}

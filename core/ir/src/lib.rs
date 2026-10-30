@@ -14,10 +14,14 @@
 
 mod diag;
 mod geom;
+pub mod render;
 mod segment;
 
 pub use diag::{DiagCode, Diagnostic, Diagnostics, Severity};
-pub use geom::{bounding_box, ArcGeom, ArcPlane, BoundingBox, Pos, MAX_AXES};
+pub use geom::{
+    bounding_box, tessellate, ArcGeom, ArcPlane, BoundingBox, Pos, MAX_ARC_POINTS, MAX_AXES,
+};
+pub use render::{encode_render_buffer, EncodeError, DEFAULT_TOLERANCE};
 pub use segment::{
     segments_for_line, ChannelStream, CycleStep, LengthUnit, Program, ProgramMeta, SegFlags,
     SegKind, Segment, SourceRef, WorkOffsetId,
