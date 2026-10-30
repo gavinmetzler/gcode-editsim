@@ -81,13 +81,16 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M1: Core skeleton** (see `ARCHITECTURE.md` §13). Priorities, in order:
+**M2: Render buffer + minimal UI** (see `ARCHITECTURE.md` §13 and `docs/plans/M2_PLAN.md`). M1 is complete. Steps, in order:
 
-1. Workspace + CI + toolchain pinning
-2. `gcode-syntax` lexer/parser with fuzz target
-3. `ir` types (`Segment`, `Diagnostic`, `SourceRef`)
-4. `dialect-api` + `dialect-fanuc` (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics)
-5. `machine-api` + `machine-mill`
-6. `interpreter` + golden tests
+0. IR events (stop, spindle, coolant, program end)
+1. Arc tessellation + `RenderBuffer` encoding (layout v1, shared `.bin` fixture)
+2. Stub `machine-lathe` and stub `dialect-osai` (Osai 10 Series), only to stress the traits
+3. Tauri 2 app shell (`app/`), then a small Android/iOS spike of the binary boundary
+4. UI scaffold (Vite, plain TypeScript, no UI framework) + buffer decoding
+5. three.js viewport
+6. CodeMirror editor + line ↔ segment sync
+7. Diagnostics and statistics panels
+8. Wrap-up
 
-No UI work until M1 is merged.
+Desktop only. The lathe and Osai crates are stubs for M2; full support stays out of scope until M7.

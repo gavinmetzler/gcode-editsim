@@ -267,4 +267,4 @@ Contributions, technical feedback and suggestions are welcome as the project evo
 
 ## License
 
-GCode EditSim is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+GCode EditSim is licensed under the GNU Affero General Public License, version 3 only (`AGPL-3.0-only`). See [LICENSE](LICENSE).
