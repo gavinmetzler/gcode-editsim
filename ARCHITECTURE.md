@@ -446,7 +446,7 @@ The Tauri shell (`app/shell`) forwards to `app-backend` and holds no G-code logi
 - `load_file` replies with the file's raw bytes; `save_file` takes them as the raw body, with the path in an `x-path` header (percent-encoded UTF-8, as `encodeURIComponent` writes it, since header values cannot carry arbitrary text).
 - `list_dialects`, `list_machines`, `machine_folder` and the two setters are small JSON.
 
-Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. File paths come from the user (file dialogs arrive with the UI).
+The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at compile time (so the UI is built before the shell, locally and in CI). Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. File paths come from the user (file dialogs arrive with the UI).
 
 ### 8.5 Large programs
 
