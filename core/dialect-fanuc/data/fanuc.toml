@@ -6,24 +6,26 @@
 #   rapid, linear, arc_cw, arc_ccw   motion (group 1)
 #   plane_*, units_*, absolute, incremental, work_offset, feed_per_minute
 #                                    modal settings
-#   no_effect      codes that cannot change the path here: cancels of modes
-#                  that are never active (G40, G49, G80), and modes that only
-#                  affect feed, acceleration or cornering (G61-G64, G05.1...)
+#   no_effect      codes that cannot change the path here: cancels (G40, G49,
+#                  G80, G15, G50, G50.1, G69), and modes that only affect
+#                  feed, acceleration or cornering (G61-G64, G05.1...)
 #   not_simulated  accepted, but the effect is not modelled yet: a warning is
-#                  reported and the block still moves (G41-G44)
+#                  reported and the block still moves (G41, G42)
+#   length_compensation  G43/G44: never simulated, one note per program
 #   unsupported    recognised but not supported: an error is reported, and if
 #                  the code could change motion the block does not move
-#   blocker        not supported, and changes how *later* blocks move
-#                  (coordinate shifts, rotation, scaling, mirroring, polar
-#                  input, subprograms): an error is reported and no motion is
-#                  shown until the matching cancel_blocker code (same group)
-#                  or, for one-shot codes, until the end of the program
-#   cancel_blocker ends the blocker of its group
-#   reference_return, reference_return_other, machine_rapid, local_offset
-#                  G28, G30, G53 and G52; see src/block.rs
+#   ignored        changes how later blocks move but is not simulated
+#                  (coordinate shifts and offset setting, rotation, scaling,
+#                  mirroring, polar input, macro and subprogram calls): a
+#                  warning, its words are data, and later moves are drawn
+#                  without its effect. Moves are never hidden.
+#   canned_cycle   G73-G89 cycles, not simulated: each hole is drawn as a
+#                  rapid to its position in the working plane
+#   reference_return, reference_return_other, machine_rapid
+#                  G28, G30 and G53; see src/block.rs
 #
-# Codes not listed here are unknown: an error is reported and the block does
-# not move. Group numbers follow the Fanuc G-code list (group 0 = one-shot).
+# Codes not listed here are unknown: an error is reported, the block does not
+# move, and later moves are drawn as programmed. Group numbers follow the Fanuc G-code list (group 0 = one-shot).
 # M codes other than M00/M01/M02/M30/M98/M99 are defined by the machine
 # builder; the meanings below are the common convention.
 # See docs/dialect-notes/fanuc.md.
@@ -74,7 +76,7 @@ words = { optional = ["P", "X"] }
 code = "G10"
 group = 0
 modal = false
-handler = "blocker"
+handler = "ignored"
 description = "Programmable data input"
 words = { optional = ["L", "P", "R"] }
 
@@ -219,7 +221,7 @@ description = "Work coordinate system 6"
 code = "G65"
 group = 0
 modal = false
-handler = "blocker"
+handler = "ignored"
 description = "Macro call"
 words = { optional = ["P", "L"] }
 
@@ -227,7 +229,7 @@ words = { optional = ["P", "L"] }
 code = "G73"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Peck drilling cycle"
 words = { optional = ["R", "Q", "F", "K"] }
 
@@ -235,7 +237,7 @@ words = { optional = ["R", "Q", "F", "K"] }
 code = "G74"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Left-hand tapping cycle"
 words = { optional = ["R", "P", "F", "K"] }
 
@@ -243,7 +245,7 @@ words = { optional = ["R", "P", "F", "K"] }
 code = "G76"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Fine boring cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -258,7 +260,7 @@ description = "Canned cycle cancel"
 code = "G81"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Drilling cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -266,7 +268,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G82"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Drilling cycle with dwell"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -274,7 +276,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G83"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Peck drilling cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -282,7 +284,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G84"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Tapping cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -290,7 +292,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G85"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Boring cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -298,7 +300,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G86"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Boring cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -306,7 +308,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G87"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Back boring cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -314,7 +316,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G88"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Boring cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -322,7 +324,7 @@ words = { optional = ["R", "Q", "P", "F", "K"] }
 code = "G89"
 group = 9
 modal = true
-handler = "unsupported"
+handler = "canned_cycle"
 description = "Boring cycle"
 words = { optional = ["R", "Q", "P", "F", "K"] }
 
@@ -344,7 +346,7 @@ description = "Incremental programming"
 code = "G92"
 group = 0
 modal = false
-handler = "ignored_shift"
+handler = "ignored"
 description = "Workpiece coordinate system setting"
 
 [[g]]
@@ -402,14 +404,14 @@ description = "Exact stop (cornering only)"
 code = "G15"
 group = 17
 modal = true
-handler = "cancel_blocker"
+handler = "no_effect"
 description = "Polar coordinate command cancel"
 
 [[g]]
 code = "G16"
 group = 17
 modal = true
-handler = "blocker"
+handler = "ignored"
 description = "Polar coordinate command"
 
 [[g]]
@@ -424,21 +426,21 @@ words = { optional = ["P"] }
 code = "G50"
 group = 11
 modal = true
-handler = "cancel_blocker"
+handler = "no_effect"
 description = "Scaling cancel"
 
 [[g]]
 code = "G50.1"
 group = 22
 modal = true
-handler = "cancel_blocker"
+handler = "no_effect"
 description = "Programmable mirror image cancel"
 
 [[g]]
 code = "G51"
 group = 11
 modal = true
-handler = "blocker"
+handler = "ignored"
 description = "Scaling"
 words = { optional = ["P", "I", "J", "K"] }
 
@@ -446,14 +448,14 @@ words = { optional = ["P", "I", "J", "K"] }
 code = "G51.1"
 group = 22
 modal = true
-handler = "blocker"
+handler = "ignored"
 description = "Programmable mirror image"
 
 [[g]]
 code = "G52"
 group = 0
 modal = false
-handler = "local_offset"
+handler = "ignored"
 description = "Local coordinate system setting"
 
 [[g]]
@@ -488,7 +490,7 @@ description = "Cutting mode (cornering only)"
 code = "G68"
 group = 16
 modal = true
-handler = "blocker"
+handler = "ignored"
 description = "Coordinate system rotation"
 words = { optional = ["R"] }
 
@@ -496,7 +498,7 @@ words = { optional = ["R"] }
 code = "G69"
 group = 16
 modal = true
-handler = "cancel_blocker"
+handler = "no_effect"
 description = "Coordinate system rotation cancel"
 
 [[m]]
@@ -551,12 +553,12 @@ description = "End of program and rewind"
 
 [[m]]
 code = "M98"
-handler = "blocker"
+handler = "ignored"
 description = "Subprogram call"
 words = { optional = ["P", "L"] }
 
 [[m]]
 code = "M99"
-handler = "blocker"
+handler = "ignored"
 description = "Subprogram end"
 words = { optional = ["P"] }

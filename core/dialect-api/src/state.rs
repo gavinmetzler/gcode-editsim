@@ -81,12 +81,6 @@ pub struct ModalState {
     /// Keys of program-wide conditions already reported, so a dialect can
     /// warn about something once per program instead of on every block.
     pub reported_once: BTreeSet<String>,
-    /// Unsupported modes now in effect that change how later blocks would
-    /// move (e.g. a coordinate rotation the dialect cannot simulate), keyed
-    /// by a dialect-chosen name, with the line where each began. While any
-    /// is in effect a dialect must not emit motion, because it would be
-    /// drawn in the wrong place.
-    pub motion_blockers: BTreeMap<String, u32>,
 }
 
 impl Default for ModalState {
@@ -107,7 +101,6 @@ impl Default for ModalState {
             current_tool: None,
             work_offset: WorkOffsetId::default(),
             reported_once: BTreeSet::new(),
-            motion_blockers: BTreeMap::new(),
         }
     }
 }
@@ -121,29 +114,6 @@ impl ModalState {
     /// Makes `code` the active code of modal group `group`.
     pub fn set_active(&mut self, group: u16, code: CodeKey) {
         self.active.insert(group, code);
-    }
-
-    /// Starts a motion blocker (see [`ModalState::motion_blockers`]).
-    /// Returns `false` if it was already in effect.
-    pub fn block_motion(&mut self, key: &str, line: u32) -> bool {
-        if self.motion_blockers.contains_key(key) {
-            return false;
-        }
-        self.motion_blockers.insert(key.to_owned(), line);
-        true
-    }
-
-    /// Ends a motion blocker, returning the line where it began.
-    pub fn unblock_motion(&mut self, key: &str) -> Option<u32> {
-        self.motion_blockers.remove(key)
-    }
-
-    /// The first motion blocker in effect, if any.
-    pub fn motion_blocker(&self) -> Option<(&str, u32)> {
-        self.motion_blockers
-            .iter()
-            .next()
-            .map(|(k, &line)| (k.as_str(), line))
     }
 
     /// Returns `true` the first time it is called with `key` for this

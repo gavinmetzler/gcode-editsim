@@ -1,5 +1,5 @@
-//! G92 (workpiece coordinate system setting) is not simulated yet; proper
-//! support is planned for M3.5. At the owner's request (2026-10-31) it is
+//! G92 (workpiece coordinate system setting) is not simulated (coordinate
+//! shifts are on hold, owner decision 2026-10-31). At the owner's request (2026-10-31) it is
 //! ignored with a warning instead of hiding every later move, because real
 //! programs often start with it (`G54G92X1000.0Y1250.0Z0`). Its axis words
 //! are data, never a move.

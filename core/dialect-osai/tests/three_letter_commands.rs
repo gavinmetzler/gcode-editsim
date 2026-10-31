@@ -43,11 +43,13 @@ fn messages_and_graphics_commands_do_not_affect_the_path() {
 }
 
 #[test]
-fn other_commands_hide_motion_to_the_end() {
+fn other_commands_are_ignored_with_a_warning() {
+    // Never hide moves (owner decision, 2026-10-31).
     let r = run("(ROT,45)\nG0 X1 Y1 Z1\nG0 X2 Y2 Z2\n");
-    assert!(r.has(DiagCode::NotYetSimulated, "(ROT) is not supported"));
-    assert!(r.moves().is_empty());
-    assert!(r.position_lost());
+    assert!(r.has(DiagCode::NotYetSimulated, "(ROT,45) is not simulated"));
+    assert!(r.errors().is_empty(), "{:?}", r.errors());
+    assert_eq!(r.moves().len(), 2);
+    assert!(!r.position_lost());
 }
 
 #[test]

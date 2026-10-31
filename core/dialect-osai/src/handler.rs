@@ -24,10 +24,11 @@ pub(crate) enum Handler {
     NoEffect,
     /// Accepted with a warning; the path is shown without its effect.
     NotSimulated,
-    /// Not supported, and changes where later blocks move.
-    Blocker,
-    /// Ends the blocker of its modal group.
-    CancelBlocker,
+    /// Changes where later blocks move but is not simulated: a warning, its
+    /// words are data, and later moves are drawn without its effect.
+    Ignored,
+    /// A canned cycle: each hole is drawn as a rapid in the working plane.
+    CannedCycle,
     Stop,
     OptionalStop,
     ProgramEnd,
@@ -64,8 +65,8 @@ impl Handler {
             "feed_per_minute" => Self::FeedPerMinute,
             "no_effect" => Self::NoEffect,
             "not_simulated" => Self::NotSimulated,
-            "blocker" => Self::Blocker,
-            "cancel_blocker" => Self::CancelBlocker,
+            "ignored" => Self::Ignored,
+            "canned_cycle" => Self::CannedCycle,
             "stop" => Self::Stop,
             "optional_stop" => Self::OptionalStop,
             "program_end" => Self::ProgramEnd,

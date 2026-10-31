@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::{run, w};
+use common::run;
 use dialect_api::Command;
 use ir::{DiagCode, Severity};
 
@@ -12,43 +12,8 @@ fn unknown_g_code_is_an_error_and_the_block_does_not_move() {
     assert_eq!(r.codes(), vec![DiagCode::UnsupportedGCode]);
     assert_eq!(r.diags[0].severity, Severity::Error);
     assert!(r.moves().is_empty());
-    // The machine may have moved, so its position is no longer known.
-    assert_eq!(
-        r.commands,
-        vec![
-            Command::Unsupported { what: "G5".into() },
-            Command::PositionUnknown {
-                axes: vec![0, 1, 2],
-                reason: "unknown code G5 on line 1".into()
-            }
-        ]
-    );
-}
-
-#[test]
-fn canned_cycle_blocks_motion_until_cancelled() {
-    let r = run("G81 X1. Y1. Z-5. R2. F100.\nX2.\nG80\nG0 X3.\n");
-    // Explained once, where the cycle starts; the later hole is hidden too
-    // and makes the position unknown.
-    let errors: Vec<(u32, DiagCode)> = r.errors().iter().map(|d| (d.src.line, d.code)).collect();
-    assert_eq!(errors, vec![(1, DiagCode::UnsupportedGCode)]);
-    assert!(
-        r.errors()[0].message.contains("until G80"),
-        "{}",
-        r.errors()[0].message
-    );
-    let unknown = r
-        .commands
-        .iter()
-        .filter(|c| matches!(c, Command::PositionUnknown { .. }))
-        .count();
-    assert_eq!(unknown, 2);
-    assert_eq!(
-        r.moves(),
-        vec![&Command::Rapid {
-            target: vec![w(0, 3.0)]
-        }]
-    );
+    // Its words are data; nothing is hidden and the position stays known.
+    assert_eq!(r.commands, vec![Command::Unsupported { what: "G5".into() }]);
 }
 
 #[test]
