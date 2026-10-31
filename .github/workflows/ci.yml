@@ -114,7 +114,10 @@ jobs:
         run: |
           sudo apt-get update
           # elfutils: flatpak-builder strips debug info with eu-strip.
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder elfutils
+          # librsvg2-common: the SVG loader appstreamcli compose needs to
+          # render the app's SVG icon.
+          sudo apt-get install -y --no-install-recommends \
+            flatpak flatpak-builder elfutils librsvg2-common
           # Ubuntu 24.04 blocks unprivileged user namespaces, which the
           # Flatpak build sandbox (bubblewrap) needs.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0

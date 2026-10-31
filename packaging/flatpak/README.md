@@ -19,8 +19,9 @@ go in `~/.var/app/com.ncsoftbyai.gcodeeditsim/config/com.ncsoftbyai.gcodeeditsim
 
 ## Building
 
-Needs `flatpak`, `flatpak-builder`, `elfutils` (for `eu-strip`), Node.js 22
-(npm) and Rust (cargo).
+Needs `flatpak`, `flatpak-builder`, `elfutils` (for `eu-strip`),
+`librsvg2-common` (to render the SVG icon), Node.js 22 (npm) and Rust
+(cargo). Most desktops have the last two system packages already.
 
 ```bash
 packaging/flatpak/build.sh            # writes ./gcode-editsim.flatpak
