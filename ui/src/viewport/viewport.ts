@@ -39,12 +39,6 @@ import { VIEWS, fitOrtho, orthoWorldPerPixel, type Vec3, type ViewName } from ".
 /** How close (in screen pixels) a click must be to pick a line or marker. */
 const PICK_PIXELS = 6;
 
-/** What a click picked. */
-export interface Pick {
-  /** Segment index in the render buffer. */
-  readonly segment: number;
-}
-
 /** The tool marker's size on screen, in pixels: a thick shaft with an
  *  arrowhead whose tip is the point. Deliberately not a tool shape, so it is
  *  not mistaken for a simulated tool. */
@@ -99,8 +93,9 @@ export class Viewport {
   private readonly marker = buildMarker();
   private hoverFrame = 0;
 
-  /** Called with what a click picked, or null for empty space. */
-  onPick: (pick: Pick | null) => void = () => undefined;
+  /** Called with the toolpath point a click picked (snapped as for
+   *  hovering), or null for empty space. */
+  onPick: (point: ToolPoint | null) => void = () => undefined;
 
   /** Called as the pointer moves over the toolpath (snapped to an end point
    *  when near one), and with null when it is over nothing. */
@@ -127,7 +122,7 @@ export class Viewport {
       this.pointerDown = null;
       // A drag orbits; only a click (little movement) picks.
       if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) {
-        this.onPick(this.pick(e.clientX, e.clientY));
+        this.onPick(this.pointAt(e.clientX, e.clientY));
       }
     });
     canvas.addEventListener("pointermove", (e) => {
@@ -287,12 +282,6 @@ export class Viewport {
     this.controls.target.set(...center);
     this.controls.update();
     this.requestRender();
-  }
-
-  /** What is under the screen point (client coordinates), if anything. */
-  pick(clientX: number, clientY: number): Pick | null {
-    const hit = this.hitAt(clientX, clientY);
-    return hit ? { segment: hit.segment } : null;
   }
 
   /**

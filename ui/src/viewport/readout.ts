@@ -80,6 +80,21 @@ export function restingPoint(rb: ReadoutSource, lastSegmentBefore: number): Tool
   return null;
 }
 
+/** A point the user clicked, and the source line the click went to. */
+export interface Pinned {
+  readonly line: number;
+  readonly point: ToolPoint;
+}
+
+/**
+ * Where the marker rests with the editor cursor on `line`: at the clicked
+ * point while the cursor is still on the line the click went to, else at
+ * `lineEnd` (where the tool is after the line, from `restingPoint`).
+ */
+export function restingFor(pinned: Pinned | null, line: number, lineEnd: ToolPoint | null): ToolPoint | null {
+  return pinned?.line === line ? pinned.point : lineEnd;
+}
+
 /** One line of the readout. */
 export interface ReadoutRow {
   readonly label: string;

@@ -9,7 +9,15 @@
 import { describe, expect, it } from "vitest";
 
 import { SEG_FLAG, SEG_KIND } from "../src/generated/render_buffer";
-import { feedText, placeText, preferArrivingMove, readoutRows, restingPoint, segmentEnd } from "../src/viewport/readout";
+import {
+  feedText,
+  placeText,
+  preferArrivingMove,
+  readoutRows,
+  restingFor,
+  restingPoint,
+  segmentEnd,
+} from "../src/viewport/readout";
 import { source } from "./source";
 
 const K = SEG_KIND;
@@ -87,5 +95,20 @@ describe("readoutRows", () => {
     expect(feedText(rb.segment(5))).toBe("none");
     expect(value(readoutRows(rb, { point: [100, 200, 10], segment: 0, place: "end" }), "Tool")).toBe("No tool");
     expect(placeText(rb.segment(1), "event")).toBe("Tool change");
+  });
+});
+
+describe("restingFor", () => {
+  const clicked = { point: [115, 220, 5] as const, segment: 3, place: "path" as const };
+  const lineEnd = { point: [130, 240, 0] as const, segment: 3, place: "end" as const };
+
+  it("rests at the clicked point while the cursor is on the clicked line", () => {
+    expect(restingFor({ line: 4, point: clicked }, 4, lineEnd)).toBe(clicked);
+  });
+
+  it("rests at the end of the line once the cursor is on another line", () => {
+    expect(restingFor({ line: 4, point: clicked }, 5, lineEnd)).toBe(lineEnd);
+    expect(restingFor(null, 4, lineEnd)).toBe(lineEnd);
+    expect(restingFor(null, 4, null)).toBeNull();
   });
 });

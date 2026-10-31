@@ -115,7 +115,9 @@ because they help with every test of the later steps.
   cursor.** A click still goes to the line. With nothing under the
   pointer, the marker rests where the tool is after the editor cursor's
   line (the end of that line's last segment, or of the last one before
-  it).
+  it). *Changed after review (owner, 2026-10-31):* after a click on the
+  toolpath it rests at the clicked point instead, until the cursor moves
+  to another line, and the readout is captioned "Machine coordinates".
 - The readout (top left of the view) shows X, Y, Z in machine
   coordinates, the tool, the feed ("Rapid" for rapids), the line, and
   where the point is (end of, start of or on a move, or an event), plus
