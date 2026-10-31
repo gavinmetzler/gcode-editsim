@@ -91,6 +91,10 @@ pub struct MachineFile {
 /// The examples shipped with the app: `(id, text)`.
 pub const SHIPPED_MACHINES: &[(&str, &str)] = &[
     ("generic_3axis_mill", machine_mill::EXAMPLE_DEFINITION),
+    (
+        "generic_3axis_router",
+        machine_mill::ROUTER_EXAMPLE_DEFINITION,
+    ),
     ("generic_2axis_lathe", machine_lathe::EXAMPLE_DEFINITION),
 ];
 

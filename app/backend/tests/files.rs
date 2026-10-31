@@ -84,7 +84,8 @@ fn shipped_machines_are_listed_first_and_load() {
     let list = list_machine_files(&dir.path("no-such-folder")).expect("list");
     assert_eq!(list.len(), SHIPPED_MACHINES.len());
     assert_eq!(list[0].label, "Generic 3-axis VMC");
-    assert_eq!(list[1].label, "Generic 2-axis lathe");
+    assert_eq!(list[1].label, "Generic 3-axis router (no travel limits)");
+    assert_eq!(list[2].label, "Generic 2-axis lathe");
     for m in &list {
         assert_eq!(m.problem, None);
         let text = read_machine_file(&m.source).expect("read");

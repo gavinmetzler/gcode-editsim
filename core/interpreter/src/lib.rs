@@ -22,8 +22,8 @@ mod arc;
 use std::collections::BTreeSet;
 
 use dialect_api::{
-    ArcCenter, ArcDir, AxisInfo, AxisSet, AxisWord, BlockContext, Command, CoolantState, Dialect,
-    ModalState, SpindleState,
+    literal, ArcCenter, ArcDir, AxisInfo, AxisSet, AxisWord, BlockContext, CodeKey, Command,
+    CoolantState, Dialect, ModalState, SpindleState,
 };
 use gcode_syntax::Block;
 use ir::{
@@ -67,6 +67,12 @@ pub fn interpret(
         }
     };
     let parsed = gcode_syntax::parse(source);
+    let ignored: BTreeSet<CodeKey> = machine
+        .ignored_codes()
+        .iter()
+        .filter_map(|c| CodeKey::parse(c))
+        .collect();
+    let mut noted_ignored = BTreeSet::new();
     let mut exec = Executor::new(dialect.initial_state(&axes), machine);
     let mut commands = Vec::new();
     let mut after_end: Option<SourceRef> = None;
@@ -89,6 +95,8 @@ pub fn interpret(
             continue;
         }
         commands.clear();
+        let stripped = strip_ignored(block, &ignored, &mut noted_ignored, src, &mut diag);
+        let block = stripped.as_ref().unwrap_or(block);
         let ctx = BlockContext { axes: &axes, src };
         dialect.interpret_block(block, &ctx, &mut exec.state, &mut commands, &mut diag);
         for command in &commands {
@@ -138,6 +146,45 @@ fn finish(segments: Vec<Segment>, diag: Diagnostics, file: &str, meta: ProgramMe
 /// `true` if the block would do something if executed.
 fn has_content(block: &Block) -> bool {
     !block.words.is_empty() || !block.assignments.is_empty()
+}
+
+/// `block` without the M codes the machine file lists in `ignore_codes`, or
+/// `None` if it has none of them. Each listed code is noted the first time
+/// it appears.
+fn strip_ignored(
+    block: &Block,
+    ignored: &BTreeSet<CodeKey>,
+    noted: &mut BTreeSet<CodeKey>,
+    src: SourceRef,
+    diag: &mut Diagnostics,
+) -> Option<Block> {
+    let key = |w: &gcode_syntax::Word| {
+        literal(&w.value)
+            .and_then(|n| CodeKey::from_value(w.letter, n.value))
+            .filter(|k| ignored.contains(k))
+    };
+    if !block.words.iter().any(|w| key(w).is_some()) {
+        return None;
+    }
+    let mut kept = block.clone();
+    kept.words.retain(|w| match key(w) {
+        None => true,
+        Some(k) => {
+            if noted.insert(k) {
+                // Only M codes can be listed (see `MachineDef::ignore_codes`).
+                diag.info(
+                    DiagCode::UnsupportedMCode,
+                    format!(
+                        "{k} is ignored, as the machine file lists it in ignore_codes. Not \
+                         reported again."
+                    ),
+                    src,
+                );
+            }
+            false
+        }
+    });
+    Some(kept)
 }
 
 /// The dialect's view of the machine's axes.

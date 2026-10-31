@@ -8,7 +8,9 @@ The files use [TOML](https://toml.io), a simple `key = value` format.
 Lines starting with `#` are comments. A graphical editor for these files
 is planned. Until then, copy the example and edit it in any text editor.
 
-**Example:** [`core/machine-mill/data/generic_3axis_mill.toml`](../core/machine-mill/data/generic_3axis_mill.toml)
+**Examples:**
+- [`core/machine-mill/data/generic_3axis_mill.toml`](../core/machine-mill/data/generic_3axis_mill.toml): a 3-axis machining centre with travel limits and two work offsets.
+- [`core/machine-mill/data/generic_3axis_router.toml`](../core/machine-mill/data/generic_3axis_router.toml): a 3-axis router with **no travel limits** and every work offset at zero. A good start when your machine is not described yet: nothing is flagged as out of limits, and programmed coordinates are drawn as they are.
 
 All lengths are in **mm**, angles in **degrees**, speeds in **mm/min**
 (degrees/min for rotary axes) and spindle speed in **rpm**, whatever units
@@ -22,6 +24,7 @@ your programs use.
 | `family` | yes | Machine type that reads the file: `"mill"` (3-axis mill) or `"lathe"` (2-axis lathe, an early stub). |
 | `max_feed` | no | Fastest cutting feed, mm/min |
 | `max_spindle_rpm` | no | Fastest spindle speed, rpm |
+| `ignore_codes` | no | M codes your programs use that do not move the machine (head selection, clamps, vacuum), e.g. `["M92", "M213"]`. They are removed from every block with one note per code. Only M codes: a G code's axis words would be left behind and read as a move. Codes not listed that the dialect does not know are still noted once each and ignored. |
 
 ## `[[axis]]`, one block per axis
 
@@ -34,7 +37,7 @@ separate `[[axis]]` block.
 | `kind` | yes | `"linear"` or `"rotary"`. |
 | `direction` | no | `"x"`, `"y"` or `"z"`. For a linear axis, the direction it moves the tool. For a rotary axis, the axis it turns about. On a mill, X, Y and Z default to x, y and z, so this is only needed for other letters (e.g. U/V/W) or unusual layouts. |
 | `arc_offset` | no | Letter giving arc-centre offsets along this axis (usually `"I"`, `"J"`, `"K"` for X, Y, Z). Without it, the axis cannot be part of an arc plane. Linear axes only. |
-| `travel` | no | Soft limits in machine coordinates: `[min, max]`. Moves outside are flagged. |
+| `travel` | no | Soft limits in machine coordinates: `[min, max]`. Moves outside are flagged. Leave it out to skip limit checks for the axis. |
 | `rapid` | no | Rapid traverse rate, mm/min. |
 | `reference` | no | Reference (home) position in machine coordinates. Reference returns (G28) go here, and the simulation starts here. It must lie within `travel`. Without it, the axis starts at 0 and its position after a reference return is unknown. |
 | `diameter_mode` | no | `true` if this axis is programmed as a diameter (turning): programmed values are halved, and everything in this file (travel, reference, work offsets) is a radius. Default `false`. A mill rejects `true`; a lathe allows it on the x axis only. |

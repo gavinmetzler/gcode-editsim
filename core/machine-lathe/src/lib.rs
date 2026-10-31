@@ -163,6 +163,10 @@ impl Machine for Lathe {
         &self.def.speeds
     }
 
+    fn ignored_codes(&self) -> &[String] {
+        &self.def.ignore_codes
+    }
+
     /// A diameter-mode axis is programmed as a diameter; the machine
     /// position is the radius, so the value is halved. Other axes are
     /// unchanged.
