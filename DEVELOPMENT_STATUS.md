@@ -395,6 +395,13 @@ Decided (2026-10-31), roadmap revision:
 - **Flatpak:** distributed as a single `.flatpak` file; Flathub is not
   planned.
 
+Decided (2026-10-31), after M3.0:
+- **G codes that carry coordinates are implemented, never ignored.**
+  Ignoring one leaves its axis words behind to be read as a move (found
+  with `ignore_codes`, which therefore takes M codes only). G92 is the one
+  such code not implemented yet: until M3.5 it is skipped with a warning,
+  its axis words consumed as data so they are never a move.
+
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their
    control's manual?
