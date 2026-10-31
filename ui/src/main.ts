@@ -43,7 +43,7 @@ import {
   type Pinned,
   type ToolPoint,
 } from "./viewport/readout";
-import { buildToolpath } from "./viewport/toolpath";
+import { LEGEND, buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
 
@@ -147,7 +147,23 @@ async function main(app: HTMLElement): Promise<void> {
     refreshButton,
   );
   staleBar.hidden = true;
-  viewportBox.append(readout, staleBar);
+  // What the colours mean (bottom left of the view); the header folds it.
+  const legendToggle = el("button", { type: "button", className: "legend-toggle", textContent: "Colours ▾" });
+  const legendList = el(
+    "ul",
+    {},
+    ...LEGEND.map((entry) => {
+      const swatch = el("span", { className: `swatch ${entry.style}` });
+      swatch.style.setProperty("--swatch", entry.color);
+      return el("li", {}, swatch, entry.label);
+    }),
+  );
+  const legend = el("div", { className: "legend" }, legendToggle, legendList);
+  legendToggle.addEventListener("click", () => {
+    legendList.hidden = !legendList.hidden;
+    legendToggle.textContent = legendList.hidden ? "Colours ▸" : "Colours ▾";
+  });
+  viewportBox.append(readout, staleBar, legend);
   const panel = new DiagnosticsPanel(panelBox);
   const freshness = new Freshness();
   panel.onLine = (line) => {

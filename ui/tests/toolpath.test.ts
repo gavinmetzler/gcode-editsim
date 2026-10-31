@@ -6,7 +6,16 @@ import { describe, expect, it } from "vitest";
 
 import { decodeRenderBuffer } from "../src/buffer/decode";
 import { SEG_FLAG, SEG_KIND } from "../src/generated/render_buffer";
-import { PALETTE, buildToolpath, expandIndexed, segmentColor, srgbToLinear, type Rgb } from "../src/viewport/toolpath";
+import {
+  LEGEND,
+  PALETTE,
+  buildToolpath,
+  cssColor,
+  expandIndexed,
+  segmentColor,
+  srgbToLinear,
+  type Rgb,
+} from "../src/viewport/toolpath";
 import { fixture } from "./fixture";
 
 const rb = decodeRenderBuffer(fixture());
@@ -84,5 +93,25 @@ describe("expandIndexed", () => {
     tp.rapidIndex.forEach((v, k) => {
       expect(Array.from(out.subarray(k * 3, k * 3 + 3))).toEqual(Array.from(tp.positions.subarray(v * 3, v * 3 + 3)));
     });
+  });
+});
+
+describe("legend", () => {
+  it("converts palette colours to CSS", () => {
+    expect(cssColor([1, 0, 0.5])).toBe("rgb(255 0 128)");
+    expect(cssColor([2, -1, 0])).toBe("rgb(255 0 0)");
+  });
+
+  it("names every colour segmentColor can give", () => {
+    const shown = new Set(LEGEND.map((e) => e.color));
+    const kinds = Object.values(SEG_KIND);
+    const flags = [0, SEG_FLAG.OUT_OF_LIMITS, SEG_FLAG.POSITION_UNKNOWN];
+    for (const k of kinds) {
+      for (const f of flags) expect(shown.has(cssColor(segmentColor(k, f))), `kind ${String(k)} flags ${String(f)}`).toBe(true);
+    }
+  });
+
+  it("says out-of-limits is about the travel limits", () => {
+    expect(LEGEND.find((e) => e.color === cssColor(PALETTE.outOfLimits))?.label).toBe("Outside travel limits");
   });
 });

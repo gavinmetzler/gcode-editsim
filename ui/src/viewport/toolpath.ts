@@ -31,6 +31,34 @@ export const PALETTE = {
   positionUnknown: [0.5, 0.5, 0.5],
 } as const satisfies Record<string, Rgb>;
 
+/** One entry of the colour legend. */
+export interface LegendEntry {
+  readonly label: string;
+  /** CSS colour (sRGB). */
+  readonly color: string;
+  /** How it is drawn: a dashed or solid line, or a dot (events). */
+  readonly style: "dashed" | "solid" | "dot";
+}
+
+/** A palette colour as CSS. */
+export function cssColor(c: Rgb): string {
+  const byte = (v: number): number => Math.round(Math.min(1, Math.max(0, v)) * 255);
+  return `rgb(${String(byte(c[0]))} ${String(byte(c[1]))} ${String(byte(c[2]))})`;
+}
+
+/** What the toolpath colours mean, in the order the legend shows them. */
+export const LEGEND: readonly LegendEntry[] = [
+  { label: "Rapid", color: cssColor(PALETTE.rapid), style: "dashed" },
+  { label: "Linear feed", color: cssColor(PALETTE.linear), style: "solid" },
+  { label: "Arc feed", color: cssColor(PALETTE.arc), style: "solid" },
+  { label: "Outside travel limits", color: cssColor(PALETTE.outOfLimits), style: "solid" },
+  { label: "Position unknown", color: cssColor(PALETTE.positionUnknown), style: "solid" },
+  { label: "Tool change", color: cssColor(PALETTE.toolChange), style: "dot" },
+  { label: "Stop", color: cssColor(PALETTE.stop), style: "dot" },
+  { label: "Program end", color: cssColor(PALETTE.programEnd), style: "dot" },
+  { label: "Spindle, coolant, dwell", color: cssColor(PALETTE.event), style: "dot" },
+];
+
 const MOTION_KINDS: ReadonlySet<number> = new Set([
   SEG_KIND.Rapid,
   SEG_KIND.Linear,

@@ -72,3 +72,10 @@ header select { max-width: 22ch; }
 .readout .measure-grid .head { color: #9aa0a6; }
 .readout .distance { border-top: 1px solid #3a404a; padding-top: 3px; margin-top: 3px; font-weight: 600; }
 .readout .hint { color: #9aa0a6; margin-top: 3px; }
+.legend { position: absolute; left: 8px; bottom: 8px; padding: 4px 8px; background: rgb(29 33 40 / 88%); border: 1px solid #3a404a; border-radius: 6px; font-size: 11px; }
+.legend-toggle { background: none; border: none; color: #c8ccd2; padding: 0; cursor: pointer; font-size: 11px; }
+.legend ul { list-style: none; margin: 4px 0 0; padding: 0; }
+.legend li { display: flex; align-items: center; gap: 6px; line-height: 16px; }
+.legend .swatch { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--swatch); }
+.legend .swatch.dashed { border-top-style: dashed; }
+.legend .swatch.dot { width: 7px; height: 7px; border: none; background: var(--swatch); margin: 0 5px; }
