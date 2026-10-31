@@ -27,7 +27,14 @@ import {
 import { readProgramFile } from "./open-file";
 import { DiagnosticsPanel } from "./panels/panel";
 import { showStatsDialog } from "./panels/stats-dialog";
-import { preferArrivingMove, readoutRows, restingPoint, type ToolPoint } from "./viewport/readout";
+import {
+  preferArrivingMove,
+  readoutRows,
+  restingFor,
+  restingPoint,
+  type Pinned,
+  type ToolPoint,
+} from "./viewport/readout";
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
@@ -127,6 +134,9 @@ async function main(app: HTMLElement): Promise<void> {
   let resting: ToolPoint | null = null;
   /** The toolpath point under the pointer, if any. */
   let hovered: ToolPoint | null = null;
+  /** The last clicked point, where the marker rests while the cursor stays
+   *  on the line the click went to. */
+  let pinned: Pinned | null = null;
 
   /** Moves the tool marker and the readout to the hovered point, or else
    *  to where the tool is after the cursor's line. Hovering never moves
@@ -139,10 +149,16 @@ async function main(app: HTMLElement): Promise<void> {
       readout.hidden = true;
       return;
     }
-    const title =
-      (hovered ? "Under the pointer" : `After line ${String(cursorLine)}`) + (freshness.stale ? " (out of date)" : "");
+    const where = hovered
+      ? "Under the pointer"
+      : pinned?.point === p
+        ? "Clicked point"
+        : `After line ${String(cursorLine)}`;
+    const title = where + (freshness.stale ? " (out of date)" : "");
     readout.replaceChildren(
       el("div", { className: "title", textContent: title }),
+      // Program coordinates come with M3.5.
+      el("div", { className: "caption", textContent: "Machine coordinates" }),
       ...readoutRows(rb, p).map((r) =>
         el("div", { className: "row" }, el("span", { textContent: r.label }), el("span", { textContent: r.value })),
       ),
@@ -166,7 +182,8 @@ async function main(app: HTMLElement): Promise<void> {
     const { start, end } = segmentRange(rb.header.segmentCount, (i) => rb.segmentLine(i), line);
     const segments = Array.from({ length: end - start }, (_, k) => start + k);
     viewport.highlight(segments);
-    resting = restingPoint(rb, end - 1);
+    if (pinned && pinned.line !== line) pinned = null;
+    resting = restingFor(pinned, line, restingPoint(rb, end - 1));
     showMarker();
     if (quiet) return;
     setStatus(
@@ -192,6 +209,7 @@ async function main(app: HTMLElement): Promise<void> {
       editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
       panel.show(rb);
       hovered = null;
+      pinned = null;
       showLine(editor.cursorLineNumber(), true);
       const d = rb.header.diagCount;
       setStatus(
@@ -238,10 +256,18 @@ async function main(app: HTMLElement): Promise<void> {
   statsButton.addEventListener("click", () => {
     if (current) showStatsDialog(current, freshness.stale ? `${fileName} (out of date: refresh first)` : fileName);
   });
-  viewport.onPick = (pick) => {
-    if (!current || !pick || freshness.stale) return;
+  viewport.onPick = (p) => {
+    if (!current || !p || freshness.stale) return;
+    // The marker rests where the user clicked (not at the end of the line)
+    // until the cursor moves to another line.
+    const line = current.segment(p.segment).srcLine;
+    pinned = { line, point: preferArrivingMove(current, p) };
+    if (line === cursorLine) {
+      resting = pinned.point;
+      showMarker();
+    }
     // Moving the cursor highlights the line's segments (onCursorLine).
-    editor.revealLine(current.segment(pick.segment).srcLine);
+    editor.revealLine(line);
   };
 
   const [dialects, machines] = await Promise.all([listDialects(), listMachines()]);
