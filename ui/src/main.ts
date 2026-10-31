@@ -18,7 +18,8 @@ import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
 import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from "./files";
 import { Freshness } from "./freshness";
-import { buildLineIndex, latestOnly, lineMarks, type LineIndex } from "./editor/lines";
+import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark } from "./editor/lines";
+import { addSplitter, dblclickToggles, Maximiser } from "./layout/layout";
 import {
   inApp,
   interpret,
@@ -95,6 +96,8 @@ async function main(app: HTMLElement): Promise<void> {
   const editorBox = el("div", { className: "editor" });
   const viewportBox = el("div", { className: "viewport" });
   const panelBox = el("div", { className: "panel" });
+  const rightBox = el("div", { className: "right" }, viewportBox, panelBox);
+  const mainBox = el("main", {}, editorBox, rightBox);
 
   app.replaceChildren(
     el(
@@ -114,7 +117,7 @@ async function main(app: HTMLElement): Promise<void> {
       // The view buttons wrap to the next row together, kept to the right.
       el("span", { className: "views" }, ...viewButtons, fitButton),
     ),
-    el("main", {}, editorBox, el("div", { className: "right" }, viewportBox, panelBox)),
+    mainBox,
     el(
       "footer",
       {},
@@ -165,6 +168,46 @@ async function main(app: HTMLElement): Promise<void> {
   });
   viewportBox.append(readout, staleBar, legend);
   const panel = new DiagnosticsPanel(panelBox);
+
+  // Resizing: drag the borders between the panes.
+  addSplitter(mainBox, rightBox, "x", (share) => {
+    editorBox.style.flexBasis = `${(share * 100).toFixed(2)}%`;
+  });
+  addSplitter(rightBox, panelBox, "y", (share) => {
+    panelBox.style.flexBasis = `${((1 - share) * 100).toFixed(2)}%`;
+  });
+  // Maximising: double-click the view or the diagnostics list; the editor
+  // has a button instead, so double-click still selects a word there.
+  const maximiser = new Maximiser(mainBox);
+  maximiser.addExitButton("viewport", viewportBox);
+  maximiser.addExitButton("panel", panelBox);
+  const editorMax = el("button", { type: "button", className: "editor-max" });
+  editorBox.append(editorMax);
+  const showEditorMax = (): void => {
+    const on = maximiser.maximised === "editor";
+    editorMax.textContent = on ? "Exit full screen" : "⤢";
+    editorMax.title = on ? "Back to the normal layout" : "Maximise the editor";
+    editorMax.classList.toggle("on", on);
+  };
+  showEditorMax();
+  maximiser.onChange = showEditorMax;
+  editorMax.addEventListener("click", () => {
+    maximiser.toggle("editor");
+  });
+  viewportBox.addEventListener("dblclick", (e) => {
+    if (dblclickToggles(e.target)) maximiser.toggle("viewport");
+  });
+  panelBox.addEventListener("dblclick", (e) => {
+    const target = e.target as Element | null;
+    if (dblclickToggles(target) && target?.closest(".panel-body") != null) maximiser.toggle("panel");
+  });
+
+  // The gutter shows only the severities the panel's filters show.
+  let allMarks: LineMark[] = [];
+  const showMarks = (): void => {
+    editor.setMarks(shownMarks(allMarks, panel.shownSeverities()));
+  };
+  panel.onFilter = showMarks;
   const freshness = new Freshness();
   panel.onLine = (line) => {
     // Line numbers may have moved since the run: no sync while out of date.
@@ -276,7 +319,8 @@ async function main(app: HTMLElement): Promise<void> {
       statsButton.disabled = false;
       viewport.show(buildToolpath(rb), fitNext);
       fitNext = false;
-      editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
+      allMarks = lineMarks(rb.diagnostics, editor.lineCount());
+      showMarks();
       panel.show(rb);
       hovered = null;
       pinned = null;

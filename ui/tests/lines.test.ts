@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { decodeRenderBuffer, type Diagnostic } from "../src/buffer/decode";
-import { buildLineIndex, latestOnly, lineMarks, type LineIndex } from "../src/editor/lines";
+import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark } from "../src/editor/lines";
 import { SEVERITY } from "../src/generated/render_buffer";
 import { fixture } from "./fixture";
 
@@ -120,5 +120,20 @@ describe("latestOnly", () => {
     );
     await r.runNow();
     expect(errors).toHaveLength(1);
+  });
+});
+
+describe("shownMarks", () => {
+  const marks: LineMark[] = [
+    { line: 1, severity: "error", message: "e" },
+    { line: 2, severity: "warning", message: "w" },
+    { line: 3, severity: "info", message: "i" },
+  ];
+
+  it("keeps only the severities the panel shows", () => {
+    expect(shownMarks(marks, new Set(["error", "warning", "info"]))).toEqual(marks);
+    expect(shownMarks(marks, new Set(["error"])).map((m) => m.line)).toEqual([1]);
+    expect(shownMarks(marks, new Set(["warning", "info"])).map((m) => m.line)).toEqual([2, 3]);
+    expect(shownMarks(marks, new Set())).toEqual([]);
   });
 });

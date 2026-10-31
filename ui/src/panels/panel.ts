@@ -28,11 +28,16 @@ export class DiagnosticsPanel {
   /** Called with the line of a clicked diagnostic. */
   onLine: (line: number) => void = () => undefined;
 
+  /** Called with the severities shown after a filter changes, so the
+   *  editor's gutter can follow. */
+  onFilter: (shown: ReadonlySet<SeverityName>) => void = () => undefined;
+
   constructor(container: HTMLElement) {
     for (const s of SEVERITIES) {
       const box = el("input", { type: "checkbox", checked: true });
       box.addEventListener("change", () => {
         this.drawDiagnostics();
+        this.onFilter(this.shownSeverities());
       });
       this.filters.set(s.name, box);
       this.filterBox.append(el("label", { className: s.name }, box, s.label));
@@ -47,6 +52,11 @@ export class DiagnosticsPanel {
       this.diagBody,
     );
     this.clear();
+  }
+
+  /** The severities whose filter box is ticked. */
+  shownSeverities(): Set<SeverityName> {
+    return new Set(SEVERITIES.map((s) => s.name).filter((n) => this.filters.get(n)?.checked !== false));
   }
 
   /** Shows the diagnostics of `rb`. */
