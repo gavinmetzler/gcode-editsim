@@ -90,6 +90,7 @@ in ARCHITECTURE.md §5).
 | `app/shell` | The Tauri 2 desktop shell (M2.3b), **its own Cargo workspace** | Commands in `src/lib.rs` (`interpret` raw body → raw render buffer, `load_file`, `save_file`, machine and dialect choice); IPC tests on Tauri's mock runtime in `tests/ipc.rs`; the UI (`ui/dist`) embedded at compile time |
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
 | `ui/` | TypeScript UI (M2.4: scaffold) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test); `src/viewport/` (three.js viewport); `src/editor/` (CodeMirror editor, line ↔ segment mapping); `src/ipc/backend.ts` (typed calls to the app's commands) |
+| `packaging/flatpak` | Flatpak packaging (single `.flatpak` file, installed by users; not on Flathub) | `build.sh`; manifest builds offline (UI built and crates vendored beforehand); sandbox: window and GPU only, files via the portal; **placeholder icon** |
 | `tools/depcheck` | The dependency-rule checker | `cargo run -p depcheck` |
 
 User-facing documentation:

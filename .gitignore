@@ -1,1 +1,7 @@
 /target
+
+# Flatpak build output (packaging/flatpak/build.sh)
+/packaging/flatpak/.build/
+/packaging/flatpak/.flatpak-builder/
+/.flatpak-builder/
+/gcode-editsim.flatpak
