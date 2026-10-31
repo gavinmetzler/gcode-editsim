@@ -34,6 +34,13 @@ What it does:
    the GNOME runtime's own WebKitGTK.
 4. Bundles the result into one `.flatpak` file.
 
+## CI
+
+The `Flatpak bundle` job in `.github/workflows/ci.yml` runs `build.sh` on
+every pull request and push to `main`. It keeps `gcode-editsim.flatpak`
+for 30 days as the `gcode-editsim-flatpak` artifact of the run: download it
+from the run's summary page on GitHub.
+
 ## Sandbox
 
 The app gets a window (Wayland, or X11 as a fallback), the GPU for the 3D

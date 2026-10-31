@@ -3,6 +3,8 @@
 #   flatpak install --user gcode-editsim.flatpak
 # Needs: flatpak, flatpak-builder, Node 22 (npm), Rust (cargo), and the
 # Flathub remote for the GNOME runtime and SDK.
+# FLATPAK_BUILDER_ARGS adds options to flatpak-builder (CI uses
+# --disable-rofiles-fuse).
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -22,7 +24,8 @@ rm -rf "$build/vendor"
 
 echo "== Flatpak: build, then bundle"
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak-builder --user --force-clean --install-deps-from=flathub \
+# shellcheck disable=SC2086 # FLATPAK_BUILDER_ARGS is a list of options.
+flatpak-builder --user --force-clean --install-deps-from=flathub ${FLATPAK_BUILDER_ARGS:-} \
   --repo="$build/repo" --state-dir="$build/state" "$build/app" "$here/$app_id.yml"
 flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
   "$build/repo" "$out" "$app_id"
