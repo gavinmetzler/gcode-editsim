@@ -36,11 +36,42 @@ use machine_api::{AxisKind, Machine};
 use crate::arc::{ArcProblem, RADIUS_TOLERANCE, SAME_POINT};
 
 /// Settings for one interpretation run.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Options {
     /// The operator's block-delete switch. When `true`, blocks starting
     /// with `/` are skipped; when `false` (the default) they run.
     pub block_delete: bool,
+    /// The most blocks to run, counting each run of a subprogram block, so
+    /// that repeat counts and calls cannot run away. The default is
+    /// [`DEFAULT_MAX_BLOCKS`].
+    pub max_blocks: usize,
+}
+
+/// The default block limit: far beyond real programs, small enough to stop
+/// a runaway program in seconds.
+pub const DEFAULT_MAX_BLOCKS: usize = 2_000_000;
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            block_delete: false,
+            max_blocks: DEFAULT_MAX_BLOCKS,
+        }
+    }
+}
+
+/// How deep subprogram calls may nest. Controls allow a few levels (Fanuc
+/// documents four for M98, more with macro calls); this is generous and
+/// stops a program that calls itself.
+pub const MAX_CALL_DEPTH: usize = 10;
+
+/// A subprogram being run: where to return to, where it starts, and how
+/// many more runs are left after this one.
+struct Frame {
+    return_to: usize,
+    start: usize,
+    program: u32,
+    remaining: u32,
 }
 
 /// Out-of-limit moves reported individually before the rest are only
@@ -75,40 +106,173 @@ pub fn interpret(
     let mut noted_ignored = BTreeSet::new();
     let mut exec = Executor::new(dialect.initial_state(&axes), machine);
     let mut commands = Vec::new();
-    let mut after_end: Option<SourceRef> = None;
 
-    for (index, block) in parsed.blocks.iter().enumerate() {
-        let src = SourceRef {
-            file: 0,
-            line: block.line,
-            block: u32::try_from(index).unwrap_or(u32::MAX),
-            col_start: 0,
-            col_end: 0,
-        };
-        if exec.ended {
-            if after_end.is_none() && has_content(block) {
-                after_end = Some(src);
-            }
-            continue;
-        }
-        if options.block_delete && block.block_skip.is_some() {
-            continue;
-        }
-        commands.clear();
-        let stripped = strip_ignored(block, &ignored, &mut noted_ignored, src, &mut diag);
-        let block = stripped.as_ref().unwrap_or(block);
-        let ctx = BlockContext { axes: &axes, src };
-        dialect.interpret_block(block, &ctx, &mut exec.state, &mut commands, &mut diag);
-        for command in &commands {
-            exec.apply(command, src, &mut diag);
+    // Where each program in the file starts (its number block), and which
+    // program is the main one: the number on the first block that does
+    // anything, if it has one.
+    let blocks = &parsed.blocks;
+    let mut programs = std::collections::BTreeMap::new();
+    for (index, block) in blocks.iter().enumerate() {
+        if let Some(n) = dialect.program_number(block) {
+            programs.entry(n).or_insert(index);
         }
     }
+    let main_header = blocks.iter().position(has_content).filter(|&i| {
+        blocks
+            .get(i)
+            .is_some_and(|b| dialect.program_number(b).is_some())
+    });
 
-    if let Some(src) = after_end {
+    let mut stack: Vec<Frame> = Vec::new();
+    let mut ran = vec![false; blocks.len()];
+    let mut runs = 0usize;
+    let mut pc = 0usize;
+    let src_of = |index: usize, block: &Block| SourceRef {
+        file: 0,
+        line: block.line,
+        block: u32::try_from(index).unwrap_or(u32::MAX),
+        col_start: 0,
+        col_end: 0,
+    };
+
+    while !exec.ended {
+        let Some(block) = blocks.get(pc) else {
+            // The end of the file inside a subprogram: return from it.
+            if stack.is_empty() {
+                break;
+            }
+            let program = stack.last().map_or(0, |f| f.program);
+            diag.warning(
+                DiagCode::NotYetSimulated,
+                format!("O{program} reaches the end of the file without M99: it returns there"),
+                blocks
+                    .last()
+                    .map_or_else(SourceRef::default, |b| src_of(blocks.len() - 1, b)),
+            );
+            pc = return_from(&mut stack);
+            continue;
+        };
+        let src = src_of(pc, block);
+
+        // Running on into the start of another program ends the current
+        // one (a call jumps past the number block, so only running on gets
+        // here).
+        if let Some(n) = dialect.program_number(block) {
+            if Some(pc) != main_header {
+                if stack.is_empty() {
+                    diag.info(
+                        DiagCode::NotYetSimulated,
+                        format!(
+                            "the main program runs on into program O{n} without M30 or M02; \
+                             it ends here"
+                        ),
+                        src,
+                    );
+                    break;
+                }
+                diag.warning(
+                    DiagCode::NotYetSimulated,
+                    format!(
+                        "O{} runs on into program O{n} without M99: it returns here",
+                        stack.last().map_or(0, |f| f.program)
+                    ),
+                    src,
+                );
+                pc = return_from(&mut stack);
+                continue;
+            }
+        }
+
+        runs += 1;
+        if runs > options.max_blocks {
+            diag.error(
+                DiagCode::NotYetSimulated,
+                format!(
+                    "the program ran more than {} blocks (subprogram calls and repeats); it is \
+                     stopped here",
+                    options.max_blocks
+                ),
+                src,
+            );
+            break;
+        }
+        if let Some(r) = ran.get_mut(pc) {
+            *r = true;
+        }
+        let mut next = pc + 1;
+        if !(options.block_delete && block.block_skip.is_some()) {
+            commands.clear();
+            let stripped = strip_ignored(block, &ignored, &mut noted_ignored, src, &mut diag);
+            let block = stripped.as_ref().unwrap_or(block);
+            let ctx = BlockContext { axes: &axes, src };
+            dialect.interpret_block(block, &ctx, &mut exec.state, &mut commands, &mut diag);
+            for command in &commands {
+                exec.apply(command, src, &mut diag);
+            }
+            // Calls and returns take effect after the block's other commands.
+            for command in &commands {
+                match command {
+                    Command::CallSubprogram { program, repeat } if *repeat > 0 => {
+                        match programs.get(program) {
+                            None => diag.warning(
+                                DiagCode::NotYetSimulated,
+                                format!(
+                                    "O{program} is not in this file (it may be stored on the \
+                                     control); the call is skipped and later moves are drawn \
+                                     without it"
+                                ),
+                                src,
+                            ),
+                            Some(_) if stack.len() >= MAX_CALL_DEPTH => diag.error(
+                                DiagCode::NotYetSimulated,
+                                format!(
+                                    "subprogram calls nest more than {MAX_CALL_DEPTH} deep (does a \
+                                     program call itself?); this call is skipped"
+                                ),
+                                src,
+                            ),
+                            Some(&header) => {
+                                stack.push(Frame {
+                                    return_to: pc + 1,
+                                    start: header + 1,
+                                    program: *program,
+                                    remaining: *repeat - 1,
+                                });
+                                next = header + 1;
+                            }
+                        }
+                    }
+                    Command::ReturnFromSubprogram if stack.is_empty() => {
+                        diag.info(
+                            DiagCode::NotYetSimulated,
+                            "M99 in the main program would run it again endlessly; it is drawn \
+                             once and ends here",
+                            src,
+                        );
+                        exec.ended = true;
+                    }
+                    Command::ReturnFromSubprogram => next = return_from(&mut stack),
+                    _ => {}
+                }
+            }
+        }
+        pc = next;
+    }
+
+    // Anything never run: after the end, and not in a program that is
+    // called. Program number blocks are not counted.
+    let unrun = blocks.iter().enumerate().find(|(i, b)| {
+        !ran.get(*i).copied().unwrap_or(true)
+            && has_content(b)
+            && dialect.program_number(b).is_none()
+            && !in_a_called_subprogram(&programs, main_header, &ran, blocks, dialect, *i)
+    });
+    if let Some((index, block)) = unrun {
         diag.info(
             DiagCode::NotYetSimulated,
-            "blocks after the end of the program are not executed",
-            src,
+            "blocks from here are not run: they come after the end of the program and are not \
+             part of a subprogram it calls",
+            src_of(index, block),
         );
     }
     if exec.limit_reports > MAX_LIMIT_REPORTS {
@@ -137,10 +301,78 @@ fn finish(segments: Vec<Segment>, diag: Diagnostics, file: &str, meta: ProgramMe
             channel: 0,
             segments,
         }],
-        diagnostics: diag.into_vec(),
+        diagnostics: dedupe(diag.into_vec()),
         files: vec![file.to_owned()],
         meta,
     }
+}
+
+/// Where to go at the end of a run of the current subprogram: its start
+/// again if repeats remain, else the block after its call.
+fn return_from(stack: &mut Vec<Frame>) -> usize {
+    match stack.last_mut() {
+        Some(frame) if frame.remaining > 0 => {
+            frame.remaining -= 1;
+            frame.start
+        }
+        Some(_) => stack.pop().map_or(usize::MAX, |f| f.return_to),
+        None => usize::MAX,
+    }
+}
+
+/// `true` if block `index` belongs to a subprogram that was run (some of
+/// its blocks ran), so not running it was the program's choice (a branch
+/// never reached), not code after the end. The main program is not a
+/// subprogram: code after its end is reported.
+fn in_a_called_subprogram(
+    programs: &std::collections::BTreeMap<u32, usize>,
+    main_header: Option<usize>,
+    ran: &[bool],
+    blocks: &[Block],
+    dialect: &dyn Dialect,
+    index: usize,
+) -> bool {
+    // The program a block belongs to starts at the last number block
+    // before it.
+    let Some(header) = (0..index).rev().find(|&i| {
+        blocks
+            .get(i)
+            .is_some_and(|b| dialect.program_number(b).is_some())
+    }) else {
+        return false;
+    };
+    let is_program = Some(header) != main_header && programs.values().any(|&h| h == header);
+    let end = (header + 1..blocks.len())
+        .find(|&i| {
+            blocks
+                .get(i)
+                .is_some_and(|b| dialect.program_number(b).is_some())
+        })
+        .unwrap_or(blocks.len());
+    is_program
+        && ran
+            .get(header + 1..end)
+            .is_some_and(|r| r.iter().any(|&x| x))
+}
+
+/// The diagnostics without exact repeats (same place, severity, code and
+/// message), which a subprogram run several times would otherwise report
+/// on every run. The first of each is kept, in order.
+fn dedupe(diags: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    let mut seen = BTreeSet::new();
+    diags
+        .into_iter()
+        .filter(|d| {
+            seen.insert((
+                d.src.file,
+                d.src.line,
+                d.src.col_start,
+                d.severity.id(),
+                d.code as u16,
+                d.message.clone(),
+            ))
+        })
+        .collect()
 }
 
 /// `true` if the block would do something if executed.
@@ -358,6 +590,8 @@ impl<'m> Executor<'m> {
             | Command::SetSpindleState { .. }
             | Command::SelectTool(_)
             | Command::Unsupported { .. } => {}
+            // Followed by the run loop, after the block's other commands.
+            Command::CallSubprogram { .. } | Command::ReturnFromSubprogram => {}
         }
     }
 

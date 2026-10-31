@@ -168,6 +168,7 @@ pub fn interpret_to_buffer(
         machine.as_ref(),
         Options {
             block_delete: options.block_delete,
+            ..Options::default()
         },
     );
     let buffer = encode_render_buffer(&result, options.tolerance, |p| {

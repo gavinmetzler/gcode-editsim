@@ -19,6 +19,9 @@
 #                  mirroring, polar input, macro and subprogram calls): a
 #                  warning, its words are data, and later moves are drawn
 #                  without its effect. Moves are never hidden.
+#   subprogram_call, subprogram_return
+#                  M98 (P program, L or leading P digits repeat) and M99:
+#                  the interpreter follows the call within the same file
 #   canned_cycle   G73-G89 cycles, not simulated: each hole is drawn as a
 #                  rapid to its position in the working plane
 #   reference_return, reference_return_other, machine_rapid
@@ -553,12 +556,12 @@ description = "End of program and rewind"
 
 [[m]]
 code = "M98"
-handler = "ignored"
+handler = "subprogram_call"
 description = "Subprogram call"
 words = { optional = ["P", "L"] }
 
 [[m]]
 code = "M99"
-handler = "ignored"
+handler = "subprogram_return"
 description = "Subprogram end"
 words = { optional = ["P"] }

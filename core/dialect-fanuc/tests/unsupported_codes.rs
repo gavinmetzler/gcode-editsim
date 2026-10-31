@@ -53,12 +53,3 @@ fn feed_per_revolution_is_reported_but_path_is_kept() {
     assert_eq!(r.codes(), vec![DiagCode::UnsupportedGCode]);
     assert_eq!(r.moves().len(), 1);
 }
-
-#[test]
-fn subprogram_codes_are_reported() {
-    let r = run("M98 P100\nM99\n");
-    assert_eq!(
-        r.codes(),
-        vec![DiagCode::UnsupportedMCode, DiagCode::UnsupportedMCode]
-    );
-}

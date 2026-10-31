@@ -1,41 +1,47 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { decodeRenderBuffer, type Diagnostic } from "../src/buffer/decode";
-import { latestOnly, lineMarks, segmentRange } from "../src/editor/lines";
+import { buildLineIndex, latestOnly, lineMarks, type LineIndex } from "../src/editor/lines";
 import { SEVERITY } from "../src/generated/render_buffer";
 import { fixture } from "./fixture";
 
-describe("segmentRange", () => {
+describe("buildLineIndex", () => {
   // Fixture segments come from lines 3, 4, 5, 6, 7.
   const rb = decodeRenderBuffer(fixture());
-  const range = (line: number) => segmentRange(rb.header.segmentCount, (i) => rb.segmentLine(i), line);
+  const fixtureIndex = buildLineIndex(rb.header.segmentCount, (i) => rb.segmentLine(i));
+  const of = (lines: number[]) => buildLineIndex(lines.length, (i) => lines[i] ?? 0);
+  const segs = (index: LineIndex, line: number) => Array.from(index.segments(line));
 
-  it("finds a line's segments", () => {
-    expect(range(3)).toEqual({ start: 0, end: 1 });
-    expect(range(6)).toEqual({ start: 3, end: 4 });
-    expect(range(7)).toEqual({ start: 4, end: 5 });
+  it("finds a line's segments in a straight-line program", () => {
+    expect(segs(fixtureIndex, 3)).toEqual([0]);
+    expect(segs(fixtureIndex, 7)).toEqual([4]);
+    expect(segs(fixtureIndex, 2)).toEqual([]);
+    expect(segs(of([1, 2, 2, 2, 5, 5]), 2)).toEqual([1, 2, 3]);
+    expect(segs(of([]), 1)).toEqual([]);
   });
 
-  it("gives an empty range where the line's segments would be", () => {
-    expect(range(1)).toEqual({ start: 0, end: 0 });
-    expect(range(99)).toEqual({ start: 5, end: 5 });
+  it("finds every run of a subprogram line", () => {
+    // Main lines 1, 2, then a subprogram (lines 6, 7) run twice, then 3.
+    const index = of([1, 2, 6, 7, 6, 7, 3]);
+    expect(segs(index, 6)).toEqual([2, 4]);
+    expect(segs(index, 7)).toEqual([3, 5]);
+    expect(segs(index, 3)).toEqual([6]);
   });
 
-  it("finds several segments of one line", () => {
-    const lines = [1, 2, 2, 2, 5, 5, 9];
-    const r = (l: number) => segmentRange(lines.length, (i) => lines[i] ?? 0, l);
-    expect(r(2)).toEqual({ start: 1, end: 4 });
-    expect(r(5)).toEqual({ start: 4, end: 6 });
-    expect(r(3)).toEqual({ start: 4, end: 4 });
-    expect(segmentRange(0, () => 0, 1)).toEqual({ start: 0, end: 0 });
+  it("says where the tool is after a line", () => {
+    const straight = of([1, 2, 2, 2, 5, 5]);
+    expect(straight.lastAfter(2)).toBe(3);
+    // No segments on lines 3 and 4: the tool is where line 2 left it.
+    expect(straight.lastAfter(4)).toBe(3);
+    expect(straight.lastAfter(9)).toBe(5);
+    expect(straight.lastAfter(0)).toBe(-1);
   });
 
-  it("never gives an inverted range, even for unordered lines", () => {
-    const lines = [5, 1, 3, 2];
-    for (let l = 0; l < 7; l += 1) {
-      const { start, end } = segmentRange(lines.length, (i) => lines[i] ?? 0, l);
-      expect(end).toBeGreaterThanOrEqual(start);
-    }
+  it("uses a subprogram line's first run", () => {
+    // Line 6 has two segments per run (2-3, then 5-6).
+    const index = of([1, 2, 6, 6, 7, 6, 6, 7]);
+    expect(index.lastAfter(6)).toBe(3);
+    expect(index.lastAfter(7)).toBe(4);
   });
 });
 

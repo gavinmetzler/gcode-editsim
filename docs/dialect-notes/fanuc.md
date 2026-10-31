@@ -163,7 +163,7 @@ programmed. One note (info) per program says so. G49 is quiet.
 ## Codes that change later moves: ignored, never hidden
 
 These codes change where *later* moves go and are not simulated: G92,
-G52, G10, G65, G68, G51, G51.1, G16, M98, M99 and any unknown G code.
+G52, G10, G65, G68, G51, G51.1, G16 and any unknown G code.
 **Moves are never hidden** (owner decision, 2026-10-31: a backplot drawn
 without their effect is more useful than none). Each gives one
 diagnostic where it appears (a warning; an error for an unknown G code),
@@ -173,7 +173,23 @@ G50, G50.1 and G69 are quiet.
 
 Coordinate shifts (G92, G52, G10, rotation, scaling, mirroring, polar
 input) are **on hold**: left to the community (`docs/WISHLIST.md`).
-Subprograms (M98/M99) come in M3.7.
+
+## Subprograms (M98, M99)
+
+- `O1000` or `:1000` as the first word of a block starts program 1000.
+  The main program is the first program in the file; the others are
+  subprograms it may call.
+- `M98 P1000 L3` runs program 1000 three times; `M98 P31000` does the
+  same (without L, a P of more than four digits holds the repeat count
+  in its leading digits, as on Series 0i). *(unverified: both forms are
+  common; which a control accepts is model-dependent)*
+- M99 returns to the block after the call (or runs the subprogram again
+  while repeats remain). `M99 P` (return to a sequence number) is
+  reported and returns to after the call. M99 in the main program would
+  run it endlessly: it is drawn once and ends there.
+- A program not in the file (stored on the control) gives a warning and
+  the call is skipped. Calls nest at most 10 deep. *(Fanuc documents 4
+  levels for M98 on many models: unverified)*
 
 ## Canned cycles: hole positions only
 
@@ -199,7 +215,6 @@ Each of these produces a diagnostic, never silence:
 | G04 | error | no | X/P is a dwell time, not a move |
 | Canned cycles G73, G74, G76, G81–G89 | warning, once per code | holes only | Each hole drawn as a rapid in the working plane |
 | G95 (feed per revolution) | error | yes | The path is still drawn |
-| M98/M99 (subprograms) | warning | — | Ignored until M3.7; later moves drawn |
 | Unknown G code | error | no (its words are data) | Its effect is unknown; later moves drawn as programmed |
 | Unknown M code | info, once per code | yes | Taken to be machine-specific; see "M codes" |
 | Macro variables and expressions (`#100`, `[...]`) | error | no | The block is skipped |

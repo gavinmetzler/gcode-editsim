@@ -3,7 +3,7 @@
 
 mod common;
 
-use common::{at, codes, moves, run};
+use common::{at, moves, run};
 use ir::DiagCode;
 
 #[test]
@@ -55,12 +55,15 @@ fn moves_after_an_unknown_position_wait_for_a_known_one() {
 }
 
 #[test]
-fn a_subprogram_call_does_not_hide_later_moves() {
-    // Moves are never hidden (owner decision, 2026-10-31). Subprograms are
-    // M3.7; until then the call is reported and later moves are drawn.
+fn a_call_to_a_program_not_in_the_file_does_not_hide_later_moves() {
+    // Moves are never hidden (owner decision, 2026-10-31): the call is
+    // reported and skipped, and later moves are drawn.
     let p = run("G21 G90 G54 G0 X0. Y0. Z5.\nM98 P1000\nG0 X0. Y0. Z5.\nX10.\n");
     assert_eq!(moves(&p).len(), 3);
-    assert!(codes(&p).contains(&DiagCode::UnsupportedMCode));
+    assert!(p
+        .diagnostics
+        .iter()
+        .any(|d| d.code == DiagCode::NotYetSimulated && d.message.contains("O1000")));
 }
 
 #[test]

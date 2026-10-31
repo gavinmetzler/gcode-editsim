@@ -296,7 +296,9 @@ pub struct Program {
 ///
 /// Uses binary search, so `segments` must be in non-decreasing
 /// `src.line` order. That holds for straight-line programs in a single file,
-/// which is all the interpreter produces today. If the line produced no
+/// but not for programs with subprograms (M3.7), whose lines run several
+/// times; for those, build a line index (the UI does: `buildLineIndex` in
+/// `ui/src/editor/lines.ts`). If the line produced no
 /// segments the range is empty and starts where such segments would be
 /// inserted, i.e. at the first segment from a later line.
 ///

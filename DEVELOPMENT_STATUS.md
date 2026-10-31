@@ -166,6 +166,10 @@ Changing any of these is a deliberate, documented change.
   through `normalize_axis_value`, unlike `ArcCenter::Offset`.
 - Axis words use indices into the `AxisSet`, never letters. The arc-offset
   letter (I for X) comes from the **machine file**.
+- **Subprograms (M3.7):** the dialect numbers programs and turns M98/M99
+  into call/return commands; the interpreter follows them (call stack,
+  depth 10, 2,000,000-block limit). The UI's line lookup is a line
+  index, since a subprogram line has segments from every call.
 - Macros: literal numbers only. `#var` or `[...]` in a word gives an error
   and the block is skipped; an assignment gives a warning.
 
@@ -285,14 +289,16 @@ was asked to try a few real programs with the `summary` example.
 - Rapids are straight lines.
 - Speed limits are unused.
 - Not supported:
-  - macros beyond literals
-  - subprograms
-  - canned cycles
+  - macros beyond literals (wishlist)
+  - subprograms in other files (calls within the file work, M3.7)
+  - canned cycles (on hold: hole positions only)
   - cutter compensation
   - G30 positions
-  - coordinate rotation, scaling, mirroring and polar input
+  - coordinate shifts, rotation, scaling, mirroring and polar input (on
+    hold: ignored with a warning)
   - rotary axes on the mill
-- Positions are shown in machine coordinates (M3.5).
+- Positions are shown in machine coordinates (program coordinates are on
+  hold).
 - One real dialect (Fanuc) and one real machine type (3-axis mill). The
   Osai 10 Series dialect and the lathe are stubs; what they found is in
   ARCHITECTURE.md §7.2 and §9.

@@ -125,7 +125,8 @@ These are the project's intended direction. Most are not implemented yet; see th
   - F, S and T words
   - common M codes: stops, program end, spindle, tool change, coolant
 - **Done in M3.0:** machine-specific M codes are noted once and skipped rather than reported as errors (a machine file can list them in `ignore_codes`); tool length compensation is noted, not simulated; G92 is ignored with a warning for now.
-- **Next (M3):** subprograms and simple macro variables. Coordinate shifts and canned cycles are on hold, left to the community: they are reported and drawn without their effect, never hiding moves.
+- **Subprograms (M3.7):** M98/M99 calls to programs in the same file, with repeat counts, are followed and drawn.
+- **Next (M3):** extended statistics and large programs. Macro variables are on the wishlist. Coordinate shifts and canned cycles are on hold, left to the community: they are reported and drawn without their effect, never hiding moves.
 - **Then (M6):** cutter radius compensation.
 - **Not planned:** tool length (height) and wear compensation. The backplot shows the path as programmed and notes these codes.
 - **Later:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.

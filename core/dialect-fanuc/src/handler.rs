@@ -34,6 +34,10 @@ pub(crate) enum Handler {
     /// A canned cycle (G73-G89): each hole is drawn as a rapid to its
     /// position in the working plane.
     CannedCycle,
+    /// M98: call a subprogram in the same file.
+    SubprogramCall,
+    /// M99: return from a subprogram.
+    SubprogramReturn,
     /// G28: rapid via an intermediate point to the reference position.
     ReferenceReturn,
     /// G30: as G28 but to another reference position, which is not modelled.
@@ -74,6 +78,8 @@ impl Handler {
             "unsupported" => Self::Unsupported,
             "ignored" => Self::Ignored,
             "canned_cycle" => Self::CannedCycle,
+            "subprogram_call" => Self::SubprogramCall,
+            "subprogram_return" => Self::SubprogramReturn,
             "reference_return" => Self::ReferenceReturn,
             "reference_return_other" => Self::ReferenceReturnOther,
             "machine_rapid" => Self::MachineRapid,

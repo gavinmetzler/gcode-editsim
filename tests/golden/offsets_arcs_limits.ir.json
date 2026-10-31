@@ -254,7 +254,7 @@
       "line": 28,
       "severity": "Info",
       "code": "NotYetSimulated",
-      "message": "blocks after the end of the program are not executed"
+      "message": "blocks from here are not run: they come after the end of the program and are not part of a subprogram it calls"
     }
   ],
   "tools_used": [
