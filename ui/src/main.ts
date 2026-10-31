@@ -1,7 +1,9 @@
 // The UI: a toolbar, the program editor, the toolpath viewport, the
-// diagnostics panel, and a status line; statistics open in a dialog. Editing re-runs the
-// program; the cursor's line is highlighted in the toolpath, and clicking
-// the toolpath or a diagnostic jumps to its line.
+// diagnostics panel, and a status line; statistics open in a dialog. The
+// cursor's line is highlighted in the toolpath, and clicking the toolpath
+// or a diagnostic jumps to its line. Edits do not re-run the program: they
+// mark the results out of date (and turn line sync off) until the user
+// refreshes with the button or F5.
 //
 // No G-code meaning here: the core interprets, the UI shows what it got.
 
@@ -11,6 +13,7 @@ import sample from "../../tests/golden/basic_mill.nc?raw";
 import { decodeRenderBuffer, type RenderBuffer } from "./buffer/decode";
 import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
+import { Freshness } from "./freshness";
 import { latestOnly, lineMarks, segmentRange } from "./editor/lines";
 import {
   inApp,
@@ -28,9 +31,6 @@ import { preferArrivingMove, readoutRows, restingPoint, type ToolPoint } from ".
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
-
-/** Quiet time after an edit before the program is run again. */
-const EDIT_DELAY_MS = 300;
 
 const status = el("span", { className: "status" });
 const setStatus = (text: string): void => {
@@ -88,10 +88,20 @@ async function main(app: HTMLElement): Promise<void> {
   const viewport = new Viewport(viewportBox);
   const readout = el("div", { className: "readout" });
   readout.hidden = true;
-  viewportBox.append(readout);
+  const refreshButton = el("button", { type: "button", textContent: "Refresh (F5)" });
+  const staleBar = el(
+    "div",
+    { className: "stale-bar" },
+    el("span", { textContent: "Program edited: the view is out of date." }),
+    refreshButton,
+  );
+  staleBar.hidden = true;
+  viewportBox.append(readout, staleBar);
   const panel = new DiagnosticsPanel(panelBox);
+  const freshness = new Freshness();
   panel.onLine = (line) => {
-    editor.revealLine(line);
+    // Line numbers may have moved since the run: no sync while out of date.
+    if (!freshness.stale) editor.revealLine(line);
   };
   (Object.keys(VIEWS) as ViewName[]).forEach((name, i) => {
     viewButtons[i]?.addEventListener("click", () => {
@@ -129,7 +139,8 @@ async function main(app: HTMLElement): Promise<void> {
       readout.hidden = true;
       return;
     }
-    const title = hovered ? "Under the pointer" : `After line ${String(cursorLine)}`;
+    const title =
+      (hovered ? "Under the pointer" : `After line ${String(cursorLine)}`) + (freshness.stale ? " (out of date)" : "");
     readout.replaceChildren(
       el("div", { className: "title", textContent: title }),
       ...readoutRows(rb, p).map((r) =>
@@ -139,7 +150,16 @@ async function main(app: HTMLElement): Promise<void> {
     readout.hidden = false;
   };
 
+  /** Marks everything shown as out of date (or current again), and turns
+   *  line sync off while it is out of date. */
+  const showFreshness = (): void => {
+    const stale = freshness.stale && current !== null;
+    staleBar.hidden = !stale;
+    for (const box of [viewportBox, panelBox, editorBox]) box.classList.toggle("stale", stale);
+  };
+
   const showLine = (line: number, quiet = false): void => {
+    if (freshness.stale) return;
     cursorLine = line;
     if (!current) return;
     const rb = current;
@@ -157,16 +177,22 @@ async function main(app: HTMLElement): Promise<void> {
   };
 
   const runner = latestOnly(
-    async () => decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), fileName)),
-    (rb) => {
+    async () => {
+      const token = freshness.runStarted();
+      const rb = decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), fileName));
+      return { rb, token };
+    },
+    ({ rb, token }) => {
       current = rb;
+      freshness.resultShown(token);
+      showFreshness();
       statsButton.disabled = false;
       viewport.show(buildToolpath(rb), fitNext);
       fitNext = false;
       editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
       panel.show(rb);
       hovered = null;
-      showLine(cursorLine, true);
+      showLine(editor.cursorLineNumber(), true);
       const d = rb.header.diagCount;
       setStatus(
         `${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to find its line.`,
@@ -180,13 +206,28 @@ async function main(app: HTMLElement): Promise<void> {
       hovered = null;
       resting = null;
       showMarker();
+      showFreshness();
     },
-    EDIT_DELAY_MS,
+    // Never scheduled: runs start from a refresh or a load, not a timer.
+    0,
   );
 
-  editor.onChange = () => {
-    runner.schedule();
+  const refresh = (): void => {
+    void runner.runNow();
   };
+  editor.onChange = () => {
+    freshness.edited();
+    showFreshness();
+    showMarker();
+  };
+  refreshButton.addEventListener("click", refresh);
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "F5") {
+      // Also stops the web view from reloading the page.
+      e.preventDefault();
+      refresh();
+    }
+  });
   editor.onCursorLine = (line) => {
     showLine(line);
   };
@@ -195,10 +236,10 @@ async function main(app: HTMLElement): Promise<void> {
     showMarker();
   };
   statsButton.addEventListener("click", () => {
-    if (current) showStatsDialog(current, fileName);
+    if (current) showStatsDialog(current, freshness.stale ? `${fileName} (out of date: refresh first)` : fileName);
   });
   viewport.onPick = (pick) => {
-    if (!current || !pick) return;
+    if (!current || !pick || freshness.stale) return;
     // Moving the cursor highlights the line's segments (onCursorLine).
     editor.revealLine(current.segment(pick.segment).srcLine);
   };

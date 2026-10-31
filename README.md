@@ -195,7 +195,7 @@ See [Trying it out](#trying-it-out).
 - **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length. This is intended: height and wear compensation are not planned, and the path is shown as programmed.
 - **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M6).
 - **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used (M6).
-- **The app can't save files yet, and rapids are drawn solid rather than dashed.** Both are fixed in M2.8.
+- **The app can't save files yet** (M2.8b).
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 
 ### M2 – Render Buffer and Minimal UI (finishing)
@@ -207,7 +207,8 @@ See [Trying it out](#trying-it-out).
 - [x] TypeScript UI, three.js viewport, CodeMirror editor with line and toolpath sync
 - [x] Diagnostics panel, and statistics on demand in a dialog
 - [x] Flatpak package for Linux
-- [ ] M2.8: saving files, machine file choice, dashed rapids, wrap-up
+- [x] M2.8a: refresh on demand after edits, dashed rapids
+- [ ] M2.8b: saving files, machine folder, wrap-up
 
 ### Later Milestones
 
@@ -231,7 +232,7 @@ cd ui && npm ci && npm run build && cd ..   # the app embeds the built UI
 cd app/shell && cargo run
 ```
 
-The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. A yellow arrow marks the tool: it sits where the tool is after the cursor's line, and follows the pointer over the toolpath (snapping to the ends of moves), with its position, tool and feed shown in the corner. Edits re-run the program as you type (saving comes in M2.8). Under the toolpath, the **Diagnostics** panel lists every problem (click one to go to its line). **Statistics…** in the toolbar works out path lengths, bounds and per-tool figures on demand and shows them in a dialog.
+The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. A yellow arrow marks the tool: it sits where the tool is after the cursor's line, and follows the pointer over the toolpath (snapping to the ends of moves), with its position, tool and feed shown in the corner. Editing does not redraw straight away: the view gets a red border and a **Refresh (F5)** button, and clicking the toolpath or a diagnostic does nothing until you refresh, because line numbers may have moved (saving comes in M2.8b). Under the toolpath, the **Diagnostics** panel lists every problem (click one to go to its line). **Statistics…** in the toolbar works out path lengths, bounds and per-tool figures on demand and shows them in a dialog.
 
 With [Rust](https://rustup.rs) installed, you can also run a program through the engine and see the result as JSON:
 
@@ -301,6 +302,7 @@ The project is in active development. Architectural decisions and development co
 - [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md): where the project stands, the decisions made so far, open issues and lessons learned. Start here when picking up work.
 - [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md) (finishing) and [M3](docs/plans/M3_PLAN.md) (next).
 - [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
+- [docs/WISHLIST.md](docs/WISHLIST.md): ideas kept for later, not yet planned.
 - [docs/machine-definition.md](docs/machine-definition.md): the machine definition file format.
 
 Contributions, technical feedback and suggestions are welcome as the project evolves.

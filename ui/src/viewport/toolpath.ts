@@ -87,6 +87,21 @@ export interface Toolpath {
   readonly bounds: { readonly min: Rgb; readonly max: Rgb } | null;
 }
 
+/**
+ * Copies the vertices that `index` refers to, in index order, `size`
+ * numbers each: an indexed line list made non-indexed. Dashed lines need
+ * this, because three.js measures dash distances only along non-indexed
+ * geometry. Vertex `k` of the result is vertex `index[k]` of `values`, so
+ * picking maps back through `index` unchanged.
+ */
+export function expandIndexed(values: Float32Array, index: Uint32Array, size: number): Float32Array {
+  const out = new Float32Array(index.length * size);
+  index.forEach((v, k) => {
+    out.set(values.subarray(v * size, v * size + size), k * size);
+  });
+  return out;
+}
+
 function linear(c: Rgb): Rgb {
   return [srgbToLinear(c[0]), srgbToLinear(c[1]), srgbToLinear(c[2])];
 }

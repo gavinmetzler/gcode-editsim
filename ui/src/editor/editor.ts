@@ -92,6 +92,12 @@ export class GcodeEditor {
     this.view.setState(EditorState.create({ doc: text, extensions: this.extensions }));
   }
 
+  /** The 1-based line the cursor is on. */
+  cursorLineNumber(): number {
+    const state = this.view.state;
+    return state.doc.lineAt(state.selection.main.head).number;
+  }
+
   /** Number of lines in the text. */
   lineCount(): number {
     return this.view.state.doc.lines;
