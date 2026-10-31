@@ -26,6 +26,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { ToolPoint } from "./readout";
 import { MARKER, markerShape } from "./marker";
+import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
 import { expandIndexed, type Toolpath } from "./toolpath";
 import { VIEWS, fitOrtho, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
@@ -64,6 +65,12 @@ export class Viewport {
   private readonly overlay = document.createElementNS(SVG, "svg");
   /** Where the marker's tip is (machine coordinates), or null. */
   private markerPoint: Vec3 | null = null;
+  /** Measure mode, the measurement shown, whether a measuring drag is in
+   *  progress, and the node the pointer is snapped to (measure mode). */
+  private measuring = false;
+  private measurement: Measurement | null = null;
+  private dragging = false;
+  private snapped: Vec3 | null = null;
   private hoverFrame = 0;
 
   /** Called with the toolpath point a click picked (snapped as for
@@ -71,8 +78,12 @@ export class Viewport {
   onPick: (point: ToolPoint | null) => void = () => undefined;
 
   /** Called as the pointer moves over the toolpath (snapped to an end point
-   *  when near one), and with null when it is over nothing. */
+   *  when near one), and with null when it is over nothing. Not called in
+   *  measure mode. */
   onHover: (point: ToolPoint | null) => void = () => undefined;
+
+  /** Called as a measurement changes (null when it is cleared). */
+  onMeasure: (measurement: Measurement | null) => void = () => undefined;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new WebGLRenderer({ antialias: true });
@@ -90,10 +101,41 @@ export class Viewport {
     container.appendChild(this.overlay);
 
     const canvas = this.renderer.domElement;
+    // In measure mode, a left press on a node starts a measurement. This
+    // listens on the container in the capture phase, so it runs before the
+    // orbit controls (on the canvas) and can keep them from orbiting.
+    container.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (!this.measuring || e.button !== 0 || e.target !== canvas) return;
+        const p = this.pointAt(e.clientX, e.clientY);
+        if (!p) return; // Not on a node: orbit as usual.
+        e.stopPropagation();
+        e.preventDefault();
+        canvas.setPointerCapture(e.pointerId);
+        this.dragging = true;
+        this.measurement = { start: p.point, end: null };
+        this.snapped = p.point;
+        this.drawOverlay();
+        this.onMeasure(this.measurement);
+      },
+      { capture: true },
+    );
     canvas.addEventListener("pointerdown", (e) => {
       this.pointerDown = { x: e.clientX, y: e.clientY };
     });
     canvas.addEventListener("pointerup", (e) => {
+      if (this.measuring) {
+        this.pointerDown = null;
+        if (this.dragging) {
+          this.dragging = false;
+          // Released without reaching a second node: no measurement.
+          if (!this.measurement?.end) this.measurement = null;
+          this.drawOverlay();
+          this.onMeasure(this.measurement);
+        }
+        return;
+      }
       const down = this.pointerDown;
       this.pointerDown = null;
       // A drag orbits; only a click (little movement) picks.
@@ -102,16 +144,34 @@ export class Viewport {
       }
     });
     canvas.addEventListener("pointermove", (e) => {
-      // While a button is down the view is orbiting or panning.
-      if (e.buttons !== 0) return;
+      // While a button is down the view is orbiting or panning, unless a
+      // measuring drag is in progress.
+      if (e.buttons !== 0 && !this.dragging) return;
       const { clientX, clientY } = e;
       cancelAnimationFrame(this.hoverFrame);
       this.hoverFrame = requestAnimationFrame(() => {
-        this.onHover(this.pointAt(clientX, clientY));
+        const p = this.pointAt(clientX, clientY);
+        if (!this.measuring) {
+          this.onHover(p);
+          return;
+        }
+        this.snapped = p?.point ?? null;
+        const ms = this.measurement;
+        // The end follows the last node reached that is not the start.
+        if (this.dragging && ms && p && !p.point.every((c, k) => c === ms.start[k])) {
+          this.measurement = { start: ms.start, end: p.point };
+          this.onMeasure(this.measurement);
+        }
+        this.drawOverlay();
       });
     });
     canvas.addEventListener("pointerleave", () => {
       cancelAnimationFrame(this.hoverFrame);
+      if (this.measuring) {
+        this.snapped = null;
+        this.drawOverlay();
+        return;
+      }
       this.onHover(null);
     });
     this.resizeObserver = new ResizeObserver(() => {
@@ -294,39 +354,82 @@ export class Viewport {
     if (same) return;
     this.markerPoint = next;
     // Only the overlay changes: the toolpath is not redrawn.
-    this.drawMarker();
+    this.drawOverlay();
   }
 
-  /** Draws the marker on the overlay for the current camera. */
-  private drawMarker(): void {
-    const p = this.markerPoint;
-    if (!p) {
-      this.overlay.replaceChildren();
-      return;
-    }
+  /** Turns measure mode on or off. In it, a left drag from one move end
+   *  point to another measures between them; a drag starting elsewhere
+   *  still orbits. The tool marker is hidden, a ring shows the snapped
+   *  node, and clicks do not pick. Turning it off clears the measurement. */
+  setMeasureMode(on: boolean): void {
+    this.measuring = on;
+    this.measurement = null;
+    this.dragging = false;
+    this.snapped = null;
+    this.drawOverlay();
+    this.onMeasure(null);
+  }
+
+  /** Whether measure mode is on. */
+  get measureMode(): boolean {
+    return this.measuring;
+  }
+
+  /** Draws the overlay for the current camera: the tool marker, or in
+   *  measure mode the measurement line and the snapped node. */
+  private drawOverlay(): void {
     this.camera.updateMatrixWorld();
     const m = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse).elements;
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
     const e = (k: number): number => m[k] ?? 0;
-    const sx = (x: number, y: number, z: number): number =>
-      ((e(0) * x + e(4) * y + e(8) * z + e(12) + 1) / 2) * width;
-    const sy = (x: number, y: number, z: number): number =>
-      ((1 - (e(1) * x + e(5) * y + e(9) * z + e(13))) / 2) * height;
-    const [x, y, z] = p;
-    const tx = sx(x, y, z);
-    const ty = sy(x, y, z);
+    const screen = (p: Vec3): [number, number] => {
+      const [x, y, z] = p;
+      return [
+        ((e(0) * x + e(4) * y + e(8) * z + e(12) + 1) / 2) * width,
+        ((1 - (e(1) * x + e(5) * y + e(9) * z + e(13))) / 2) * height,
+      ];
+    };
+    const el = (tag: string, attrs: Record<string, string | number>): SVGElement => {
+      const node = document.createElementNS(SVG, tag);
+      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+      return node;
+    };
+
+    if (this.measuring) {
+      const parts: SVGElement[] = [];
+      const ms = this.measurement;
+      if (ms) {
+        const [ax, ay] = screen(ms.start);
+        if (ms.end) {
+          const [bx, by] = screen(ms.end);
+          parts.push(
+            el("line", { x1: ax, y1: ay, x2: bx, y2: by, stroke: MARKER_COLOR, "stroke-width": 3 }),
+            el("circle", { cx: bx, cy: by, r: 4, fill: MARKER_COLOR }),
+          );
+        }
+        parts.push(el("circle", { cx: ax, cy: ay, r: 4, fill: MARKER_COLOR }));
+      }
+      if (this.snapped) {
+        const [sx, sy] = screen(this.snapped);
+        parts.push(el("circle", { cx: sx, cy: sy, r: 8, fill: "none", stroke: "#ffffff", "stroke-width": 2 }));
+      }
+      this.overlay.replaceChildren(...parts);
+      return;
+    }
+
+    const p = this.markerPoint;
+    if (!p) {
+      this.overlay.replaceChildren();
+      return;
+    }
+    const [tx, ty] = screen(p);
     // One mm along +Z, on screen. Linear (orthographic), so read off the
     // matrix rather than projecting a second point far from the origin.
     const zx = (e(8) / 2) * width;
     const zy = (-e(9) / 2) * height;
     const pxPerMm = 1 / orthoWorldPerPixel(this.halfHeight, this.camera.zoom, height);
     const shape = markerShape(tx, ty, zx, zy, pxPerMm);
-    const el = (tag: string, attrs: Record<string, string | number>): SVGElement => {
-      const node = document.createElementNS(SVG, tag);
-      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
-      return node;
-    };
     if (shape.kind === "ring") {
       this.overlay.replaceChildren(
         el("circle", { cx: shape.x, cy: shape.y, r: shape.r, fill: "none", stroke: MARKER_COLOR, "stroke-width": 3 }),
@@ -389,6 +492,13 @@ export class Viewport {
     this.markers = null;
     this.toolpath = null;
     this.screen = null;
+    // A new toolpath has new nodes: an old measurement may not match it.
+    if (this.measurement || this.snapped) {
+      this.measurement = null;
+      this.snapped = null;
+      this.dragging = false;
+      this.onMeasure(null);
+    }
   }
 
   private resize(): void {
@@ -418,7 +528,7 @@ export class Viewport {
       this.frame = 0;
       this.renderer.render(this.scene, this.camera);
       // The camera may have moved: put the marker where the point now is.
-      this.drawMarker();
+      this.drawOverlay();
     });
   }
 }

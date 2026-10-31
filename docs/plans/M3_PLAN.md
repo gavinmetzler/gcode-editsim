@@ -173,6 +173,24 @@ because they help with every test of the later steps.
   segment), and see the distance plus ΔX, ΔY and ΔZ. Esc cancels.
 - The measurement stays drawn until cleared.
 
+**M3.3 as built (owner's design, 2026-10-31):**
+- A **Measure** button turns measure mode on; it stays on until clicked
+  again.
+- A measurement is a left **drag from one node to another** (move end
+  points, snapping within 15 px). A yellow line joins them, drawn on the
+  overlay so it never redraws the toolpath.
+- The readout becomes a measurement panel: start, end and ΔX/ΔY/ΔZ
+  (machine coordinates), and the 3D distance.
+- Releasing keeps the line and the numbers; pressing on another node
+  starts a new measurement and clears the old one.
+- Agent's choices, for review: a press away from a node still orbits (so
+  the view can be turned between measurements); while dragging, the end
+  is the last node reached, and releasing without reaching one leaves no
+  measurement; the tool arrow is hidden in measure mode and a white ring
+  shows the snapped node; clicks in measure mode do not move the editor
+  cursor; leaving the mode clears the measurement. Pure parts in
+  `ui/src/viewport/measure.ts`.
+
 ### M3.4: Orbit around the snapped point
 
 - If a point is snapped when a rotate drag starts, the view orbits around
