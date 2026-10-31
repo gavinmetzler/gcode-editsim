@@ -34,6 +34,7 @@ import {
 import { DiagnosticsPanel } from "./panels/panel";
 import { showMachinesDialog } from "./machines-dialog";
 import { showStatsDialog } from "./panels/stats-dialog";
+import { measurePanel, type Measurement } from "./viewport/measure";
 import {
   preferArrivingMove,
   readoutRows,
@@ -84,6 +85,12 @@ async function main(app: HTMLElement): Promise<void> {
   );
   const fitButton = el("button", { type: "button", textContent: "Fit" });
   const statsButton = el("button", { type: "button", textContent: "Statistics…", disabled: true });
+  const measureButton = el("button", {
+    type: "button",
+    textContent: "Measure",
+    title: "Measure mode: drag from one node to another. Click again to leave.",
+    className: "toggle",
+  });
   const fileLabel = el("span", { className: "file" });
   const editorBox = el("div", { className: "editor" });
   const viewportBox = el("div", { className: "viewport" });
@@ -103,6 +110,7 @@ async function main(app: HTMLElement): Promise<void> {
       sampleButton,
       fileLabel,
       statsButton,
+      measureButton,
       // The view buttons wrap to the next row together, kept to the right.
       el("span", { className: "views" }, ...viewButtons, fitButton),
     ),
@@ -180,6 +188,8 @@ async function main(app: HTMLElement): Promise<void> {
   /** What the readout shows now, so an unchanged point is not redrawn. */
   let shownReadout = "";
   const showMarker = (): void => {
+    // In measure mode the panel shows the measurement instead.
+    if (viewport.measureMode) return;
     const rb = current;
     const p = hovered ?? resting;
     viewport.setMarker(p?.point ?? null);
@@ -308,6 +318,44 @@ async function main(app: HTMLElement): Promise<void> {
     hovered = p && current ? preferArrivingMove(current, p) : null;
     showMarker();
   };
+  /** Shows the measurement panel in place of the hover readout. */
+  const showMeasurement = (m: Measurement | null): void => {
+    const panel = measurePanel(m);
+    const cells = (values: readonly string[], cls = ""): HTMLElement[] =>
+      values.map((v) => el("span", { className: `num ${cls}`, textContent: v }));
+    readout.replaceChildren(
+      el("div", { className: "title", textContent: "Measure" }),
+      el("div", { className: "caption", textContent: "Machine coordinates" }),
+      el(
+        "div",
+        { className: "measure-grid" },
+        el("span"),
+        ...cells(["X", "Y", "Z"], "head"),
+        ...panel.rows.flatMap((r) => [el("span", { className: "label", textContent: r.label }), ...cells(r.values)]),
+      ),
+      ...(panel.distance === null
+        ? []
+        : [el("div", { className: "row distance" }, el("span", { textContent: "Distance" }), el("span", { textContent: panel.distance }))]),
+      ...(panel.hint === null ? [] : [el("div", { className: "hint", textContent: panel.hint })]),
+    );
+    readout.hidden = false;
+  };
+  viewport.onMeasure = (m) => {
+    if (viewport.measureMode) showMeasurement(m);
+  };
+  measureButton.addEventListener("click", () => {
+    const on = !viewport.measureMode;
+    measureButton.classList.toggle("active", on);
+    measureButton.setAttribute("aria-pressed", String(on));
+    viewport.setMeasureMode(on);
+    if (on) {
+      viewport.setMarker(null);
+      showMeasurement(null);
+    } else {
+      shownReadout = "";
+      showMarker();
+    }
+  });
   statsButton.addEventListener("click", () => {
     if (current) showStatsDialog(current, freshness.stale ? `${file.name} (out of date: refresh first)` : file.name);
   });

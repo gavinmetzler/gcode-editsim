@@ -81,12 +81,12 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 and 3.2 were brought forward and are done):
+**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 to 3.3 are done):
 
 0. Real-program corpus (private, run locally) and lenient handling of ignorable codes
 1. Tool marker *(done)*
 2. Hover info *(done)*
-3. Measure between two points
+3. Measure between two points *(done)*
 4. Orbit around the snapped point
 5. Program coordinates and coordinate shifts (G92, G52, G10, Osai origins); approximate drawing instead of hidden moves (likely render buffer v2)
 6. Canned cycles
