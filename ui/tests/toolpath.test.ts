@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { decodeRenderBuffer } from "../src/buffer/decode";
 import { SEG_FLAG, SEG_KIND } from "../src/generated/render_buffer";
-import { PALETTE, buildToolpath, segmentColor, srgbToLinear, type Rgb } from "../src/viewport/toolpath";
+import { PALETTE, buildToolpath, expandIndexed, segmentColor, srgbToLinear, type Rgb } from "../src/viewport/toolpath";
 import { fixture } from "./fixture";
 
 const rb = decodeRenderBuffer(fixture());
@@ -69,5 +69,20 @@ describe("segmentColor", () => {
     expect(segmentColor(SEG_KIND.ToolChange, 0)).toBe(PALETTE.toolChange);
     expect(segmentColor(SEG_KIND.ProgramEnd, 0)).toBe(PALETTE.programEnd);
     expect(segmentColor(SEG_KIND.CoolantFlood, 0)).toBe(PALETTE.event);
+  });
+});
+
+describe("expandIndexed", () => {
+  it("copies the indexed vertices in index order", () => {
+    const values = Float32Array.from([0, 1, 2, 10, 11, 12, 20, 21, 22]);
+    const out = expandIndexed(values, Uint32Array.from([0, 2, 2, 1]), 3);
+    expect(Array.from(out)).toEqual([0, 1, 2, 20, 21, 22, 20, 21, 22, 10, 11, 12]);
+  });
+
+  it("expands the fixture's rapids so vertex k is rapidIndex[k]", () => {
+    const out = expandIndexed(tp.positions, tp.rapidIndex, 3);
+    tp.rapidIndex.forEach((v, k) => {
+      expect(Array.from(out.subarray(k * 3, k * 3 + 3))).toEqual(Array.from(tp.positions.subarray(v * 3, v * 3 + 3)));
+    });
   });
 });

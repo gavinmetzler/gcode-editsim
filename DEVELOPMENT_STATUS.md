@@ -19,7 +19,8 @@ ARCHITECTURE.md §13.
 
 **M1 (core skeleton) is complete, with known limitations** (section 6).
 **M2 (render buffer and minimal desktop UI): M2.0–M2.7 are merged; M2.8
-(saving, machine file choice, dashed rapids, wrap-up) is next.** Then M3,
+is in two PRs: M2.8a (refresh on demand after edits, dashed rapids,
+the wishlist) and M2.8b (saving, the machine folder, wrap-up).** Then M3,
 a dependable backplotter (`docs/plans/M3_PLAN.md`).
 
 The app is usable today as an editor beside a synced 3D backplot of Fanuc
@@ -29,7 +30,7 @@ milling programs, with diagnostics and statistics.
 |---|---|
 | Tests | 473 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 58 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
-| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter, re-run on edit) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); served by the app shell (embedded `ui/dist`). No saving yet |
+| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); served by the app shell (embedded `ui/dist`). No saving yet |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
@@ -74,6 +75,10 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
   explicit instruction (CLAUDE.md rule 9). The owner approved each change
   so far one at a time (the UI and Tauri jobs, the Flatpak job, the
   per-area path filters); ask again for anything else.
+- **Check requests against the plan before building** (owner, 2026-10-31).
+  If a request is already planned for a later step, or not planned at
+  all, say so and ask where it belongs before writing any code. Ideas
+  that are not planned yet go in `docs/WISHLIST.md`.
 - **Private material:** the Osai 10 Series manual is in the owner's
   private repository `gcode-editsim-manuals`. Cite it by title and page
   with short quotes only; never copy it into this repository. The same
@@ -114,6 +119,7 @@ User-facing documentation:
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
 - `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`: milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
+- `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.
 
 ---
@@ -216,7 +222,12 @@ Changing any of these is a deliberate, documented change.
   rad, because orbit controls cannot look exactly along their up axis.
 - Colours are sRGB converted to linear light.
 - The editor's text is what is interpreted, so line numbers always agree.
-  Edits re-run after 300 ms; stale results are dropped.
+  Edits do not re-run the program (M2.8a, owner's request): they mark the
+  results out of date with a red border and a **Refresh (F5)** button,
+  and line sync is off until the refresh, since lines may have moved.
+  Loading a file or changing the machine or dialect runs at once. A run
+  overtaken by a newer one is dropped. Automatic updates may come back as
+  a setting (`docs/WISHLIST.md`).
 - Statistics are worked out in the UI from the render buffer, only when
   the user asks (a dialog, owner's request: on demand, all in one view); the units
   the program used are not in the buffer, so they are not shown.
@@ -274,9 +285,8 @@ was asked to try a few real programs with the `summary` example.
   - G30 positions
   - coordinate rotation, scaling, mirroring and polar input
   - rotary axes on the mill
-- The app cannot save yet; rapids are drawn solid instead of dashed
-  (three.js line distances need non-indexed geometry); positions are
-  shown in machine coordinates. The first two are M2.8, the last M3.5.
+- The app cannot save yet (M2.8b); positions are shown in machine
+  coordinates (M3.5).
 - One real dialect (Fanuc) and one real machine type (3-axis mill). The
   Osai 10 Series dialect and the lathe are stubs; what they found is in
   ARCHITECTURE.md §7.2 and §9.

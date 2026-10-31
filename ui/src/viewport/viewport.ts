@@ -33,7 +33,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { ToolPoint } from "./readout";
 import { snapEnd } from "./snap";
-import type { Toolpath } from "./toolpath";
+import { expandIndexed, type Toolpath } from "./toolpath";
 import { VIEWS, fitOrtho, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
 /** How close (in screen pixels) a click must be to pick a line or marker. */
@@ -180,7 +180,15 @@ export class Viewport {
     });
     const markerMaterial = new PointsMaterial({ vertexColors: true, size: 7, sizeAttenuation: false });
     this.feed = new LineSegments(lines(toolpath.feedIndex), feedMaterial);
-    this.rapid = new LineSegments(lines(toolpath.rapidIndex), rapidMaterial);
+    // Rapids are non-indexed: dash distances need it. Vertex k is
+    // rapidIndex[k], so picking maps back the same way as for indexed lines.
+    const rapidGeometry = new BufferGeometry();
+    rapidGeometry.setAttribute(
+      "position",
+      new BufferAttribute(expandIndexed(toolpath.positions, toolpath.rapidIndex, 3), 3),
+    );
+    rapidGeometry.setAttribute("color", new BufferAttribute(expandIndexed(toolpath.colors, toolpath.rapidIndex, 3), 3));
+    this.rapid = new LineSegments(rapidGeometry, rapidMaterial);
     this.rapid.computeLineDistances();
     const markerGeometry = new BufferGeometry();
     markerGeometry.setAttribute("position", new BufferAttribute(toolpath.eventPositions, 3));
@@ -345,7 +353,8 @@ export class Viewport {
         ? null
         : { segment, vertex: range.first, event: true, point: hit.point };
     }
-    // For indexed lines, `index` is the position in the index list.
+    // `index` is the position in the index list: for the indexed feed lines
+    // directly, and for the expanded rapids because vertex k is index[k].
     const lines = hit.object === this.feed ? toolpath.feedIndex : toolpath.rapidIndex;
     const vertex = lines[hit.index];
     const segment = vertex === undefined ? undefined : toolpath.vertexSegment[vertex];

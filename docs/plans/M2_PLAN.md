@@ -269,12 +269,28 @@ Linux CI build job).
 
 ### M2.8: Wrap-up
 
+Two PRs (owner, 2026-10-31).
+
+**M2.8a: refresh on demand, dashed rapids, wishlist** *(done)*
+- **Refresh on demand** (owner's request, not in the original plan): on a
+  large program, re-running after every edit makes typing feel slow, and
+  half-typed text is often broken. Edits now mark the view out of date: a
+  red border and a **Refresh (F5)** button on the view, the diagnostics
+  and gutter marks dimmed, and line sync off (clicking the toolpath or a
+  diagnostic does nothing) until the refresh, because line numbers may
+  have moved. Loading a file or changing the machine or dialect still
+  runs at once. `ui/src/freshness.ts` (pure, tested) tracks it.
+- **Dashed rapids:** fixed. Rapids are drawn from a non-indexed copy of
+  their vertices, so three.js can measure dash distances.
+- **`docs/WISHLIST.md`:** started, with a settings dialog whose first
+  option is automatic updates versus refresh on demand.
+
+**M2.8b: saving, machine folder, wrap-up**
 - **Saving:** Save and Save As through a native file dialog (the open
   file's real path is needed to save over it).
 - **Machine files:** the toolbar already lists the shipped example and
   the files in the user's machine folder; make that folder easy to find
   and the list easy to refresh.
-- **Dashed rapids:** fix the dashes (see M2.5).
 - **Flatpak:** a new build for the owner to try.
 - Update the docs: README "Trying it out" for the app, ARCHITECTURE.md
   changes, and `DEVELOPMENT_STATUS.md`.
