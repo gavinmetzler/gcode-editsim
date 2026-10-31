@@ -1,7 +1,7 @@
 # ui
 
 The TypeScript user interface: CodeMirror editor, three.js toolpath view,
-and the diagnostics and statistics panel. Plain TypeScript (no framework),
+the diagnostics panel and the statistics dialog. Plain TypeScript (no framework),
 built with Vite into `dist/`, which the desktop app embeds. It contains no
 G-code meaning: it shows the render buffer the core produced.
 

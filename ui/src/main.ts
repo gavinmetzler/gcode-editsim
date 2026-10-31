@@ -1,5 +1,5 @@
 // The UI: a toolbar, the program editor, the toolpath viewport, the
-// diagnostics and statistics panel, and a status line. Editing re-runs the
+// diagnostics panel, and a status line; statistics open in a dialog. Editing re-runs the
 // program; the cursor's line is highlighted in the toolpath, and clicking
 // the toolpath or a diagnostic jumps to its line.
 //
@@ -9,6 +9,7 @@ import "./style.css";
 
 import sample from "../../tests/golden/basic_mill.nc?raw";
 import { decodeRenderBuffer, type RenderBuffer } from "./buffer/decode";
+import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
 import { latestOnly, lineMarks, segmentRange } from "./editor/lines";
 import {
@@ -21,24 +22,14 @@ import {
   type MachineEntry,
 } from "./ipc/backend";
 import { readProgramFile } from "./open-file";
-import { InfoPanel } from "./panels/panel";
+import { DiagnosticsPanel } from "./panels/panel";
+import { showStatsDialog } from "./panels/stats-dialog";
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
 
 /** Quiet time after an edit before the program is run again. */
 const EDIT_DELAY_MS = 300;
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  props: Partial<HTMLElementTagNameMap[K]> = {},
-  ...children: (Node | string)[]
-): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  Object.assign(e, props);
-  e.append(...children);
-  return e;
-}
 
 const status = el("span", { className: "status" });
 const setStatus = (text: string): void => {
@@ -55,6 +46,7 @@ async function main(app: HTMLElement): Promise<void> {
     el("button", { type: "button", textContent: VIEWS[name].label, className: "view" }),
   );
   const fitButton = el("button", { type: "button", textContent: "Fit" });
+  const statsButton = el("button", { type: "button", textContent: "Statistics…", disabled: true });
   const fileLabel = el("span", { className: "file" });
   const editorBox = el("div", { className: "editor" });
   const viewportBox = el("div", { className: "viewport" });
@@ -72,6 +64,7 @@ async function main(app: HTMLElement): Promise<void> {
       sampleButton,
       fileInput,
       fileLabel,
+      statsButton,
       el("span", { className: "spacer" }),
       ...viewButtons,
       fitButton,
@@ -92,7 +85,7 @@ async function main(app: HTMLElement): Promise<void> {
   fileLabel.textContent = fileName;
   const editor = new GcodeEditor(editorBox, sample);
   const viewport = new Viewport(viewportBox);
-  const panel = new InfoPanel(panelBox);
+  const panel = new DiagnosticsPanel(panelBox);
   panel.onLine = (line) => {
     editor.revealLine(line);
   };
@@ -132,6 +125,7 @@ async function main(app: HTMLElement): Promise<void> {
     async () => decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), fileName)),
     (rb) => {
       current = rb;
+      statsButton.disabled = false;
       viewport.show(buildToolpath(rb), fitNext);
       fitNext = false;
       editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
@@ -144,6 +138,8 @@ async function main(app: HTMLElement): Promise<void> {
     (e) => {
       setStatus(`Could not run the program: ${String(e)}`);
       panel.clear(`Could not run the program: ${String(e)}`);
+      current = null;
+      statsButton.disabled = true;
     },
     EDIT_DELAY_MS,
   );
@@ -152,6 +148,9 @@ async function main(app: HTMLElement): Promise<void> {
     runner.schedule();
   };
   editor.onCursorLine = showLine;
+  statsButton.addEventListener("click", () => {
+    if (current) showStatsDialog(current, fileName);
+  });
   viewport.onPick = (pick) => {
     if (!current || !pick) return;
     // Moving the cursor highlights the line's segments (onCursorLine).

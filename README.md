@@ -92,7 +92,7 @@ The full design, including the dependency rules between crates, is in [ARCHITECT
 | `core/testkit` | Golden-file test helpers. |
 | `app/backend` | The app's behaviour in plain Rust: choosing machine and dialect, interpreting to a render buffer, file access. |
 | `app/shell` | Tauri 2 shell: a thin command layer over `app/backend` (its own Cargo workspace). |
-| `ui/` | TypeScript user interface: three.js viewport, CodeMirror editor, diagnostics and statistics panel. |
+| `ui/` | TypeScript user interface: three.js viewport, CodeMirror editor, diagnostics panel, statistics dialog. |
 | `tools/` | Development tools: the dependency-rule check, the UI constants generator, CI change detection. |
 | `packaging/` | The Flatpak package and app icon. |
 
@@ -137,7 +137,7 @@ These are the project's intended direction. Most are not implemented yet; see th
 ### Visualisation, Analysis and Simulation
 
 - Interactive 3D toolpath display, with editor line and toolpath segment selection kept in sync *(built)*.
-- Diagnostics and statistics panels *(built)*: path lengths, bounds, feed rates and per-tool figures; a cycle-time estimate comes in M3.
+- Diagnostics panel and statistics dialog *(built)*: path lengths, bounds, feed rates and per-tool figures; a cycle-time estimate comes in M3.
 - Backplot tools (M3): a tool marker, hover info on the nearest point (position, tool, feed), measuring between two points, orbiting around a point on the toolpath.
 - Code transformations (M4): translate, scale and rotate a selected range of lines, applied as an undoable edit.
 - Tool movement playback and simulation controls.
@@ -205,7 +205,7 @@ See [Trying it out](#trying-it-out).
 - [x] Stub lathe and stub Osai 10 Series dialect, to test the module boundaries
 - [x] Tauri 2 desktop app, and an Android test of the binary boundary (passed on a real phone)
 - [x] TypeScript UI, three.js viewport, CodeMirror editor with line and toolpath sync
-- [x] Diagnostics and statistics panel
+- [x] Diagnostics panel, and statistics on demand in a dialog
 - [x] Flatpak package for Linux
 - [ ] M2.8: saving files, machine file choice, dashed rapids, wrap-up
 
@@ -231,7 +231,7 @@ cd ui && npm ci && npm run build && cd ..   # the app embeds the built UI
 cd app/shell && cargo run
 ```
 
-The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. Edits re-run the program as you type (saving comes in M2.8). Under the toolpath, the **Diagnostics** tab lists every problem (click one to go to its line) and the **Statistics** tab shows path lengths, bounds and per-tool figures.
+The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. Edits re-run the program as you type (saving comes in M2.8). Under the toolpath, the **Diagnostics** panel lists every problem (click one to go to its line). **Statistics…** in the toolbar works out path lengths, bounds and per-tool figures on demand and shows them in a dialog.
 
 With [Rust](https://rustup.rs) installed, you can also run a program through the engine and see the result as JSON:
 

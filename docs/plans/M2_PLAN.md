@@ -261,6 +261,11 @@ Linux CI build job).
   did not change. **Not shown:** the units the program used, which the
   render buffer does not carry (everything is in mm); it can come with
   layout v2 (M3.5).
+- **Changed after review (owner, 2026-10-31):** statistics moved out of
+  the panel into a dialog opened from the toolbar (**Statistics…**). They
+  are worked out only when asked for, since a very large program takes a
+  while, and every section shows at once without scrolling; OK or Esc
+  closes it. The panel under the viewport is diagnostics only.
 
 ### M2.8: Wrap-up
 
