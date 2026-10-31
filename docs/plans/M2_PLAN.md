@@ -280,7 +280,9 @@ Two PRs (owner, 2026-10-31).
   diagnostic does nothing) until the refresh, because line numbers may
   have moved. Loading a file or changing the machine or dialect still
   runs at once. `ui/src/freshness.ts` (pure, tested) tracks it.
-- **Dashed rapids:** fixed. Rapids are drawn from a non-indexed copy of
+- **Dashed rapids:** fixed (and later, after M3.4, made solid again at the
+  owner's request: dashes looked cluttered on real programs; rapids are
+  told apart by colour). Rapids were drawn from a non-indexed copy of
   their vertices, so three.js can measure dash distances.
 - **`docs/WISHLIST.md`:** started, with a settings dialog whose first
   option is automatic updates versus refresh on demand.
