@@ -61,9 +61,21 @@ portal services:
 - the chosen file reaches the sandbox through the document portal and is
   read, run and drawn.
 
-Not yet tried on a real desktop: GPU rendering (the virtual display has
-none), Wayland, and installing from the downloaded file on another
-machine.
+On the owner's desktop (Wayland, NVIDIA graphics) the first bundle closed
+at start with a Wayland protocol error; see "Known issues" for the cause
+and the setting that fixes it.
+
+## Known issues
+
+- **Window closes at start with "Error 71 (Protocol error) dispatching to
+  Wayland display"** (seen with NVIDIA graphics on Wayland): WebKitGTK's
+  DMA-BUF renderer fails there. The package now sets
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1`, which avoids it. To try the faster
+  renderer anyway: `flatpak run --env=WEBKIT_DISABLE_DMABUF_RENDERER=0
+  com.ncsoftbyai.gcodeeditsim`.
+- **Forcing X11** (`--socket=x11 --env=GDK_BACKEND=x11`) failed to start
+  GTK on the same machine. The app runs on Wayland natively, so this is not
+  needed; X11 is used automatically only where there is no Wayland.
 
 ## Files
 
