@@ -7,7 +7,10 @@ html, body, #app { height: 100%; margin: 0; }
 #app { display: flex; flex-direction: column; background: #14171c; color: #e6e6e6; }
 header, footer { display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: #1d2128; }
 header .spacer { flex: 1; }
-.viewport { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+header .file { color: #9aa0a6; }
+main { flex: 1; min-height: 0; display: flex; }
+.editor { flex: 0 0 38%; min-width: 0; border-right: 1px solid #2b3038; }
+.viewport { flex: 1; min-width: 0; position: relative; overflow: hidden; }
 .viewport canvas { display: block; }
 footer { justify-content: space-between; font-size: 12px; }
 .disclaimer { color: #9aa0a6; }

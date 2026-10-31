@@ -1,12 +1,15 @@
-// The UI: a toolbar, the toolpath viewport and a status line. M2.5 shows a
-// program's toolpath; the editor (M2.6) and panels (M2.7) come next.
+// The UI: a toolbar, the program editor, the toolpath viewport and a status
+// line. Editing re-runs the program; the cursor's line is highlighted in
+// the toolpath, and clicking the toolpath jumps to its line.
 //
-// No G-code meaning here: the core interprets, the UI draws what it got.
+// No G-code meaning here: the core interprets, the UI shows what it got.
 
 import "./style.css";
 
 import sample from "../../tests/golden/basic_mill.nc?raw";
 import { decodeRenderBuffer, type RenderBuffer } from "./buffer/decode";
+import { GcodeEditor } from "./editor/editor";
+import { latestOnly, lineMarks, segmentRange } from "./editor/lines";
 import {
   inApp,
   interpret,
@@ -19,6 +22,9 @@ import {
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
+
+/** Quiet time after an edit before the program is run again. */
+const EDIT_DELAY_MS = 300;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -39,13 +45,15 @@ const setStatus = (text: string): void => {
 async function main(app: HTMLElement): Promise<void> {
   const machineSelect = el("select", { title: "Machine" });
   const dialectSelect = el("select", { title: "Dialect" });
-  const fileInput = el("input", { type: "file", accept: ".nc,.ngc,.tap,.txt,.cnc,.mpf,.iso,*" });
+  const fileInput = el("input", { type: "file" });
   const openButton = el("button", { type: "button", textContent: "Open…" });
   const sampleButton = el("button", { type: "button", textContent: "Sample" });
   const viewButtons = (Object.keys(VIEWS) as ViewName[]).map((name) =>
     el("button", { type: "button", textContent: VIEWS[name].label, className: "view" }),
   );
   const fitButton = el("button", { type: "button", textContent: "Fit" });
+  const fileLabel = el("span", { className: "file" });
+  const editorBox = el("div", { className: "editor" });
   const viewportBox = el("div", { className: "viewport" });
   fileInput.hidden = true;
 
@@ -59,11 +67,12 @@ async function main(app: HTMLElement): Promise<void> {
       openButton,
       sampleButton,
       fileInput,
+      fileLabel,
       el("span", { className: "spacer" }),
       ...viewButtons,
       fitButton,
     ),
-    viewportBox,
+    el("main", {}, editorBox, viewportBox),
     el(
       "footer",
       {},
@@ -75,6 +84,9 @@ async function main(app: HTMLElement): Promise<void> {
     ),
   );
 
+  let fileName = "basic_mill.nc (sample)";
+  fileLabel.textContent = fileName;
+  const editor = new GcodeEditor(editorBox, sample);
   const viewport = new Viewport(viewportBox);
   (Object.keys(VIEWS) as ViewName[]).forEach((name, i) => {
     viewButtons[i]?.addEventListener("click", () => {
@@ -91,31 +103,48 @@ async function main(app: HTMLElement): Promise<void> {
   }
 
   let current: RenderBuffer | null = null;
-  let program: { bytes: Uint8Array; name: string } = {
-    bytes: new TextEncoder().encode(sample),
-    name: "basic_mill.nc (sample)",
+  /** Fit the view after the next run (a new program, machine or dialect). */
+  let fitNext = true;
+
+  const showLine = (line: number): void => {
+    if (!current) return;
+    const rb = current;
+    const { start, end } = segmentRange(rb.header.segmentCount, (i) => rb.segmentLine(i), line);
+    const segments = Array.from({ length: end - start }, (_, k) => start + k);
+    viewport.highlight(segments);
+    setStatus(
+      segments.length === 0
+        ? `Line ${String(line)}: no toolpath`
+        : `Line ${String(line)}: ${String(segments.length)} segment${segments.length === 1 ? "" : "s"}`,
+    );
   };
 
-  const run = async (): Promise<void> => {
-    try {
-      setStatus(`Interpreting ${program.name}…`);
-      const rb = decodeRenderBuffer(await interpret(program.bytes, program.name));
+  const runner = latestOnly(
+    async () => decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), fileName)),
+    (rb) => {
       current = rb;
-      viewport.show(buildToolpath(rb));
+      viewport.show(buildToolpath(rb), fitNext);
+      fitNext = false;
+      editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
       const d = rb.header.diagCount;
       setStatus(
-        `${program.name}: ${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to see a segment's line.`,
+        `${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to find its line.`,
       );
-    } catch (e) {
-      current = null;
-      setStatus(`Could not show ${program.name}: ${String(e)}`);
-    }
-  };
+    },
+    (e) => {
+      setStatus(`Could not run the program: ${String(e)}`);
+    },
+    EDIT_DELAY_MS,
+  );
 
+  editor.onChange = () => {
+    runner.schedule();
+  };
+  editor.onCursorLine = showLine;
   viewport.onPick = (pick) => {
     if (!current || !pick) return;
-    const s = current.segment(pick.segment);
-    setStatus(`Line ${String(s.srcLine)} (segment ${String(pick.segment + 1)} of ${String(current.header.segmentCount)})`);
+    // Moving the cursor highlights the line's segments (onCursorLine).
+    editor.revealLine(current.segment(pick.segment).srcLine);
   };
 
   const [dialects, machines] = await Promise.all([listDialects(), listMachines()]);
@@ -135,31 +164,44 @@ async function main(app: HTMLElement): Promise<void> {
     if (machine) await selectMachine(machine.source);
     await setRunOptions(dialectSelect.value, false);
   };
+  const rerunFitted = (): void => {
+    fitNext = true;
+    void runner.runNow();
+  };
   machineSelect.addEventListener("change", () => {
-    void applySettings().then(run);
+    void applySettings().then(rerunFitted);
   });
   dialectSelect.addEventListener("change", () => {
-    void applySettings().then(run);
+    void applySettings().then(rerunFitted);
   });
+  const load = (text: string, name: string): void => {
+    fileName = name;
+    fileLabel.textContent = name;
+    editor.setText(text);
+    rerunFitted();
+  };
   openButton.addEventListener("click", () => {
     fileInput.click();
   });
   fileInput.addEventListener("change", () => {
     const file = fileInput.files?.[0];
     if (!file) return;
+    fileInput.value = "";
     void file.arrayBuffer().then((buffer) => {
-      program = { bytes: new Uint8Array(buffer), name: file.name };
-      fileInput.value = "";
-      return run();
+      // Shown as UTF-8; bytes that are not are replaced (and noted).
+      const text = new TextDecoder("utf-8").decode(buffer);
+      load(text, file.name);
+      if (text.includes("�")) {
+        setStatus(`${file.name} is not UTF-8 text: some characters are shown as �.`);
+      }
     });
   });
   sampleButton.addEventListener("click", () => {
-    program = { bytes: new TextEncoder().encode(sample), name: "basic_mill.nc (sample)" };
-    void run();
+    load(sample, "basic_mill.nc (sample)");
   });
 
   await applySettings();
-  await run();
+  await runner.runNow();
 }
 
 const app = document.getElementById("app");

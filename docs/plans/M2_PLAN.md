@@ -212,6 +212,26 @@ Linux CI build job).
 - **Diagnostics in the gutter,** using the diagnostic table's line,
   severity and message.
 - Re-interpret on edit, debounced and off the UI thread.
+- **As built:** CodeMirror 6 (separate packages, no bundled setup) in
+  `ui/src/editor/`.
+  - `gcode-language.ts`: highlighting by token type only.
+  - `lines.ts` (pure, tested):
+    - the line → segment binary search, matching `ir::segments_for_line`
+    - diagnostics → gutter marks
+    - `latestOnly`, which re-runs 300 ms after the last edit and drops a
+      result that finishes after a newer run started
+  - The editor's text (lines joined by `\n`) is what is interpreted, so
+    editor and parser line numbers always agree, whatever the file's line
+    endings.
+  - Edits keep the camera; a new file, machine or dialect refits it.
+  - The content security policy now allows inline *styles*, because
+    CodeMirror injects them. Scripts are unchanged.
+  - Checked in the real app under Xvfb:
+    - highlighting and gutter marks
+    - clicking a line highlights its segments
+    - clicking the toolpath jumps to its line
+    - typing re-runs the program, keeping the view
+  - **Not yet:** saving files (needs a save dialog with a real path; M2.8).
 
 ### M2.7: Diagnostics and statistics panels
 
