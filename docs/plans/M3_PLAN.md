@@ -81,6 +81,30 @@ because they help with every test of the later steps.
   `[dialect] ignore = ["M50", "G150"]`.
 - The `(UAO,n)` message the owner saw becomes a test.
 
+**As built (owner decisions, 2026-10-31):**
+- **Corpus:** the owner's samples are in the private repository
+  `gcode-editsim-manuals` (`Fanuc_examples/`, `Osai10Series_examples/`).
+  `cargo run -p corpus -- --dialect fanuc|osai [--machine FILE] FILE...`
+  reports, per file, how much was drawn and every diagnostic, grouped.
+  Before M3.0 every Fanuc sample drew nothing (G92 hid everything); after
+  it, three draw fully and "Slotted panel" stops at its same-file
+  subprogram call (M3.7). Both Osai samples draw fully.
+- **G92 is ignored with a warning** (its words are data, not a move);
+  proper G92 stays in M3.5. **G43/G44** give one info note per program.
+  **Unknown M codes** give one info note per code. **M06 without T** is a
+  warning. **`:0099`** reads as program number O0099.
+- **Machine files:** `ignore_codes = ["M92", ...]` under `[machine]` (M
+  codes only: a G code's axis words would be left behind and read as a
+  move). The interpreter removes them before the dialect sees the block,
+  so it works for every dialect. Travel limits were already optional; a
+  **generic router** example ships with none and every work offset at
+  zero.
+- **Golden excerpts** (the owner agreed to short excerpts, comments
+  removed): `tests/golden/router_fanuc_panel.nc` and
+  `router_fanuc_subprogram.nc`, run on the router machine.
+- The `(UAO,n,Z)` per-axis case was handled in #33; the plain `(UAO,n)`
+  already worked.
+
 ### M3.1: Tool marker
 
 - A thick vertical line with an arrowhead at the tool tip, drawn at the
@@ -145,7 +169,8 @@ because they help with every test of the later steps.
 
 ### M3.5: Program coordinates and coordinate shifts (core)
 
-- Implement G92 (and G92.1 if the control has it), G52 and G10
+- Implement G92 properly (ignored with a warning since M3.0), relative to
+  the machine file's reference position (and G92.1 if the control has it), G52 and G10
   L2/L20 on Fanuc; origins and `UAO` on Osai. Each behaviour is sourced or
   marked *(unverified)* in the dialect notes.
 - The UI needs the active work offset per segment to show program
