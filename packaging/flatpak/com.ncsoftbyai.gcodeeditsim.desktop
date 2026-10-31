@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GCode EditSim
+GenericName=G-code Simulator
+Comment=Edit CNC G-code programs and see their toolpath in 3D
+Exec=gcode-editsim
+Icon=com.ncsoftbyai.gcodeeditsim
+Terminal=false
+Categories=Development;Engineering;
+Keywords=CNC;G-code;GCode;NC;backplot;toolpath;Fanuc;mill;

@@ -15,6 +15,12 @@ publish = false
 name = "gcode_editsim"
 crate-type = ["rlib"]
 
+[features]
+# Release builds serve the embedded UI through Tauri's custom protocol. The
+# Tauri CLI turns this on for production builds; the Flatpak build passes it
+# explicitly (`cargo build --release --features custom-protocol`).
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2.7.4", features = [] }
 

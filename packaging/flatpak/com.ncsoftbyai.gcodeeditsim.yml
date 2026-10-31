@@ -1,0 +1,60 @@
+# Flatpak manifest for GCode EditSim. Build with ./build.sh (see README.md),
+# which prepares the offline inputs this manifest expects:
+#   ui/dist                         the built UI (static files)
+#   packaging/flatpak/.build/vendor the Rust crates (`cargo vendor`)
+# The build itself needs no network: it only compiles, against the
+# runtime's own WebKitGTK.
+app-id: com.ncsoftbyai.gcodeeditsim
+runtime: org.gnome.Platform
+runtime-version: "51"
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: gcode-editsim
+finish-args:
+  # A window: Wayland, or X11 where there is no Wayland.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  # GPU for the 3D view.
+  - --device=dri
+  # No network and no file-system access: files are opened through the
+  # desktop's file chooser (the portal), and the app's own settings live in
+  # its sandboxed config folder.
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/gcode-editsim/cargo-home
+    CARGO_NET_OFFLINE: "true"
+modules:
+  - name: gcode-editsim
+    buildsystem: simple
+    build-commands:
+      - cd app/shell && cargo build --release --offline --locked --features custom-protocol
+      - install -Dm755 app/shell/target/release/gcode-editsim /app/bin/gcode-editsim
+      - install -Dm644 packaging/flatpak/com.ncsoftbyai.gcodeeditsim.desktop /app/share/applications/com.ncsoftbyai.gcodeeditsim.desktop
+      - install -Dm644 packaging/flatpak/com.ncsoftbyai.gcodeeditsim.metainfo.xml /app/share/metainfo/com.ncsoftbyai.gcodeeditsim.metainfo.xml
+      - install -Dm644 packaging/icons/com.ncsoftbyai.gcodeeditsim.svg /app/share/icons/hicolor/scalable/apps/com.ncsoftbyai.gcodeeditsim.svg
+      - install -Dm644 LICENSE /app/share/licenses/com.ncsoftbyai.gcodeeditsim/LICENSE
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - target
+          - app/shell/target
+          - ui/node_modules
+          - packaging/flatpak/.build
+          - core/gcode-syntax/fuzz/target
+      - type: dir
+        path: .build/vendor
+        dest: app/shell/vendor
+      - type: inline
+        dest: app/shell/.cargo
+        dest-filename: config.toml
+        contents: |
+          [source.crates-io]
+          replace-with = "vendored-sources"
+
+          [source.vendored-sources]
+          directory = "vendor"

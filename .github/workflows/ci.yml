@@ -104,6 +104,44 @@ jobs:
       - name: Build
         run: npm run build
 
+  flatpak:
+    name: Flatpak bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the Flatpak tools
+        run: |
+          sudo apt-get update
+          # elfutils: flatpak-builder strips debug info with eu-strip.
+          # librsvg2-common: the SVG loader appstreamcli compose needs to
+          # render the app's SVG icon.
+          sudo apt-get install -y --no-install-recommends \
+            flatpak flatpak-builder elfutils librsvg2-common
+          # Ubuntu 24.04 blocks unprivileged user namespaces, which the
+          # Flatpak build sandbox (bubblewrap) needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Install pinned toolchain
+        run: rustup toolchain install
+      # Builds the UI, vendors the crates, builds offline in the GNOME SDK
+      # and bundles (packaging/flatpak/README.md).
+      - name: Build the bundle
+        env:
+          FLATPAK_BUILDER_ARGS: --disable-rofiles-fuse
+        run: packaging/flatpak/build.sh
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: gcode-editsim-flatpak
+          path: gcode-editsim.flatpak
+          if-no-files-found: error
+          retention-days: 30
+
   fuzz:
     name: fuzz parser (60 s)
     runs-on: ubuntu-24.04

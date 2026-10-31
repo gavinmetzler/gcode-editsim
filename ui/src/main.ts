@@ -19,6 +19,7 @@ import {
   setRunOptions,
   type MachineEntry,
 } from "./ipc/backend";
+import { readProgramFile } from "./open-file";
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
@@ -187,12 +188,14 @@ async function main(app: HTMLElement): Promise<void> {
     const file = fileInput.files?.[0];
     if (!file) return;
     fileInput.value = "";
-    void file.arrayBuffer().then((buffer) => {
-      // Shown as UTF-8; bytes that are not are replaced (and noted).
-      const text = new TextDecoder("utf-8").decode(buffer);
-      load(text, file.name);
-      if (text.includes("�")) {
-        setStatus(`${file.name} is not UTF-8 text: some characters are shown as �.`);
+    void readProgramFile(file).then((result) => {
+      if (!result.ok) {
+        setStatus(`Could not read ${result.name}: ${result.error}`);
+        return;
+      }
+      load(result.text, result.name);
+      if (result.notUtf8) {
+        setStatus(`${result.name} is not UTF-8 text: some characters are shown as \u{FFFD}.`);
       }
     });
   });

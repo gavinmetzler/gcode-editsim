@@ -202,6 +202,8 @@ See [Trying it out](#trying-it-out).
 
 ## Trying it out
 
+On Linux the app can also be installed as a Flatpak from a single `.flatpak` file: see [packaging/flatpak/README.md](packaging/flatpak/README.md) for how to build and install it.
+
 The desktop app shows a program in an editor beside its 3D toolpath (the diagnostics and statistics panels come next). On Linux it needs the WebKit libraries (on Ubuntu 24.04: `sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev`); then:
 
 ```bash
