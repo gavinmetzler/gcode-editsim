@@ -34,16 +34,37 @@
       "work_offset": 3
     },
     {
-      "line": 20,
-      "kind": "ProgramEnd",
+      "line": 15,
+      "kind": "Rapid",
       "end": {
-        "X": 304.0,
-        "Y": -304.0,
+        "X": -342.0,
+        "Y": -574.0,
         "Z": -40.0
       },
       "tool": 0,
-      "work_offset": 1,
-      "flags": 4
+      "work_offset": 3
+    },
+    {
+      "line": 18,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
+      "line": 20,
+      "kind": "ProgramEnd",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 1
     }
   ],
   "diagnostics": [
@@ -57,7 +78,7 @@
       "line": 5,
       "severity": "Warning",
       "code": "UnsupportedGCode",
-      "message": "G92 (Workpiece coordinate system setting) is not simulated yet and is ignored: later moves are drawn without its shift, so they may be offset from where the machine goes"
+      "message": "G92 (Workpiece coordinate system setting) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
     },
     {
       "line": 5,
@@ -97,9 +118,15 @@
     },
     {
       "line": 13,
-      "severity": "Error",
+      "severity": "Warning",
       "code": "UnsupportedMCode",
-      "message": "M98 (Subprogram call) is not supported yet. It changes where later moves go, so moves are not shown from here until the end of the program"
+      "message": "M98 (Subprogram call) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
+    },
+    {
+      "line": 16,
+      "severity": "Warning",
+      "code": "UnsupportedMCode",
+      "message": "M98 (Subprogram call) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
     },
     {
       "line": 19,
@@ -117,8 +144,8 @@
   "tools_used": [],
   "bbox": {
     "min": {
-      "X": 0.0,
-      "Y": -304.0,
+      "X": -342.0,
+      "Y": -574.0,
       "Z": -40.0
     },
     "max": {

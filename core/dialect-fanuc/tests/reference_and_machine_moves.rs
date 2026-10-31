@@ -86,13 +86,15 @@ fn g53_is_ignored_in_incremental_mode() {
 }
 
 #[test]
-fn reference_return_is_hidden_while_an_unsupported_mode_is_active() {
+fn reference_return_still_runs_after_an_ignored_mode() {
+    // Moves are never hidden (owner decision, 2026-10-31): after an ignored
+    // rotation, G28 still returns to the reference position.
     let r = run("G68 X0 Y0 R45.\nG91 G28 Z0.\n");
-    assert!(!r
+    assert!(r
         .commands
         .iter()
         .any(|c| matches!(c, Command::ReturnToReference { .. })));
-    assert!(r
+    assert!(!r
         .commands
         .iter()
         .any(|c| matches!(c, Command::PositionUnknown { .. })));

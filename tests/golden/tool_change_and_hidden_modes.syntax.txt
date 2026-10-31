@@ -39,7 +39,7 @@ line 19:
 line 20:
   words: G43 H2 Z5.
 line 21:
-  comment (paren): "drilling cycle, cancelled by G00 instead of G80"
+  comment (paren): "drilling cycle, holes drawn as rapids, cancelled by G00 instead of G80"
 line 22:
   words: G99 G81 X50. Y0. Z-10. R2. F100.
 line 23:
@@ -49,7 +49,7 @@ line 24:
 line 25:
   words: X70. Y0. Z5.
 line 26:
-  comment (paren): "rotation: hidden until G69 and a fully specified position"
+  comment (paren): "rotation: not simulated, so later moves are drawn without it"
 line 27:
   words: G68 X0. Y0. R45.
 line 28:

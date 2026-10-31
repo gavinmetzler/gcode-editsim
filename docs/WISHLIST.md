@@ -50,3 +50,36 @@ toolpath colours are in one place (`PALETTE` in
 theme would replace that table; the interface colours are in
 `ui/src/style.css` and would become CSS variables.
 
+## Coordinate shifts and program coordinates
+
+*Put on hold by the owner, 2026-10-31 (was M3.5); left to the community.*
+
+Today G92, G52, G10, rotation (G68), scaling (G51), mirroring (G51.1),
+polar input (G16) and Osai presetting (G92/G98) and per-axis origins
+(`(UAO,n,axes)`) are ignored with a warning, and later moves are drawn
+without their effect. A contributor implementing them would need:
+
+- **Frames:** the program zero each segment was programmed in (work
+  offset plus shifts), carried to the UI in a render buffer v2 (a small
+  frame table and an index per segment; version bump, new fixture,
+  regenerated constants), so the readout can show program coordinates
+  with a Program/Machine toggle.
+- **G92** relative to the machine's position when it runs (the machine
+  file's reference position, at program start), and what cancels it
+  (G92.1, reset, reference return: controller-dependent).
+- **G52, G10 L2/L20,** rotation, scaling, mirroring, polar input, sourced
+  from a manual for the control, or marked *(unverified)*.
+- Care: on some machines (the owner's gang router) work offsets select
+  spindles rather than move the part, so an option to keep drawing in
+  program coordinates matters.
+
+## Canned cycles
+
+*Put on hold by the owner, 2026-10-31 (was M3.6); left to the community.*
+
+Today each hole of G73/G74/G76/G81–G89 (Osai G81–G89) is drawn as a rapid
+to its position in the working plane. A full implementation would expand
+each cycle into rapids and feeds (approach, R level, feed in, pecks,
+dwell, retract to the initial or R level per G98/G99), tagged with the
+IR's `CycleStep`, all pointing back at the cycle's line.
+

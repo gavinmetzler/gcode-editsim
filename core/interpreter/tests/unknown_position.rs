@@ -40,21 +40,26 @@ fn incremental_moves_do_not_make_an_unknown_axis_known() {
 }
 
 #[test]
-fn moves_after_a_cancelled_unsupported_mode_wait_for_a_known_position() {
-    let src = "G21 G90 G54 G0 X0. Y0. Z5.\nG68 X0. Y0. R90.\nG0 X10.\nG69\nG0 X5.\nG0 X1. Y1. Z5.\nG0 X2.\n";
+fn moves_after_an_unknown_position_wait_for_a_known_one() {
+    // G30 goes to a reference position the machine file does not give.
+    let src =
+        "G21 G90 G54 G0 X0. Y0. Z5.\nG91 G30 X0. Y0. Z0.\nG90 G0 X5.\nG0 X1. Y1. Z5.\nG0 X2.\n";
     let p = run(src);
+    let lines: Vec<u32> = moves(&p).iter().map(|m| m.src.line).collect();
+    // Line 3 sets only X, so Y and Z are still unknown: it is not drawn.
+    // Line 4 sets every axis, and from there everything is drawn.
+    assert!(!lines.contains(&3), "{lines:?}");
+    assert_eq!(lines.last(), Some(&5));
     let m = moves(&p);
-    // Line 5 sets only X; Y and Z were moved under G68 and are unknown, so
-    // only line 7 (after line 6 sets every axis) is drawn.
-    assert_eq!(m.len(), 2, "{m:#?}");
-    assert_eq!(m[1].src.line, 7);
-    at(&m[1].start, [-379.0, -204.0, -395.0]);
+    at(&m[m.len() - 1].start, [-379.0, -204.0, -395.0]);
 }
 
 #[test]
-fn subprogram_call_hides_the_rest_of_the_program() {
+fn a_subprogram_call_does_not_hide_later_moves() {
+    // Moves are never hidden (owner decision, 2026-10-31). Subprograms are
+    // M3.7; until then the call is reported and later moves are drawn.
     let p = run("G21 G90 G54 G0 X0. Y0. Z5.\nM98 P1000\nG0 X0. Y0. Z5.\nX10.\n");
-    assert_eq!(moves(&p).len(), 1);
+    assert_eq!(moves(&p).len(), 3);
     assert!(codes(&p).contains(&DiagCode::UnsupportedMCode));
 }
 

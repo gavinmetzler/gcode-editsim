@@ -357,17 +357,19 @@ A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferr
 - **`Command::Arc` cannot say how many turns.** Osai's helix pitch K can mean several turns; `Arc` has no turns field (the IR's `ArcGeom::turns` exists). The stub refuses K.
 - **Tolerances belong to the control.** Osai's full-circle threshold (FCT, 0.001 mm by default) differs from the interpreter's fixed 1e-6 mm; its radius tolerance (CET, 0.01 mm) matches. Both may need to come from the dialect or the machine.
 - **Coolant kinds.** `CoolantState` has flood and mist; Osai's M7 "auxiliary coolant" is shown as mist.
-- **Shared block skeleton.** Both dialects collect words, check groups, start and end motion blockers and report unused words in nearly the same way. That code could move to `dialect-api` helpers, as a separate refactoring once the second real dialect exists.
+- **Shared block skeleton.** Both dialects collect words, check groups and report unused words in nearly the same way. That code could move to `dialect-api` helpers, as a separate refactoring once the second real dialect exists.
 
 ### 7.3 Canned cycles
 
-*Planned (M3.6); today a canned cycle is reported and hides motion until it is cancelled (§7.3a).* Expanded inside the dialect layer into primitive `Command`s (Rapid / Linear / Dwell), each tagged with a `CycleStep`. Downstream code never sees `G81`. The renderer can still colour or filter by `cycle_step`.
+*On hold (owner decision, 2026-10-31; left to the community). Today each hole of a canned cycle is drawn as a rapid to its position in the working plane, with one warning per cycle code (§7.3a).* A full implementation would expand the cycle inside the dialect layer into primitive `Command`s (Rapid / Linear / Dwell), each tagged with a `CycleStep`. Downstream code never sees `G81`. The renderer can still colour or filter by `cycle_step`.
 
-### 7.3a Unsupported modes that affect later blocks
+### 7.3a Codes that change later moves: never hide moves
 
-Some unsupported codes change how *later* blocks move: coordinate shifts (G52, G10), rotation, scaling, mirroring, polar input, subprograms, and unknown G codes. Reporting only the code's own block would leave every following move drawn in the wrong place without a diagnostic. Such codes start a **motion blocker** (`ModalState::motion_blockers`): an error explains, once, that moves are not shown from that line until the matching cancel code (or the end of the program). While a blocker is in effect the dialect emits no motion, only `PositionUnknown`, so when the blocker ends the interpreter waits for a known position before drawing again.
+Some unsupported codes change how *later* blocks move: coordinate shifts (G92, G52, G10, Osai presetting and origins), rotation, scaling, mirroring, polar input, macro and subprogram calls, and unknown G codes. **Moves are never hidden** (owner decision, 2026-10-31): a backplot drawn without their effect is more useful than none, and the diagnostics say not to rely on it. Each such code gives one diagnostic where it appears (a warning; an error for an unknown G code), its words are data rather than a move, and later moves are drawn as programmed. Canned cycles draw their hole positions (§7.3).
 
-*Since M3.0* G92 is ignored with a warning instead (its axis words are data), because real programs start with it. *Planned change (M3.5, owner decision 2026-10-31):* G92, G52, G10 and Osai origins are implemented, and the codes that remain unsupported no longer hide later moves. Those moves are drawn, flagged approximate, with one warning at the code. This section is rewritten in that PR.
+Until M3.0–M3.5 these codes started a *motion blocker* that hid every later move until a cancel code; that mechanism is gone. A position that is genuinely unknown (G30 to a reference the machine file does not give, an Osai line that cannot be read) still makes the interpreter wait for an absolute position on every axis before drawing again: nothing is drawn from a guessed starting point.
+
+Coordinate shifts and canned cycles are on hold, left to the community (`docs/WISHLIST.md`).
 
 ### 7.4 Macros and expressions
 
@@ -569,7 +571,7 @@ Status: M1 and M2 done; M3 next.
 
 1. **M1: Core skeleton** *(done)*. Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
 2. **M2: Render buffer + minimal UI** *(done)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), CI jobs that run only when their files change, refresh on demand after edits, and the tool marker with hover readout (M3.1/M3.2 brought forward). See `docs/plans/M2_PLAN.md`.
-3. **M3: A dependable backplotter.** Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; G92, G52, G10 and Osai origins; unsupported coordinate changes drawn approximate instead of hidden; program coordinates by default; canned cycles G81–G89; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. See `docs/plans/M3_PLAN.md`.
+3. **M3: A dependable backplotter.** Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; codes that change later moves are ignored with a warning, never hiding moves; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community. See `docs/plans/M3_PLAN.md`.
 4. **M4: Code transformations.** Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
 5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later.
 6. **M6: Machine state and accuracy.** Tool table and tool geometry, cutter radius compensation, time estimation with an acceleration model, the dog-leg rapid path, speed-limit checks.

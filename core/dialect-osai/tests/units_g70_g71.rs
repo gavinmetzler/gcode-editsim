@@ -22,9 +22,11 @@ fn g70_converts_lengths_and_feed() {
 
 #[test]
 fn g20_and_g21_are_not_units() {
+    // Unknown here: reported and ignored; later moves are still drawn
+    // (moves are never hidden, owner decision 2026-10-31).
     let r = run("G21\nG0 X1 Y1 Z1\n");
     assert!(r.has(DiagCode::UnsupportedGCode, "G21 is not supported"));
-    assert!(r.moves().is_empty());
+    assert_eq!(r.moves().len(), 1);
 }
 
 #[test]

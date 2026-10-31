@@ -107,10 +107,10 @@ fn program_end_segment_is_last_and_later_blocks_add_nothing() {
 
 #[test]
 fn events_while_the_position_is_unknown_are_flagged() {
-    // A move under G68 (not simulated) leaves the position unknown. The
-    // coolant event still happened, but where is not known. G53 on every
-    // axis makes the position known again.
-    let src = "G0 X-1. Y-1. Z-1.\nG68 X0. Y0. R90.\nG0 X-2.\nM8\nG69\nG53 X-5. Y-5. Z-5.\nM9\n";
+    // G30 goes to a reference position the machine file does not give, so
+    // the position is unknown. The coolant event still happened, but where
+    // is not known. G53 on every axis makes the position known again.
+    let src = "G0 X-1. Y-1. Z-1.\nG91 G30 X0. Y0. Z0.\nG90\nM8\nG53 X-5. Y-5. Z-5.\nM9\n";
     let p = run(src);
     let events: Vec<_> = segments(&p)
         .iter()

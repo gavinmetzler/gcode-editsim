@@ -18,12 +18,12 @@ G90
 T2 M06
 G54 G00 X50. Y0.
 G43 H2 Z5.
-(drilling cycle, cancelled by G00 instead of G80)
+(drilling cycle, holes drawn as rapids, cancelled by G00 instead of G80)
 G99 G81 X50. Y0. Z-10. R2. F100.
 X60.
 G00 Z50.
 X70. Y0. Z5.
-(rotation: hidden until G69 and a fully specified position)
+(rotation: not simulated, so later moves are drawn without it)
 G68 X0. Y0. R45.
 G01 X80. F300.
 G69

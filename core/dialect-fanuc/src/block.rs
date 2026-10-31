@@ -57,9 +57,9 @@ enum Motion {
     /// The code uses the axis words itself (dwell time, offset data, its
     /// own move), so there is no ordinary move.
     Consumed,
-    /// The machine would move but the move cannot be simulated; the reason
-    /// is reported with the unknown position.
-    Hidden(String),
+    /// A canned cycle: the block's position in the working plane is a hole,
+    /// drawn as a rapid.
+    CycleHoles,
 }
 
 /// The source reference narrowed to a span within the line.
@@ -157,22 +157,22 @@ pub(crate) fn interpret(
         return;
     }
 
-    // Unknown codes. What an unknown G code does to this and later blocks
-    // is unknown, so from here on no motion is shown.
+    // Unknown codes. What an unknown G code does is unknown: this block is
+    // not moved (its words may be data), and later moves are drawn as
+    // programmed, never hidden.
     let mut motion_effect = Motion::Normal;
     for (letter, number, span) in &unknown {
         let what = format!("{letter}{}", number.value);
         if *letter == 'G' {
-            state.block_motion(&what, src.line);
             diag.error(
                 DiagCode::UnsupportedGCode,
                 format!(
-                    "{what} is not supported; its effect on later blocks is unknown, so moves \
-                     from here to the end of the program are not shown"
+                    "{what} is not supported and is ignored: this block is not moved, and \
+                     later moves are drawn as programmed, so they may differ from the machine"
                 ),
                 at(src, *span),
             );
-            motion_effect = Motion::Hidden(format!("unknown code {what} on line {}", src.line));
+            motion_effect = Motion::Consumed;
         } else if state.first_report(&format!("fanuc.machine_m.{what}")) {
             // Not a Fanuc code, so the machine builder's (head selection,
             // clamps, vacuum, ...): noted once and ignored.
@@ -220,7 +220,7 @@ pub(crate) fn interpret(
     }
     let mut special = None;
     for code in &gcodes {
-        let effect = apply_gcode(fanuc, code, &values, ctx, state, out, diag);
+        let effect = apply_gcode(fanuc, code, ctx, state, out, diag);
         if matches!(
             code.handler,
             Handler::ReferenceReturn | Handler::ReferenceReturnOther | Handler::MachineRapid
@@ -228,8 +228,8 @@ pub(crate) fn interpret(
             special = Some(code);
         }
         motion_effect = match (motion_effect, effect) {
-            (Motion::Hidden(r), _) | (_, Motion::Hidden(r)) => Motion::Hidden(r),
             (Motion::Consumed, _) | (_, Motion::Consumed) => Motion::Consumed,
+            (Motion::CycleHoles, _) | (_, Motion::CycleHoles) => Motion::CycleHoles,
             _ => Motion::Normal,
         };
     }
@@ -358,53 +358,25 @@ fn assume_units(state: &mut ModalState, src: SourceRef, diag: &mut Diagnostics) 
     );
 }
 
-/// The key under which a blocker code is recorded: its modal group (so the
-/// group's cancel code can end it) or, for one-shot codes, the code.
-fn blocker_key(fanuc: &Fanuc, code: CodeKey) -> String {
-    match fanuc
-        .table
-        .get(code)
-        .and_then(|d| d.group)
-        .filter(|&g| g != 0)
-    {
-        Some(group) => format!("group {group}"),
-        None => code.to_string(),
-    }
-}
-
-/// The code that ends a blocker in `group`, if the table has one.
-fn cancel_code(fanuc: &Fanuc, group: Option<u16>) -> Option<CodeKey> {
-    let group = group.filter(|&g| g != 0)?;
-    fanuc
-        .table
-        .iter()
-        .find(|d| d.group == Some(group) && fanuc.handler(d.code) == Some(Handler::CancelBlocker))
-        .map(|d| d.code)
-}
-
-fn start_blocker(
-    fanuc: &Fanuc,
-    code: &Code,
-    until: &str,
-    state: &mut ModalState,
-    src: SourceRef,
-    diag: &mut Diagnostics,
-) {
-    if !state.block_motion(&blocker_key(fanuc, code.key), src.line) {
-        return; // Already in effect and already explained.
-    }
-    diag.error(
-        if code.key.letter() == 'M' {
-            DiagCode::UnsupportedMCode
-        } else {
-            DiagCode::UnsupportedGCode
-        },
-        format!(
-            "{} is not supported yet. It changes where later moves go, so moves are not shown \
-             from here until {until}",
-            description(fanuc, code.key)
-        ),
-        at(src, code.span),
+/// Reports a code that changes how later blocks move but is not simulated
+/// (owner decision, 2026-10-31: never hide moves): one warning, and later
+/// moves are drawn without its effect.
+fn ignored(fanuc: &Fanuc, code: &Code, src: SourceRef, diag: &mut Diagnostics) {
+    diag.push(
+        Diagnostic::warning(
+            if code.key.letter() == 'M' {
+                DiagCode::UnsupportedMCode
+            } else {
+                DiagCode::UnsupportedGCode
+            },
+            format!(
+                "{} is not simulated and is ignored: its values are not a move, and later \
+                 moves are drawn without its effect, so they may differ from the machine",
+                description(fanuc, code.key)
+            ),
+            at(src, code.span),
+        )
+        .dialect_specific(),
     );
 }
 
@@ -413,7 +385,6 @@ fn start_blocker(
 fn apply_gcode(
     fanuc: &Fanuc,
     code: &Code,
-    values: &[Value],
     ctx: &BlockContext<'_>,
     state: &mut ModalState,
     out: &mut Vec<Command>,
@@ -502,32 +473,40 @@ fn apply_gcode(
                 );
             }
         }
-        Handler::IgnoredShift => {
-            diag.push(
-                Diagnostic::warning(
-                    DiagCode::UnsupportedGCode,
-                    format!(
-                        "{} is not simulated yet and is ignored: later moves are drawn \
-                         without its shift, so they may be offset from where the machine \
-                         goes",
-                        description(fanuc, code.key)
-                    ),
-                    src,
-                )
-                .dialect_specific(),
-            );
-            // The axis words are the new coordinates, not a move.
+        Handler::Ignored => {
+            set_active(fanuc, state, code.key);
+            ignored(fanuc, code, src, diag);
+            out.push(Command::Unsupported {
+                what: code.key.to_string(),
+            });
+            // Its words are data (an offset, a centre, an angle), not a move.
             return Motion::Consumed;
+        }
+        Handler::CannedCycle => {
+            set_active(fanuc, state, code.key);
+            if state.first_report(&format!("fanuc.cycle.{}", code.key)) {
+                diag.push(
+                    Diagnostic::warning(
+                        DiagCode::UnsupportedGCode,
+                        format!(
+                            "{} is not simulated: its hole positions are drawn as rapids in the \
+                             working plane; depths, R levels, pecks and retracts are not drawn. \
+                             Not reported again.",
+                            description(fanuc, code.key)
+                        ),
+                        at(src, code.span),
+                    )
+                    .dialect_specific(),
+                );
+            }
+            out.push(Command::Unsupported {
+                what: code.key.to_string(),
+            });
+            return Motion::CycleHoles;
         }
         Handler::Unsupported => {
             set_active(fanuc, state, code.key);
             let (effect, note) = match group {
-                // A canned cycle moves the machine in ways not simulated, in
-                // this block and every later one until it is cancelled.
-                Some(CANNED_CYCLE_GROUP) => (
-                    Motion::Hidden(format!("{} on line {}", code.key, ctx.src.line)),
-                    "; moves are not shown until G80 or G00-G03 cancels the cycle",
-                ),
                 // One-shot codes (dwell) use the axis words as data.
                 None | Some(0) => (Motion::Consumed, "; block not moved"),
                 // Other modes (feed per revolution) leave the path alone.
@@ -545,67 +524,6 @@ fn apply_gcode(
                 what: code.key.to_string(),
             });
             return effect;
-        }
-        Handler::Blocker => {
-            set_active(fanuc, state, code.key);
-            let until = match cancel_code(fanuc, group) {
-                Some(cancel) => format!("{cancel}"),
-                None => "the end of the program".to_owned(),
-            };
-            start_blocker(fanuc, code, &until, state, ctx.src, diag);
-            out.push(Command::Unsupported {
-                what: code.key.to_string(),
-            });
-            // Axis words with these codes are data (a centre, an offset).
-            return Motion::Consumed;
-        }
-        Handler::CancelBlocker => {
-            set_active(fanuc, state, code.key);
-            let key = blocker_key(fanuc, code.key);
-            if let Some(line) = state.unblock_motion(&key) {
-                diag.info(
-                    DiagCode::NotYetSimulated,
-                    format!(
-                        "{} ends the mode started on line {line}; moves are shown again once \
-                         the position is known",
-                        code.key
-                    ),
-                    src,
-                );
-            }
-        }
-        Handler::LocalOffset => {
-            // G52 with every given axis at zero cancels the local system.
-            let axis_values: Vec<&Value> = values
-                .iter()
-                .filter(|v| ctx.axes.index_of(v.letter).is_some())
-                .collect();
-            if axis_values.iter().all(|v| v.number.value == 0.0) {
-                if let Some(line) = state.unblock_motion(&code.key.to_string()) {
-                    diag.info(
-                        DiagCode::NotYetSimulated,
-                        format!(
-                            "{} with zero values ends the local coordinate system set on line \
-                             {line}; moves are shown again once the position is known",
-                            code.key
-                        ),
-                        src,
-                    );
-                }
-            } else {
-                start_blocker(
-                    fanuc,
-                    code,
-                    &format!("{} with all axes at zero", code.key),
-                    state,
-                    ctx.src,
-                    diag,
-                );
-                out.push(Command::Unsupported {
-                    what: code.key.to_string(),
-                });
-            }
-            return Motion::Consumed;
         }
         Handler::ReferenceReturn | Handler::ReferenceReturnOther | Handler::MachineRapid => {
             return Motion::Consumed;
@@ -711,17 +629,13 @@ fn apply_mcode(
         Handler::OptionalStop => out.push(Command::Stop { optional: true }),
         Handler::ProgramEnd => out.push(Command::ProgramEnd { rewind: false }),
         Handler::ProgramEndRewind => out.push(Command::ProgramEnd { rewind: true }),
-        Handler::Blocker => {
-            // Subprogram call or return: the moves it makes are not
-            // simulated, and the position afterwards is unknown.
-            start_blocker(fanuc, code, "the end of the program", state, ctx.src, diag);
+        Handler::Ignored => {
+            // Subprogram call or return (M3.7 adds subprograms): not
+            // simulated, and later moves are drawn as programmed.
+            ignored(fanuc, code, ctx.src, diag);
             out.push(Command::Unsupported {
                 what: code.key.to_string(),
             });
-            out.push(all_unknown(
-                ctx,
-                format!("{} on line {}", code.key, ctx.src.line),
-            ));
         }
         Handler::Unsupported => {
             diag.error(
@@ -734,14 +648,6 @@ fn apply_mcode(
             });
         }
         _ => {}
-    }
-}
-
-/// A command marking every axis's position as unknown.
-fn all_unknown(ctx: &BlockContext<'_>, reason: String) -> Command {
-    Command::PositionUnknown {
-        axes: (0..ctx.axes.len()).collect(),
-        reason,
     }
 }
 
@@ -827,6 +733,40 @@ fn assume_distance(state: &mut ModalState, src: SourceRef, diag: &mut Diagnostic
     );
 }
 
+/// A canned cycle's hole: a rapid to the position the block gives in the
+/// working plane. The other axes (the depth) and the cycle's own words (R,
+/// Q, P) are not drawn.
+fn cycle_hole(
+    fanuc: &Fanuc,
+    values: &[Value],
+    ctx: &BlockContext<'_>,
+    state: &mut ModalState,
+    out: &mut Vec<Command>,
+    diag: &mut Diagnostics,
+) {
+    let Some(plane) = state.plane else {
+        return; // No working plane on this machine: nothing to draw.
+    };
+    assume(
+        state,
+        PLANE_GROUP,
+        "G17 (XY plane)",
+        "The power-on plane is set by a parameter (3402 bits 1 and 2).",
+        ctx.src,
+        diag,
+    );
+    assume_distance(state, ctx.src, diag);
+    let incremental = state.distance == DistanceMode::Incremental;
+    let in_plane = |a: usize| a == usize::from(plane.first) || a == usize::from(plane.second);
+    let target: Vec<AxisWord> = axis_target(fanuc, values, incremental, ctx, state, diag)
+        .into_iter()
+        .filter(|w| in_plane(w.axis))
+        .collect();
+    if !target.is_empty() {
+        out.push(Command::Rapid { target });
+    }
+}
+
 /// G28, G30 and G53.
 fn special_motion(
     fanuc: &Fanuc,
@@ -840,10 +780,6 @@ fn special_motion(
     let src = at(ctx.src, code.span);
     if !values.iter().any(|v| ctx.axes.index_of(v.letter).is_some()) {
         return; // No axes named: nothing moves.
-    }
-    if let Some(reason) = hidden_reason(fanuc, state) {
-        out.push(all_unknown(ctx, reason));
-        return;
     }
     match code.handler {
         Handler::MachineRapid => {
@@ -885,21 +821,11 @@ fn special_motion(
     }
 }
 
-/// Why motion cannot be shown right now, if it cannot.
-fn hidden_reason(fanuc: &Fanuc, state: &ModalState) -> Option<String> {
-    if let Some((key, line)) = state.motion_blocker() {
-        // Modal blockers are keyed by group; name the code that started it.
-        let name = key
-            .strip_prefix("group ")
-            .and_then(|g| g.parse::<u16>().ok())
-            .and_then(|g| state.active_code(g))
-            .map_or_else(|| key.to_owned(), |k| k.to_string());
-        return Some(format!("{name} mode from line {line}"));
-    }
+/// The canned cycle in effect, if any (until G80 or G00-G03).
+fn cycle_active(fanuc: &Fanuc, state: &ModalState) -> bool {
     state
         .active_code(CANNED_CYCLE_GROUP)
-        .filter(|&k| fanuc.handler(k) == Some(Handler::Unsupported))
-        .map(|k| format!("canned cycle {k}"))
+        .is_some_and(|k| fanuc.handler(k) == Some(Handler::CannedCycle))
 }
 
 fn motion(
@@ -930,17 +856,11 @@ fn motion(
     }
     match effect {
         Motion::Consumed => return,
-        Motion::Hidden(reason) => {
-            out.push(all_unknown(ctx, reason));
-            return;
+        Motion::CycleHoles => return cycle_hole(fanuc, values, ctx, state, out, diag),
+        Motion::Normal if cycle_active(fanuc, state) => {
+            return cycle_hole(fanuc, values, ctx, state, out, diag);
         }
         Motion::Normal => {}
-    }
-    if let Some(reason) = hidden_reason(fanuc, state) {
-        // Already explained where the mode started; the machine still moves,
-        // so its position is no longer known.
-        out.push(all_unknown(ctx, reason));
-        return;
     }
 
     let (mode_key, mode) = match mode {
