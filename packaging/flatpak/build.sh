@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds gcode-editsim.flatpak, a single-file bundle users install with
 #   flatpak install --user gcode-editsim.flatpak
-# Needs: flatpak, flatpak-builder, Node 22 (npm), Rust (cargo), and the
+# Needs: flatpak, flatpak-builder, elfutils, Node 22 (npm), Rust (cargo), and the
 # Flathub remote for the GNOME runtime and SDK.
 # FLATPAK_BUILDER_ARGS adds options to flatpak-builder (CI uses
 # --disable-rofiles-fuse).
