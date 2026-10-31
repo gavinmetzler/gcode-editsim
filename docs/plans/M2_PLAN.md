@@ -74,6 +74,10 @@ Each PR is small, tested, and leaves `main` green. Steps marked
 **(core)** follow every core rule (no panics, wasm-buildable, no file
 access).
 
+**Status (2026-10-31):** M2.0–M2.7 merged, plus work added along the way:
+the Android spike (M2.3), a Flatpak package for Linux, and CI jobs that
+run only when their files change. M2.8 is next.
+
 ### M2.0: IR events (core)
 *Closes review finding I4. Must land before the buffer layout is fixed.*
 
@@ -189,8 +193,10 @@ Linux CI build job).
   - `toolpath.ts` (pure, tested) builds the index lists (each segment's own
     vertices, never joined across segments), per-vertex colours by kind
     and flags, event markers and a vertex-to-segment map.
-  - `viewport.ts` draws feeds solid, rapids dashed (dashes scaled to the
-    toolpath) and events as markers, with orbit, pan and zoom.
+  - `viewport.ts` draws feeds solid, rapids meant to be dashed (dashes
+    scaled to the toolpath) and events as markers, with orbit, pan and
+    zoom. *Found later:* the dashes never showed, because three.js
+    computes line distances only for non-indexed geometry; fixed in M2.8.
   - **Camera:** an **orthographic** camera, as backplots usually are. A
     perspective camera made heights shift positions in the top view.
   - **Standard views:** Top, Front, Right and Iso, all with Z up, plus Fit.
@@ -258,8 +264,13 @@ Linux CI build job).
 
 ### M2.8: Wrap-up
 
-- Choose a machine file in the UI (from the user's files, plus the
-  shipped example).
+- **Saving:** Save and Save As through a native file dialog (the open
+  file's real path is needed to save over it).
+- **Machine files:** the toolbar already lists the shipped example and
+  the files in the user's machine folder; make that folder easy to find
+  and the list easy to refresh.
+- **Dashed rapids:** fix the dashes (see M2.5).
+- **Flatpak:** a new build for the owner to try.
 - Update the docs: README "Trying it out" for the app, ARCHITECTURE.md
   changes, and `DEVELOPMENT_STATUS.md`.
 - Run a few of the **owner's real programs** end to end.
@@ -273,7 +284,7 @@ Linux CI build job).
 | `f32` precision far from origin | Origin-relative vertices (§8.2); a test with coordinates around ±10 000 mm |
 | Large programs freeze the UI | Worker thread now; chunked buffers later (§8.5 flag reserved) |
 | Trait changes ripple through the code | The stubs come early (M2.2), before the app depends on the traits |
-| No Osai 10 Series manual to hand; behaviour guessed from Fanuc | Ask the owner for the programming manual; mark unsourced behaviour *(unverified)*; keep the stub to a few codes |
+| No Osai 10 Series manual to hand; behaviour guessed from Fanuc | Resolved: the owner provided the manual (private repository); unsourced behaviour is still marked *(unverified)*; the stub stays small |
 | Scope creep into playback, editing or time estimation | Keep to the M2 list; note ideas in `DEVELOPMENT_STATUS.md` |
 
 ## 5. Carry-overs from M1 (not M2 scope unless the owner says so)
