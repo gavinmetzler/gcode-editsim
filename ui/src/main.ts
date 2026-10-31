@@ -18,7 +18,7 @@ import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
 import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from "./files";
 import { Freshness } from "./freshness";
-import { latestOnly, lineMarks, segmentRange } from "./editor/lines";
+import { buildLineIndex, latestOnly, lineMarks, type LineIndex } from "./editor/lines";
 import {
   inApp,
   interpret,
@@ -186,6 +186,8 @@ async function main(app: HTMLElement): Promise<void> {
   }
 
   let current: RenderBuffer | null = null;
+  /** Which segments each line produced, for the current buffer. */
+  let lineIndex: LineIndex = buildLineIndex(0, () => 0);
   /** Fit the view after the next run (a new program, machine or dialect). */
   let fitNext = true;
 
@@ -246,11 +248,11 @@ async function main(app: HTMLElement): Promise<void> {
     cursorLine = line;
     if (!current) return;
     const rb = current;
-    const { start, end } = segmentRange(rb.header.segmentCount, (i) => rb.segmentLine(i), line);
-    const segments = Array.from({ length: end - start }, (_, k) => start + k);
+    // Every run of the line: a subprogram line is highlighted in each call.
+    const segments = Array.from(lineIndex.segments(line));
     viewport.highlight(segments);
     if (pinned && pinned.line !== line) pinned = null;
-    resting = restingFor(pinned, line, restingPoint(rb, end - 1));
+    resting = restingFor(pinned, line, restingPoint(rb, lineIndex.lastAfter(line)));
     showMarker();
     if (quiet) return;
     setStatus(
@@ -268,6 +270,7 @@ async function main(app: HTMLElement): Promise<void> {
     },
     ({ rb, token }) => {
       current = rb;
+      lineIndex = buildLineIndex(rb.header.segmentCount, (i) => rb.segmentLine(i));
       freshness.resultShown(token);
       showFreshness();
       statsButton.disabled = false;

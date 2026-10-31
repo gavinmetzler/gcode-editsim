@@ -4,31 +4,52 @@
 import type { Diagnostic } from "../buffer/decode";
 import { SEVERITY } from "../generated/render_buffer";
 
-/**
- * The segments from source `line`, as a half-open index range. Binary
- * search, like `ir::segments_for_line`: it relies on segments being in
- * program order, which holds while programs have no subprograms or loops
- * (ARCHITECTURE.md section 6.6). An empty range starts where the line's
- * segments would be.
- */
-export function segmentRange(
-  count: number,
-  lineOf: (index: number) => number,
-  line: number,
-): { readonly start: number; readonly end: number } {
-  const lower = (pred: (l: number) => boolean): number => {
+/** Which segments each source line produced, for programs whose lines
+ *  run more than once (subprograms) as well as straight-line ones. */
+export interface LineIndex {
+  /** The segments from `line`, in run order: every run of the line. */
+  segments(line: number): Uint32Array;
+  /**
+   * The segment that leaves the tool where it is after `line`: the last
+   * segment of the line's first run, or, for a line with no segments, of
+   * the nearest earlier line that has some. -1 before the first segment.
+   */
+  lastAfter(line: number): number;
+}
+
+/** Builds the index for `count` segments, `lineOf` giving each one's line. */
+export function buildLineIndex(count: number, lineOf: (index: number) => number): LineIndex {
+  const lines = new Uint32Array(count);
+  for (let i = 0; i < count; i += 1) lines[i] = lineOf(i);
+  // Segment indices sorted by line, then by run order.
+  const order = Uint32Array.from({ length: count }, (_, i) => i).sort(
+    (a, b) => (lines[a] ?? 0) - (lines[b] ?? 0) || a - b,
+  );
+  const lineAt = (k: number): number => lines[order[k] ?? 0] ?? 0;
+  /** The first position in `order` whose line is not below `line`. */
+  const lower = (line: number): number => {
     let lo = 0;
     let hi = count;
     while (lo < hi) {
       const mid = (lo + hi) >>> 1;
-      if (pred(lineOf(mid))) lo = mid + 1;
+      if (lineAt(mid) < line) lo = mid + 1;
       else hi = mid;
     }
     return lo;
   };
-  const start = lower((l) => l < line);
-  const end = lower((l) => l <= line);
-  return { start, end: Math.max(start, end) };
+  return {
+    segments: (line) => order.subarray(lower(line), lower(line + 1)),
+    lastAfter: (line) => {
+      // The nearest line at or before `line` with segments.
+      const end = lower(line + 1);
+      if (end === 0) return -1;
+      const start = lower(lineAt(end - 1));
+      // Its first run: segments that follow each other directly.
+      let k = start;
+      while (k + 1 < end && order[k + 1] === (order[k] ?? 0) + 1) k += 1;
+      return order[k] ?? -1;
+    },
+  };
 }
 
 /** A diagnostic placed on an editor line, ready for the gutter. */
