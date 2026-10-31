@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-Status: **living document**, kept in step with the code. M1 (core skeleton) is complete; M2 (render buffer and minimal desktop UI) is in its last step, M2.8; M3 is next (§13). Where this file describes something not built yet, it says which milestone brings it. Interfaces marked *provisional* were checked against a stub second dialect (Osai 10 Series) and a stub second machine type (lathe) in M2.2 (findings in §7.2 and §9); they may still change when those become real (M8).
+Status: **living document**, kept in step with the code. M1 (core skeleton) and M2 (render buffer and minimal desktop UI) are complete; M3 is next (§13). Where this file describes something not built yet, it says which milestone brings it. Interfaces marked *provisional* were checked against a stub second dialect (Osai 10 Series) and a stub second machine type (lathe) in M2.2 (findings in §7.2 and §9); they may still change when those become real (M8).
 
 ## 1. Goals
 
@@ -455,7 +455,7 @@ The Tauri shell (`app/shell`) forwards to `app-backend` and holds no G-code logi
 - `load_file` replies with the file's raw bytes; `save_file` takes them as the raw body, with the path in an `x-path` header (percent-encoded UTF-8, as `encodeURIComponent` writes it, since header values cannot carry arbitrary text).
 - `list_dialects`, `list_machines`, `machine_folder` and the two setters are small JSON.
 
-The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at compile time (so the UI is built before the shell, locally and in CI). Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. It allows inline *styles* (`style-src 'unsafe-inline'`), because the editor (CodeMirror) injects its styles at run time; scripts stay `'self'` only. File paths come from the user. Opening uses the web page's file picker today; saving needs a native save dialog for a real path (M2.8).
+The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at compile time (so the UI is built before the shell, locally and in CI). Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. It allows inline *styles* (`style-src 'unsafe-inline'`), because the editor (CodeMirror) injects its styles at run time; scripts stay `'self'` only. File paths come from the user through the native open and save dialogs (`tauri-plugin-dialog`, M2.8b), so the app knows the open file's real path and can save over it; the files themselves are still read and written by the app's own commands. The window may use only those dialogs, the app's commands, and the close-request event (to ask before closing with unsaved changes); the dialog plugin's file-system companion (`tauri-plugin-fs`, a dependency) is not enabled. Saving writes UTF-8 with the file's own line endings.
 
 ### 8.5 Large programs
 
@@ -472,6 +472,8 @@ Plain TypeScript (no UI framework), built with Vite into `ui/dist`, which the sh
 | `src/editor/` | CodeMirror 6: highlighting by token type, diagnostics in the gutter, and `lines.ts` (line ↔ segment lookup; `latestOnly` drops results of runs overtaken by a newer one) |
 | `src/freshness.ts` | Whether what is shown matches the text: edits mark it out of date (red border, **Refresh (F5)**, line sync off) until the user refreshes. Loading a file or changing the machine or dialect runs at once |
 | `src/panels/` | The diagnostics panel, and the toolpath statistics (lengths, bounds, per-tool figures, counts), worked out from the render buffer only when the user opens the statistics dialog, since they take time on a very large program |
+| `src/files.ts` | Decoding files, keeping their line endings, and opening by path without failing silently |
+| `src/machines-dialog.ts` | Shows the user's machine folder and reloads the machine list |
 | `src/ipc/backend.ts` | Typed calls to the shell's commands (§8.4a) |
 | `src/main.ts` | Lays out the toolbar, editor, viewport, panel and status line, and wires them together |
 
@@ -555,10 +557,10 @@ Not started; planned for M7, after tool geometry (M6). Dexels are the leading ca
 
 ## 13. Milestones
 
-Status: M1 done; M2 at step M2.8; M3 next.
+Status: M1 and M2 done; M3 next.
 
 1. **M1: Core skeleton** *(done)*. Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
-2. **M2: Render buffer + minimal UI** *(in progress: M2.0–M2.7 done, M2.8 next)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), and CI jobs that run only when their files change. See `docs/plans/M2_PLAN.md`.
+2. **M2: Render buffer + minimal UI** *(done)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), CI jobs that run only when their files change, refresh on demand after edits, and the tool marker with hover readout (M3.1/M3.2 brought forward). See `docs/plans/M2_PLAN.md`.
 3. **M3: A dependable backplotter.** Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; G92, G52, G10 and Osai origins; unsupported coordinate changes drawn approximate instead of hidden; program coordinates by default; canned cycles G81–G89; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. See `docs/plans/M3_PLAN.md`.
 4. **M4: Code transformations.** Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
 5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later.

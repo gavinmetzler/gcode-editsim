@@ -81,18 +81,20 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M2: Render buffer + minimal UI** (see `ARCHITECTURE.md` §13 and `docs/plans/M2_PLAN.md`). M1 is complete. Steps, in order (0–7 are done; 8 is next):
+**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 and 3.2 were brought forward and are done):
 
-0. IR events (stop, spindle, coolant, program end)
-1. Arc tessellation + `RenderBuffer` encoding (layout v1, shared `.bin` fixture)
-2. Stub `machine-lathe` and stub `dialect-osai` (Osai 10 Series), only to stress the traits
-3. Tauri 2 app shell (`app/`), then a small Android/iOS spike of the binary boundary
-4. UI scaffold (Vite, plain TypeScript, no UI framework) + buffer decoding
-5. three.js viewport
-6. CodeMirror editor + line ↔ segment sync
-7. Diagnostics and statistics panels
-8. Wrap-up
+0. Real-program corpus (private, run locally) and lenient handling of ignorable codes
+1. Tool marker *(done)*
+2. Hover info *(done)*
+3. Measure between two points
+4. Orbit around the snapped point
+5. Program coordinates and coordinate shifts (G92, G52, G10, Osai origins); approximate drawing instead of hidden moves (likely render buffer v2)
+6. Canned cycles
+7. Subprograms and simple macro variables
+8. Statistics, extended (per tool, simple time estimate)
+9. Large programs
+10. Wrap-up
 
-Desktop only. The lathe and Osai crates are stubs for M2; full support stays out of scope until M8.
+Desktop only. The lathe and Osai crates stay stubs; full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.
 
-**Next: M3, a dependable backplotter** (`docs/plans/M3_PLAN.md`), then M4 code transformations, M5 mobile, M6 machine state and accuracy, M7 material removal (`ARCHITECTURE.md` §13). Tool height and wear compensation are never simulated: ignore them with an info note.
+**Then:** M4 code transformations, M5 mobile, M6 machine state and accuracy, M7 material removal (`ARCHITECTURE.md` §13).

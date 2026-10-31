@@ -61,6 +61,16 @@ portal services:
 - the chosen file reaches the sandbox through the document portal and is
   read, run and drawn.
 
+M2.8b (native dialogs, `tauri-plugin-dialog`), the same way:
+
+- **Save As…** and **Open…** show the desktop's file chooser through the
+  portal (GTK's native chooser does this by itself inside a sandbox);
+- Save As wrote a new file on the host, and **Save** after an edit
+  replaced it in place (the app's save writes a temporary file and renames
+  it, which the document portal allows);
+- a file with Windows (CRLF) line endings kept them after an edit and a
+  save, and no temporary file was left behind.
+
 On the owner's desktop (Wayland, NVIDIA graphics) the first bundle closed
 at start with a Wayland protocol error; see "Known issues" for the cause
 and the setting that fixes it.

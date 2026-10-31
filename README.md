@@ -8,7 +8,7 @@ The long-term goal is to provide a practical environment where CNC programmers c
 
 The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestone 1 (the core pipeline) is complete; Milestone 2 (render buffer and minimal desktop UI) is finishing with M2.8 (saving and wrap-up). Next is Milestone 3: a dependable backplotter. On Linux it installs as a Flatpak.
+> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline) and 2 (render buffer and minimal desktop UI) are complete. Next is Milestone 3: a dependable backplotter. On Linux it installs as a Flatpak.
 
 GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
@@ -195,10 +195,9 @@ See [Trying it out](#trying-it-out).
 - **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length. This is intended: height and wear compensation are not planned, and the path is shown as programmed.
 - **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M6).
 - **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used (M6).
-- **The app can't save files yet** (M2.8b).
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 
-### M2 – Render Buffer and Minimal UI (finishing)
+### M2 – Render Buffer and Minimal UI (complete)
 
 - [x] IR events: stops, spindle, coolant, program end
 - [x] Arc tessellation and the binary render buffer, with a fixture checked from both Rust and TypeScript
@@ -208,7 +207,7 @@ See [Trying it out](#trying-it-out).
 - [x] Diagnostics panel, and statistics on demand in a dialog
 - [x] Flatpak package for Linux
 - [x] M2.8a: refresh on demand after edits, dashed rapids
-- [ ] M2.8b: saving files, machine folder, wrap-up
+- [x] M2.8b: opening and saving through the desktop's file dialogs, the machine folder, wrap-up
 
 ### Later Milestones
 
@@ -232,7 +231,7 @@ cd ui && npm ci && npm run build && cd ..   # the app embeds the built UI
 cd app/shell && cargo run
 ```
 
-The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. A yellow arrow marks the tool: it sits at the point you last clicked, or where the tool is after the cursor's line, and follows the pointer over the toolpath (snapping to the ends of moves), with its position (machine coordinates for now), tool and feed shown in the corner. Editing does not redraw straight away: the view gets a red border and a **Refresh (F5)** button, and clicking the toolpath or a diagnostic does nothing until you refresh, because line numbers may have moved (saving comes in M2.8b). Under the toolpath, the **Diagnostics** panel lists every problem (click one to go to its line). **Statistics…** in the toolbar works out path lengths, bounds and per-tool figures on demand and shows them in a dialog.
+The app opens with a sample program in the editor beside its toolpath. Use **Open…** (Ctrl+O) to load your own, and **Save** (Ctrl+S) or **Save As…** (Ctrl+Shift+S) to write it back; the file keeps its line endings, and the app asks before closing or opening another file with unsaved changes (shown by • after the name). Choose the machine and dialect in the toolbar; **Machines…** shows the folder for your own machine files and reloads the list. Click a line to highlight its moves, or click the toolpath to jump to its line. A yellow arrow marks the tool: it sits at the point you last clicked, or where the tool is after the cursor's line, and follows the pointer over the toolpath (snapping to the ends of moves), with its position (machine coordinates for now), tool and feed shown in the corner. Editing does not redraw straight away: the view gets a red border and a **Refresh (F5)** button, and clicking the toolpath or a diagnostic does nothing until you refresh,, because line numbers may have moved. Under the toolpath, the **Diagnostics** panel lists every problem (click one to go to its line). **Statistics…** in the toolbar works out path lengths, bounds and per-tool figures on demand and shows them in a dialog.
 
 With [Rust](https://rustup.rs) installed, you can also run a program through the engine and see the result as JSON:
 

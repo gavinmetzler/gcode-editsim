@@ -6,7 +6,9 @@
 html, body, #app { height: 100%; margin: 0; }
 #app { display: flex; flex-direction: column; background: #14171c; color: #e6e6e6; }
 header, footer { display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: #1d2128; }
-header .spacer { flex: 1; }
+header { flex-wrap: wrap; row-gap: 4px; }
+header .views { display: flex; gap: 8px; margin-left: auto; }
+header .file { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28ch; }
 header .file { color: #9aa0a6; }
 main { flex: 1; min-height: 0; display: flex; }
 .editor { flex: 0 0 38%; min-width: 0; border-right: 1px solid #2b3038; }
@@ -35,18 +37,22 @@ main { flex: 1; min-height: 0; display: flex; }
 footer { justify-content: space-between; font-size: 12px; }
 .disclaimer { color: #9aa0a6; }
 button, select { font: inherit; }
+button { white-space: nowrap; }
+header select { max-width: 22ch; }
 [hidden] { display: none !important; }
-.stats-dialog { background: #1d2128; color: #e6e6e6; border: 1px solid #3a404a; border-radius: 6px; padding: 14px 18px; max-width: min(1100px, 92vw); max-height: 88vh; overflow: auto; font-size: 12px; }
-.stats-dialog::backdrop { background: rgb(0 0 0 / 45%); }
-.stats-dialog h2 { font-size: 15px; margin: 0 0 8px; }
+.stats-dialog, .app-dialog { background: #1d2128; color: #e6e6e6; border: 1px solid #3a404a; border-radius: 6px; padding: 14px 18px; max-width: min(1100px, 92vw); max-height: 88vh; overflow: auto; font-size: 12px; }
+.stats-dialog::backdrop, .app-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+.stats-dialog h2, .app-dialog h2 { font-size: 15px; margin: 0 0 8px; }
 .stats-dialog h3 { font-size: 12px; margin: 0 0 4px; color: #c8ccd2; }
 .stats-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; align-items: start; }
 .stats-body table { border-collapse: collapse; }
 .stats-body th, .stats-body td { padding: 1px 10px 1px 0; text-align: left; vertical-align: top; }
 .stats-body th { font-weight: normal; color: #9aa0a6; white-space: nowrap; }
-.stats-dialog .note, .stats-dialog .empty { color: #9aa0a6; }
-.stats-dialog .buttons { display: flex; justify-content: flex-end; }
-.stats-dialog .buttons button { min-width: 80px; }
+.stats-dialog .note, .stats-dialog .empty, .app-dialog .note { color: #9aa0a6; }
+.stats-dialog .buttons, .app-dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
+.stats-dialog .buttons button, .app-dialog .buttons button { min-width: 80px; }
+.machines-dialog { max-width: min(640px, 92vw); }
+.machines-dialog .path { width: 100%; box-sizing: border-box; font: 12px ui-monospace, monospace; padding: 4px 6px; background: #14171c; color: #e6e6e6; border: 1px solid #3a404a; border-radius: 4px; }
 .readout { position: absolute; top: 8px; left: 8px; min-width: 190px; padding: 6px 10px; background: rgb(29 33 40 / 88%); border: 1px solid #3a404a; border-radius: 6px; font-size: 12px; pointer-events: none; }
 .readout .title { color: #ffd23f; }
 .readout .caption { color: #9aa0a6; font-size: 11px; margin-bottom: 3px; }
