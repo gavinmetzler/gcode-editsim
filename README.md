@@ -184,19 +184,20 @@ See [Trying it out](#trying-it-out).
 
 **Known limitations**, tracked for later milestones:
 
-- **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length (M4).
-- **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M5).
+- **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length. This is intended: height and wear compensation are not planned, and the path is shown as programmed.
+- **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M6).
 - **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used.
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 
 ### Later Milestones
 
 - **M2 – Render buffer and minimal UI:** binary Rust/UI boundary, 3D viewport, editor, line and toolpath sync, statistics and diagnostics. Desktop only. Stub lathe and second dialect to test the module boundaries.
-- **M3 – Mobile spike:** the same app on Android and iOS.
-- **M4 – Machine state:** tool changes and tool table, tool length compensation, canned cycles, subprograms, simple macro variables.
-- **M5 – Accuracy:** cutter radius compensation, cycle-time estimation with acceleration, limits checking.
-- **M6 – Material removal (mill).**
-- **M7+ – More dialects and machine types:** Haas, then others; lathe and mill-turn.
+- **M3 – A dependable backplotter:** real programs without false alarms (ignorable codes noted, not errors), coordinate shifts (G92, G52, G10, Osai origins), program coordinates, canned cycles, subprograms, per-tool statistics with a simple time estimate, large programs. Backplot tools: a tool marker, hover info, measuring, orbiting around a point on the toolpath.
+- **M4 – Code transformations:** translate, scale and rotate a selected part of the program.
+- **M5 – Mobile:** the same app on Android; iOS later.
+- **M6 – Machine state and accuracy:** tool table, cutter radius compensation, cycle-time estimation with acceleration, the dog-leg rapid path, limits checking.
+- **M7 – Material removal (mill).**
+- **M8+ – More dialects and machine types:** Haas, then others; the full Osai 10 Series; lathe and mill-turn.
 
 ---
 

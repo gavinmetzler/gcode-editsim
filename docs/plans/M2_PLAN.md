@@ -1,7 +1,9 @@
 # M2 plan: render buffer and minimal UI
 
 **Status:** agreed. The owner answered the section 2 questions on 2026-10-30
-(recorded there); work proceeds one PR at a time from M2.0.
+(recorded there); work proceeds one PR at a time from M2.0. Milestones
+after M2 were renumbered on 2026-10-31 (ARCHITECTURE.md §13); references
+to them below use the new numbers.
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (especially §8 and
 §13) and `DEVELOPMENT_STATUS.md`.
 
@@ -23,9 +25,9 @@ All of this goes through the binary `RenderBuffer`, never JSON for bulk
 data (CLAUDE.md rule 4).
 
 **Out of scope for M2:**
-- mobile (M3)
-- cycle-time estimation (M5)
-- material removal (M6)
+- mobile (now M5)
+- cycle-time estimation (now M3.8, simple; M6 with acceleration)
+- material removal (now M7)
 - playback animation, unless it is cheap once the events exist
 - editing features beyond basic text editing
 
@@ -150,7 +152,7 @@ Linux CI build job).
   matching the desktop build, a 20 000-block program ran, and save/load
   round-tripped all 256 byte values. Kept on branch `claude/android-spike`
   with `app/shell/SPIKE.md` (tool versions, the mobile changes, and how to
-  rebuild the APK) for M3.
+  rebuild the APK) for mobile (now M5).
 
 ### M2.4: UI scaffold and buffer decoding (`ui/`)
 
@@ -239,7 +241,7 @@ Linux CI build job).
   line. Make the "assumed …" and "moves not shown" warnings easy to
   understand, since they explain gaps in the toolpath.
 - **Statistics:** segment counts by kind, bounding box, tools used,
-  units used, feed-move length. Cycle time is not shown (M5).
+  units used, feed-move length. Cycle time is not shown (a simple estimate comes in M3.8).
 - **Wording:** never call output "verified" or "safe" (CLAUDE.md). Show
   the disclaimer.
 
@@ -266,8 +268,8 @@ Linux CI build job).
 ## 5. Carry-overs from M1 (not M2 scope unless the owner says so)
 
 See `DEVELOPMENT_STATUS.md` sections 5–8:
-- G43 (M4)
-- dog-leg rapids (M5)
+- G43: not planned; ignored with an info note (M3.0, owner decision 2026-10-31)
+- dog-leg rapids (M6)
 - speed-limit checks
 - unverified Fanuc items
 - the minor diagnostic-code clean-ups
