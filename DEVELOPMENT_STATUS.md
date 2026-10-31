@@ -8,8 +8,10 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M2.6 (editor and line ↔ segment sync). M2 is planned in
-[`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md).
+Last updated: roadmap revision after M2.6 (2026-10-31). M2 is planned in
+[`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
+[`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
+ARCHITECTURE.md §13.
 
 ---
 
@@ -85,7 +87,7 @@ in ARCHITECTURE.md §5).
 | `core/machine-lathe` | 2-axis lathe **stub** (M2.2) | `Lathe::new(def)`, `Lathe::generic()`; X diameter → radius in `normalize_axis_value`; example file `data/generic_2axis_lathe.toml` |
 | `core/interpreter` | Dialect + machine to IR | `interpret(source, file, &dyn Dialect, &dyn Machine, Options) -> ir::Program`; `examples/summary.rs` |
 | `core/testkit` | Golden helpers (no file access) | `summary(&Program, letters)`: compact JSON rounded to 1e-6; `compare`; `UPDATE_GOLDEN` |
-| `core/sim` | Empty placeholder (M6) | |
+| `core/sim` | Empty placeholder (M7) | |
 | `app/backend` | The app's behaviour without Tauri (M2.3a) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, list_machine_files}` |
 | `app/shell` | The Tauri 2 desktop shell (M2.3b), **its own Cargo workspace** | Commands in `src/lib.rs` (`interpret` raw body → raw render buffer, `load_file`, `save_file`, machine and dialect choice); IPC tests on Tauri's mock runtime in `tests/ipc.rs`; the UI (`ui/dist`) embedded at compile time |
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
@@ -206,13 +208,13 @@ self-review: the same agent wrote the code.
 | I1: canned cycle not cancelled by G00–G03 | **Fixed** (#9) |
 | I5: power-on defaults assumed silently | **Fixed** (#9): "assumed" warnings |
 | I8: CI did not enforce the dependency rule; fuzz not in CI; no abs/inc test | **Fixed** (#9, #10) |
-| I2: G43 tool length not applied (Z and Z limits off by the tool length) | Open, M4 |
-| I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, M5 |
+| I2: G43 tool length not applied (Z and Z limits off by the tool length) | Not planned (owner decision 2026-10-31): ignored with an info note, M3.0 |
+| I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, M6 |
 | I4: IR lacks stop/pause, coolant, spindle direction, program end | **Fixed** (M2.0): event segments |
 | I6: max feed / max rpm / rapid rates loaded but unused | Open |
 | I7: about 19 Fanuc behaviours marked *(unverified)* | Open; needs the owner's control manual |
 | Minor: R arc with equal end points is a warning in the dialect but an error in the interpreter | Open |
-| Minor: G95 feed is stored as mm/min (wrong for cycle time) | Open, M5 |
+| Minor: G95 feed is stored as mm/min (wrong for cycle time) | Open, M3.8 |
 | Minor: no warning for a feed move with the spindle stopped | Open (feature) |
 | Minor: undefined work offset uses `InvalidValue`; "after program end" uses `NotYetSimulated`; limit summary points at line 0 | Open |
 
@@ -224,7 +226,8 @@ was asked to try a few real programs with the `summary` example.
 
 ## 6. Known limitations (also listed in the README)
 
-- G43 is not applied, and Z limit checks ignore the tool length.
+- G43 is not applied, and Z limit checks ignore the tool length (by
+  design: height and wear compensation are not planned).
 - Rapids are straight lines.
 - Speed limits are unused.
 - Not supported:
@@ -294,6 +297,30 @@ Left to the agent's judgement, and decided as follows:
   the owner's permission.
 - CI stays on Ubuntu 24.04 until a tool needs newer packages.
 
+Decided (2026-10-31), roadmap revision:
+- **Mature the editor and backplotter before mobile or simulation.** New
+  order: M3 a dependable backplotter, M4 code transformations, M5
+  mobile, M6 machine state and accuracy, M7 material removal, M8+ more
+  dialects and machine types (ARCHITECTURE.md §13).
+- **Ignorable codes:** machine-specific codes, and tool height and wear
+  compensation, are ignored with an info note, not an error. Rarely used
+  codes (turret switches, some coordinate changes) may be ignored where
+  the backplot stays useful.
+- **Wanted early:** toolpath statistics, and translating, scaling and
+  rotating a selected part of the program (M4), ahead of mobile and
+  simulation.
+- **Backplot tools in M3:** a tool marker (a thick vertical line with an
+  arrowhead, deliberately unlike the M7 tool with size and shape), hover
+  info on the nearest endpoint (position, tool, feed), measuring between
+  two points, and orbiting around a snapped point.
+- **Agent proposals the owner did not object to:** G92, G52, G10 and Osai
+  origins are implemented rather than ignored (ignoring a shift misplaces
+  later moves); still-unsupported coordinate changes are drawn
+  approximate instead of hidden; program coordinates are the default
+  display.
+- **Flatpak:** distributed as a single `.flatpak` file; Flathub is not
+  planned.
+
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their
    control's manual?
@@ -301,3 +328,5 @@ Still open:
    `gcode-editsim-manuals` (not in this one, for copyright reasons).
    Items marked *(unverified)* in `docs/dialect-notes/osai.md` need a
    real control.
+3. A private corpus of the owner's real Fanuc and Osai programs (M3.0),
+   and the exact `(UAO,n)` message the owner saw.

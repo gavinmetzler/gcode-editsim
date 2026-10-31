@@ -93,4 +93,6 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 7. Diagnostics and statistics panels
 8. Wrap-up
 
-Desktop only. The lathe and Osai crates are stubs for M2; full support stays out of scope until M7.
+Desktop only. The lathe and Osai crates are stubs for M2; full support stays out of scope until M8.
+
+**Next: M3, a dependable backplotter** (`docs/plans/M3_PLAN.md`), then M4 code transformations, M5 mobile, M6 machine state and accuracy, M7 material removal (`ARCHITECTURE.md` §13). Tool height and wear compensation are never simulated: ignore them with an info note.

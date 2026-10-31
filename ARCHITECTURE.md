@@ -197,7 +197,7 @@ Differences from the first draft, and why:
 - **Tool selection and tool change are separate** (`T` chooses, a change code changes), which most controllers distinguish. A dialect whose `T` word changes immediately just emits both.
 - **`Stop` was added** for operator stops and optional stops.
 - **`ReturnToReference`, `MachineRapid` and `PositionUnknown` were added** (M1 hardening) so that reference returns and machine-coordinate moves are simulated, and so that a move the dialect cannot simulate never leaves the interpreter drawing later moves from the wrong place.
-- **Deferred until their milestones**: tool length and cutter compensation (M4/M5) and multi-channel `Sync`.
+- **Deferred until their milestones**: cutter compensation (M6) and multi-channel `Sync`. Tool length (height) and wear compensation are not planned (§13).
 - **`ArcCenter::Position` was added** (M2.2) because the Osai 10 Series programs the centre as a position in G90. The dialect cannot turn that into an offset, since only the interpreter knows the start point and the work offset. The interpreter converts its values like axis words (work offset, `normalize_axis_value`), so a centre on a diameter axis is a diameter, as on that control. `Offset` values are not converted by the machine (Fanuc gives I as a radius on lathes).
 
 ### 6.6 Segments (the IR)
@@ -268,7 +268,7 @@ Design notes:
 
 - **Events are segments.** Everything that is not motion (dwell, tool change, stops, spindle, coolant, program end, `Sync`) is a zero-length segment with `start == end`, rather than a separate event list. That keeps one list in program order, so the line lookup below finds a line's events as well as its moves, and a later playback can walk a single list. Each event is its own kind, because the render buffer stores only the kind byte. `SegKind` and `SegFlags` values are fixed once the render buffer exists.
 - **Arcs stay arcs in the IR.** They are exact, compact, and let stats and sim choose their own tolerance. Tessellation is a function in `ir` (`tessellate(&Segment, tol) -> impl Iterator<Item = Pos>`), used by the render-buffer builder and by sim. It gives the exact start and end, points on the arc with chord error ≤ `tol`, at least one point every 90°, and at most `MAX_ARC_POINTS` (100 000) per arc; an unusable tolerance gets the maximum.
-- Segments are emitted **in program order**, so a source line maps to a contiguous segment range (binary search on `src.line`). This holds for straight-line, single-file programs. Subprograms, macro loops and `GOTO` (M4) break it, because one line can then produce segments at several places in the stream; the lookup will need a separate line index by then.
+- Segments are emitted **in program order**, so a source line maps to a contiguous segment range (binary search on `src.line`). This holds for straight-line, single-file programs. Subprograms, macro loops and `GOTO` (M3 and later) break it, because one line can then produce segments at several places in the stream; the lookup will need a separate line index by then.
 - **Arc plane is a pair of axis indices**, not a fixed `XY | ZX | YZ` enum, so the IR names no axes (the machine maps G17/G18/G19 or any other plane selection to indices). The swept angle is the shortest turn in the arc's direction from `start` to `end`, plus `turns` full revolutions; coincident end points mean a full circle. Axes outside the plane move linearly from `start` to `end`, which describes a helix without a separate `helical_delta` field (that field would duplicate `end - start` and could disagree with it).
 - A `Segment` is deliberately fat (~250 bytes). If memory becomes an issue on huge programs, the render path already uses a compact encoding (§8) and the IR can later move to a struct-of-arrays layout without changing consumers' API.
 
@@ -340,11 +340,11 @@ pub trait Dialect {
 
 `AxisSet` is the machine's ordered axis list as the dialect sees it: each axis's address letter, whether it is rotary, and optionally the letter for its arc-centre offset (e.g. `I` for `X`). Index *i* in the set is index *i* in `Pos`. The dialect looks letters up there instead of assuming X/Y/Z exist; it cannot depend on `machine-api` (which comes later in the dependency order), so the caller builds the `AxisSet` from the user's machine definition (§9).
 
-A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferred until macros are in scope (M4); see §7.4.
+A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferred until macros are in scope (M3.7); see §7.4.
 
 **What the second dialect showed (M2.2).** `dialect-osai`, a stub of the Osai 10 Series, implements the same `Dialect` trait from its own code table, with no Fanuc code. G17-G19 there pick planes by position in the axis list rather than by letter, which `AxisSet` supports as it is. One interface change was needed: `ArcCenter::Position` (§6.5). Other findings, recorded rather than fixed:
 
-- **The parser's lexical rules are Fanuc-shaped.** On the 10 Series, parentheses hold commands (`(UAO,1)`), not comments. The dialect reads them from the parser's parenthesis comments, but a `)` inside a quoted message breaks the line. Labels (`"START"`), axis names without a value (`G X Y`), `>>` and `E10=5` are syntax errors. Letters are folded to upper case, so Osai's lower-case `r` (corner radius) and `t` (block time) arrive as `R` and `T`. A real Osai dialect (M7) needs a per-dialect lexical profile in `gcode-syntax` (comment characters, case, labels, assignments). Until then the Osai stub treats an unreadable line as "position unknown", because the control may well have moved there.
+- **The parser's lexical rules are Fanuc-shaped.** On the 10 Series, parentheses hold commands (`(UAO,1)`), not comments. The dialect reads them from the parser's parenthesis comments, but a `)` inside a quoted message breaks the line. Labels (`"START"`), axis names without a value (`G X Y`), `>>` and `E10=5` are syntax errors. Letters are folded to upper case, so Osai's lower-case `r` (corner radius) and `t` (block time) arrive as `R` and `T`. A real Osai dialect (M8) needs a per-dialect lexical profile in `gcode-syntax` (comment characters, case, labels, assignments). Until then the Osai stub treats an unreadable line as "position unknown", because the control may well have moved there.
 - **`arc_offset_letter` is a Fanuc-family idea.** Osai names the centre I and J by plane position whatever the axes, so it ignores the machine's arc-offset letters. They stay in the machine file for dialects that name centres per axis.
 - **`Command::Arc` cannot say how many turns.** Osai's helix pitch K can mean several turns; `Arc` has no turns field (the IR's `ArcGeom::turns` exists). The stub refuses K.
 - **Tolerances belong to the control.** Osai's full-circle threshold (FCT, 0.001 mm by default) differs from the interpreter's fixed 1e-6 mm; its radius tolerance (CET, 0.01 mm) matches. Both may need to come from the dialect or the machine.
@@ -358,6 +358,8 @@ Expanded inside the dialect layer into primitive `Command`s (Rapid / Linear / Dw
 ### 7.3a Unsupported modes that affect later blocks
 
 Some unsupported codes change how *later* blocks move: coordinate shifts (G92, G52, G10), rotation, scaling, mirroring, polar input, subprograms, and unknown G codes. Reporting only the code's own block would leave every following move drawn in the wrong place without a diagnostic. Such codes start a **motion blocker** (`ModalState::motion_blockers`): an error explains, once, that moves are not shown from that line until the matching cancel code (or the end of the program). While a blocker is in effect the dialect emits no motion, only `PositionUnknown`, so when the blocker ends the interpreter waits for a known position before drawing again.
+
+*Planned change (M3.5, owner decision 2026-10-31):* G92, G52, G10 and Osai origins are implemented, and the codes that remain unsupported no longer hide later moves. Those moves are drawn, flagged approximate, with one warning at the code. This section is rewritten in that PR.
 
 ### 7.4 Macros and expressions
 
@@ -481,10 +483,10 @@ pub trait Machine {
 
 **What the lathe stub showed about the traits (M2.2).** A Fanuc program ran on the lathe through the unchanged `Machine`, `Dialect` and interpreter interfaces, including diameter moves, ZX-plane arcs, limits, reference returns and kinematics. The problems it found are recorded here and not fixed yet:
 
-- **The dialect's assumed power-on plane depends on the machine.** The Fanuc dialect assumes G17 (XY) when a program sets no plane. A lathe has no Y axis, so an arc without G18 has no plane and is rejected (with an error, never drawn wrongly). A lathe dialect would assume G18. The power-on modal state may need the machine's say, e.g. a default plane in `AxisSet`. To be decided with the first real lathe dialect (M7).
+- **The dialect's assumed power-on plane depends on the machine.** The Fanuc dialect assumes G17 (XY) when a program sets no plane. A lathe has no Y axis, so an arc without G18 has no plane and is rejected (with an error, never drawn wrongly). A lathe dialect would assume G18. The power-on modal state may need the machine's say, e.g. a default plane in `AxisSet`. To be decided with the first real lathe dialect (M8).
 - **Diameter mode is fixed per axis.** `normalize_axis_value` has no program state, so a control whose programs can switch between diameter and radius input cannot be modelled through it. If one is needed, the dialect would convert instead, or the trait would take a mode.
 - **Choosing the machine type from `family` has no home yet.** It cannot live in `machine-api`, which may not depend on concrete machines. The app (M2.3) will hold the small `family` → machine-type lookup.
-- **The tool direction is a guess.** `ToolPose::direction` is fixed per machine type (a lathe tool points +x). Real tool orientation comes with tool geometry (M4). `tool_model` (tool geometry and the tool table) is deferred to M4, when tool changes and length compensation are simulated.
+- **The tool direction is a guess.** `ToolPose::direction` is fixed per machine type (a lathe tool points +x). Real tool orientation comes with tool geometry (M6). `tool_model` (tool geometry and the tool table) is deferred to M6.
 
 Machine definitions are **user-editable text files** (TOML) describing the user's own machine: name, machine family, axis list (letters, kinds, directions, arc-offset letters, travel limits, rapid rates), maximum feed and spindle speed, and work offsets. `machine-api` loads and validates the file into a `MachineDef` (unknown settings are rejected, not ignored); the machine type named by `family` then checks it makes sense for that type (e.g. `Mill::new`). The format is documented for users in `docs/machine-definition.md`. A UI for editing them comes later; until then users edit the file directly. The dialect's `AxisSet` (§7.2) is built from this definition by the interpreter.
 
@@ -525,11 +527,14 @@ Not started until stages 1–3 are done. Dexels are the leading candidate for mi
 
 1. **M1: Core skeleton.** Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
 2. **M2: Render buffer + minimal UI.** Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits.
-3. **M3: Mobile spike.** Same app running on Android and iOS; decide on mobile layout.
-4. **M4: Machine state.** Tool changes and tool table, G43 length comp, canned cycles G81–G89, subprograms, simple macro variables.
-5. **M5: Cutter comp, time estimation with accel model, limits checking.**
-6. **M6: Material removal (mill).**
-7. **M7+: Additional dialects (Haas, then others) and machine types (lathe, mill-turn).**
+3. **M3: A dependable backplotter.** Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; G92, G52, G10 and Osai origins; unsupported coordinate changes drawn approximate instead of hidden; program coordinates by default; canned cycles G81–G89; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. See `docs/plans/M3_PLAN.md`.
+4. **M4: Code transformations.** Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
+5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later.
+6. **M6: Machine state and accuracy.** Tool table and tool geometry, cutter radius compensation, time estimation with an acceleration model, the dog-leg rapid path, speed-limit checks.
+7. **M7: Material removal (mill).**
+8. **M8+: Additional dialects (Haas, then others), the full Osai 10 Series, and machine types (lathe, mill-turn).**
+
+The order was revised on 2026-10-31 (owner decision): the editor and backplotter are matured (M3) and code transformations added (M4) before mobile and simulation. Tool length (height) and wear compensation are not planned: a virtual machine shows the path as programmed, and these codes are ignored with an info note.
 
 ## 14. Disclaimer
 
