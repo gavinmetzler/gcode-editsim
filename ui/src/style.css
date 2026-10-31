@@ -77,5 +77,4 @@ header select { max-width: 22ch; }
 .legend ul { list-style: none; margin: 4px 0 0; padding: 0; }
 .legend li { display: flex; align-items: center; gap: 6px; line-height: 16px; }
 .legend .swatch { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--swatch); }
-.legend .swatch.dashed { border-top-style: dashed; }
 .legend .swatch.dot { width: 7px; height: 7px; border: none; background: var(--swatch); margin: 0 5px; }

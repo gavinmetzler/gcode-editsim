@@ -36,8 +36,8 @@ export interface LegendEntry {
   readonly label: string;
   /** CSS colour (sRGB). */
   readonly color: string;
-  /** How it is drawn: a dashed or solid line, or a dot (events). */
-  readonly style: "dashed" | "solid" | "dot";
+  /** How it is drawn: a line, or a dot (events). */
+  readonly style: "solid" | "dot";
 }
 
 /** A palette colour as CSS. */
@@ -48,7 +48,7 @@ export function cssColor(c: Rgb): string {
 
 /** What the toolpath colours mean, in the order the legend shows them. */
 export const LEGEND: readonly LegendEntry[] = [
-  { label: "Rapid", color: cssColor(PALETTE.rapid), style: "dashed" },
+  { label: "Rapid", color: cssColor(PALETTE.rapid), style: "solid" },
   { label: "Linear feed", color: cssColor(PALETTE.linear), style: "solid" },
   { label: "Arc feed", color: cssColor(PALETTE.arc), style: "solid" },
   { label: "Outside travel limits", color: cssColor(PALETTE.outOfLimits), style: "solid" },
@@ -116,21 +116,6 @@ export interface Toolpath {
   readonly endpoints: Endpoints;
   /** Bounds of the motion vertices relative to `origin`, or null if none. */
   readonly bounds: { readonly min: Rgb; readonly max: Rgb } | null;
-}
-
-/**
- * Copies the vertices that `index` refers to, in index order, `size`
- * numbers each: an indexed line list made non-indexed. Dashed lines need
- * this, because three.js measures dash distances only along non-indexed
- * geometry. Vertex `k` of the result is vertex `index[k]` of `values`, so
- * picking maps back through `index` unchanged.
- */
-export function expandIndexed(values: Float32Array, index: Uint32Array, size: number): Float32Array {
-  const out = new Float32Array(index.length * size);
-  index.forEach((v, k) => {
-    out.set(values.subarray(v * size, v * size + size), k * size);
-  });
-  return out;
 }
 
 function linear(c: Rgb): Rgb {

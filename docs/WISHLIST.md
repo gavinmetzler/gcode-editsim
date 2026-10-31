@@ -35,3 +35,18 @@ time, so a router program opened straight away is drawn mostly red
 (outside that machine's travel). Remember the machine and dialect chosen
 last, and start with them. Fits the settings dialog above, which would
 keep its options between sessions in the same way.
+
+## Colour themes
+
+*Raised by the owner, 2026-10-31.*
+
+Let the user customise every colour, of the interface and of the toolpath
+(rapids, feeds, arcs, out-of-limits, events, the tool marker, the
+measurement line, the background), grouped into **themes**. Ship a dark
+theme (today's colours) and a light theme as built-in options; users can
+copy one and change it. Fits the settings dialog above. Today the
+toolpath colours are in one place (`PALETTE` in
+`ui/src/viewport/toolpath.ts`), and the colour key reads from it, so a
+theme would replace that table; the interface colours are in
+`ui/src/style.css` and would become CSS variables.
+

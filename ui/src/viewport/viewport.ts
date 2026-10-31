@@ -13,7 +13,6 @@ import {
   Color,
   Group,
   LineBasicMaterial,
-  LineDashedMaterial,
   LineSegments,
   Matrix4,
   OrthographicCamera,
@@ -29,7 +28,7 @@ import { MARKER, markerShape } from "./marker";
 import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
-import { expandIndexed, type Toolpath } from "./toolpath";
+import type { Toolpath } from "./toolpath";
 import { VIEWS, fitOrtho, orbitAbout, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
 
@@ -231,28 +230,12 @@ export class Viewport {
       return g;
     };
     const feedMaterial = new LineBasicMaterial({ vertexColors: true });
-    const b = toolpath.bounds;
-    const size = b ? Math.max(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2], 1e-3) : 10;
-    // Dashes scale with the toolpath, so they stay visible at any size.
-    const rapidMaterial = new LineDashedMaterial({
-      vertexColors: true,
-      dashSize: size / 120,
-      gapSize: size / 160,
-      transparent: true,
-      opacity: 0.8,
-    });
+    // Rapids are solid lines, told apart by colour (dashes looked cluttered
+    // on real programs; owner's request).
+    const rapidMaterial = new LineBasicMaterial({ vertexColors: true });
     const markerMaterial = new PointsMaterial({ vertexColors: true, size: 7, sizeAttenuation: false });
     this.feed = new LineSegments(lines(toolpath.feedIndex), feedMaterial);
-    // Rapids are non-indexed: dash distances need it. Vertex k is
-    // rapidIndex[k], so picking maps back the same way as for indexed lines.
-    const rapidGeometry = new BufferGeometry();
-    rapidGeometry.setAttribute(
-      "position",
-      new BufferAttribute(expandIndexed(toolpath.positions, toolpath.rapidIndex, 3), 3),
-    );
-    rapidGeometry.setAttribute("color", new BufferAttribute(expandIndexed(toolpath.colors, toolpath.rapidIndex, 3), 3));
-    this.rapid = new LineSegments(rapidGeometry, rapidMaterial);
-    this.rapid.computeLineDistances();
+    this.rapid = new LineSegments(lines(toolpath.rapidIndex), rapidMaterial);
     const markerGeometry = new BufferGeometry();
     markerGeometry.setAttribute("position", new BufferAttribute(toolpath.eventPositions, 3));
     markerGeometry.setAttribute("color", new BufferAttribute(toolpath.eventColors, 3));
@@ -268,7 +251,9 @@ export class Viewport {
     );
 
     // Axes at machine zero (X red, Y green, Z blue), not at the buffer's
-    // internal origin.
+    // internal origin, sized to the toolpath.
+    const b = toolpath.bounds;
+    const size = b ? Math.max(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2], 1e-3) : 10;
     const axes = new AxesHelper(Math.max(size * 0.08, 1));
     this.scene.add(axes);
     this.axes = axes;
