@@ -20,7 +20,7 @@ Last updated: M2.6 (editor and line ↔ segment sync). M2 is planned in
 | Area | Status |
 |---|---|
 | Tests | 327 pass (`cargo test --workspace`); 36 in `ir` with `--all-features` |
-| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), and a UI job (lint, typecheck, test, build) |
+| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), and a UI job (lint, typecheck, test, build); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter, re-run on edit) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; served by the app shell (embedded `ui/dist`). No saving yet |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
@@ -91,6 +91,7 @@ in ARCHITECTURE.md §5).
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
 | `ui/` | TypeScript UI (M2.4: scaffold) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test); `src/viewport/` (three.js viewport); `src/editor/` (CodeMirror editor, line ↔ segment mapping); `src/ipc/backend.ts` (typed calls to the app's commands) |
 | `packaging/flatpak` | Flatpak packaging (single `.flatpak` file, installed by users; not on Flathub) | `build.sh`; manifest builds offline (UI built and crates vendored beforehand); sandbox: window and GPU only, files via the portal; **placeholder icon** |
+| `tools/ci` | Which CI jobs a pull request needs | `changed-areas.sh` (rules), `test-changed-areas.sh` (its tests, run in CI first). Unknown paths run everything; docs-only changes run nothing; pushes to `main` run everything |
 | `tools/depcheck` | The dependency-rule checker | `cargo run -p depcheck` |
 
 User-facing documentation:
