@@ -106,6 +106,29 @@ because they help with every test of the later steps.
 - The snap is computed in screen space, so picking and snapping use the
   same pixel tolerance at any zoom.
 
+**M3.1 and M3.2 as built (brought forward into M2 at the owner's request,
+2026-10-31):**
+- The marker is a yellow shaft with an arrowhead whose tip is the point,
+  64 pixels tall at any zoom, drawn over the toolpath; it points down Z
+  (the mill's tool axis, which the views keep up).
+- **Hovering moves the marker and the readout; it never moves the editor
+  cursor.** A click still goes to the line. With nothing under the
+  pointer, the marker rests where the tool is after the editor cursor's
+  line (the end of that line's last segment, or of the last one before
+  it).
+- The readout (top left of the view) shows X, Y, Z in machine
+  coordinates, the tool, the feed ("Rapid" for rapids), the line, and
+  where the point is (end of, start of or on a move, or an event), plus
+  out-of-limits and unknown-position notes.
+- Snapping: the nearer end of the segment under the pointer within 10
+  pixels, else the point on the path. A point at the start of a move is
+  reported as the end of the move that arrived there (past any events at
+  the same spot), because that move's feed brought the tool there.
+- Labels are the render buffer's X, Y and Z (the mill's axes), not names
+  from the machine file; that comes with program coordinates (M3.5).
+- **Not done:** a stronger highlight for the selected line; the marker
+  may make it unnecessary. To be decided after the owner tries it.
+
 ### M3.3: Measure between two points
 
 - A measure mode: click two snapped points (endpoints, or points on a

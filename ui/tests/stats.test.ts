@@ -3,42 +3,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { decodeRenderBuffer, type Segment } from "../src/buffer/decode";
+import { decodeRenderBuffer } from "../src/buffer/decode";
 import { SEG_FLAG, SEG_KIND } from "../src/generated/render_buffer";
-import { KIND_LABELS, computeStats, kindLabel, mm, statSections, toolName, type StatsSource } from "../src/panels/stats";
+import { KIND_LABELS, computeStats, kindLabel, mm, statSections, toolName } from "../src/panels/stats";
 import { fixture } from "./fixture";
-
-/** A source from segments given as [kind, tool, feed, flags, ...vertices]. */
-function source(
-  origin: [number, number, number],
-  segments: [number, number, number, number, ...[number, number, number][]][],
-): StatsSource {
-  const positions: number[] = [];
-  const table: Segment[] = [];
-  for (const [kind, tool, feed, flags, ...vertices] of segments) {
-    table.push({
-      firstVertex: positions.length / 3,
-      vertexCount: vertices.length,
-      srcLine: table.length + 1,
-      srcFile: 0,
-      blockLow: table.length,
-      tool,
-      kind,
-      flags,
-      feed,
-    });
-    for (const v of vertices) positions.push(...v);
-  }
-  return {
-    header: { segmentCount: table.length, origin },
-    positions: Float32Array.from(positions),
-    segment: (i) => {
-      const s = table[i];
-      if (!s) throw new RangeError(String(i));
-      return s;
-    },
-  };
-}
+import { source } from "./source";
 
 const K = SEG_KIND;
 // Origin (100, 200, 0): vertices are relative to it.

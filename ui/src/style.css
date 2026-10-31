@@ -15,8 +15,7 @@ main { flex: 1; min-height: 0; display: flex; }
 .panel { flex: 0 0 32%; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid #2b3038; background: #181b21; }
 .panel-tabs { display: flex; gap: 4px; align-items: center; padding: 4px 8px; background: #1d2128; }
 .panel-tabs .spacer { flex: 1; }
-.panel-tabs .tab { background: none; border: none; color: #9aa0a6; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
-.panel-tabs .tab.selected { background: #2b3038; color: #e6e6e6; }
+.panel-tabs .title { padding: 3px 0; }
 .filters { display: flex; gap: 10px; font-size: 12px; }
 .filters label { display: flex; gap: 3px; align-items: center; }
 .panel-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 8px; font-size: 12px; }
@@ -37,3 +36,19 @@ footer { justify-content: space-between; font-size: 12px; }
 .disclaimer { color: #9aa0a6; }
 button, select { font: inherit; }
 [hidden] { display: none !important; }
+.stats-dialog { background: #1d2128; color: #e6e6e6; border: 1px solid #3a404a; border-radius: 6px; padding: 14px 18px; max-width: min(1100px, 92vw); max-height: 88vh; overflow: auto; font-size: 12px; }
+.stats-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+.stats-dialog h2 { font-size: 15px; margin: 0 0 8px; }
+.stats-dialog h3 { font-size: 12px; margin: 0 0 4px; color: #c8ccd2; }
+.stats-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; align-items: start; }
+.stats-body table { border-collapse: collapse; }
+.stats-body th, .stats-body td { padding: 1px 10px 1px 0; text-align: left; vertical-align: top; }
+.stats-body th { font-weight: normal; color: #9aa0a6; white-space: nowrap; }
+.stats-dialog .note, .stats-dialog .empty { color: #9aa0a6; }
+.stats-dialog .buttons { display: flex; justify-content: flex-end; }
+.stats-dialog .buttons button { min-width: 80px; }
+.readout { position: absolute; top: 8px; left: 8px; min-width: 190px; padding: 6px 10px; background: rgb(29 33 40 / 88%); border: 1px solid #3a404a; border-radius: 6px; font-size: 12px; pointer-events: none; }
+.readout .title { color: #ffd23f; margin-bottom: 3px; }
+.readout .row { display: flex; justify-content: space-between; gap: 14px; }
+.readout .row span:first-child { color: #9aa0a6; }
+.readout .row span:last-child { font-variant-numeric: tabular-nums; }

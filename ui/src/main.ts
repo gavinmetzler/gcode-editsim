@@ -1,5 +1,5 @@
 // The UI: a toolbar, the program editor, the toolpath viewport, the
-// diagnostics and statistics panel, and a status line. Editing re-runs the
+// diagnostics panel, and a status line; statistics open in a dialog. Editing re-runs the
 // program; the cursor's line is highlighted in the toolpath, and clicking
 // the toolpath or a diagnostic jumps to its line.
 //
@@ -9,6 +9,7 @@ import "./style.css";
 
 import sample from "../../tests/golden/basic_mill.nc?raw";
 import { decodeRenderBuffer, type RenderBuffer } from "./buffer/decode";
+import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
 import { latestOnly, lineMarks, segmentRange } from "./editor/lines";
 import {
@@ -21,24 +22,15 @@ import {
   type MachineEntry,
 } from "./ipc/backend";
 import { readProgramFile } from "./open-file";
-import { InfoPanel } from "./panels/panel";
+import { DiagnosticsPanel } from "./panels/panel";
+import { showStatsDialog } from "./panels/stats-dialog";
+import { preferArrivingMove, readoutRows, restingPoint, type ToolPoint } from "./viewport/readout";
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
 
 /** Quiet time after an edit before the program is run again. */
 const EDIT_DELAY_MS = 300;
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  props: Partial<HTMLElementTagNameMap[K]> = {},
-  ...children: (Node | string)[]
-): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  Object.assign(e, props);
-  e.append(...children);
-  return e;
-}
 
 const status = el("span", { className: "status" });
 const setStatus = (text: string): void => {
@@ -55,6 +47,7 @@ async function main(app: HTMLElement): Promise<void> {
     el("button", { type: "button", textContent: VIEWS[name].label, className: "view" }),
   );
   const fitButton = el("button", { type: "button", textContent: "Fit" });
+  const statsButton = el("button", { type: "button", textContent: "Statistics…", disabled: true });
   const fileLabel = el("span", { className: "file" });
   const editorBox = el("div", { className: "editor" });
   const viewportBox = el("div", { className: "viewport" });
@@ -72,6 +65,7 @@ async function main(app: HTMLElement): Promise<void> {
       sampleButton,
       fileInput,
       fileLabel,
+      statsButton,
       el("span", { className: "spacer" }),
       ...viewButtons,
       fitButton,
@@ -92,7 +86,10 @@ async function main(app: HTMLElement): Promise<void> {
   fileLabel.textContent = fileName;
   const editor = new GcodeEditor(editorBox, sample);
   const viewport = new Viewport(viewportBox);
-  const panel = new InfoPanel(panelBox);
+  const readout = el("div", { className: "readout" });
+  readout.hidden = true;
+  viewportBox.append(readout);
+  const panel = new DiagnosticsPanel(panelBox);
   panel.onLine = (line) => {
     editor.revealLine(line);
   };
@@ -115,12 +112,43 @@ async function main(app: HTMLElement): Promise<void> {
   /** Fit the view after the next run (a new program, machine or dialect). */
   let fitNext = true;
 
-  const showLine = (line: number): void => {
+  /** The editor cursor's line, and where the tool is after it has run. */
+  let cursorLine = 1;
+  let resting: ToolPoint | null = null;
+  /** The toolpath point under the pointer, if any. */
+  let hovered: ToolPoint | null = null;
+
+  /** Moves the tool marker and the readout to the hovered point, or else
+   *  to where the tool is after the cursor's line. Hovering never moves
+   *  the editor's cursor; a click does. */
+  const showMarker = (): void => {
+    const rb = current;
+    const p = hovered ?? resting;
+    viewport.setMarker(p?.point ?? null);
+    if (!rb || !p) {
+      readout.hidden = true;
+      return;
+    }
+    const title = hovered ? "Under the pointer" : `After line ${String(cursorLine)}`;
+    readout.replaceChildren(
+      el("div", { className: "title", textContent: title }),
+      ...readoutRows(rb, p).map((r) =>
+        el("div", { className: "row" }, el("span", { textContent: r.label }), el("span", { textContent: r.value })),
+      ),
+    );
+    readout.hidden = false;
+  };
+
+  const showLine = (line: number, quiet = false): void => {
+    cursorLine = line;
     if (!current) return;
     const rb = current;
     const { start, end } = segmentRange(rb.header.segmentCount, (i) => rb.segmentLine(i), line);
     const segments = Array.from({ length: end - start }, (_, k) => start + k);
     viewport.highlight(segments);
+    resting = restingPoint(rb, end - 1);
+    showMarker();
+    if (quiet) return;
     setStatus(
       segments.length === 0
         ? `Line ${String(line)}: no toolpath`
@@ -132,10 +160,13 @@ async function main(app: HTMLElement): Promise<void> {
     async () => decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), fileName)),
     (rb) => {
       current = rb;
+      statsButton.disabled = false;
       viewport.show(buildToolpath(rb), fitNext);
       fitNext = false;
       editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
       panel.show(rb);
+      hovered = null;
+      showLine(cursorLine, true);
       const d = rb.header.diagCount;
       setStatus(
         `${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to find its line.`,
@@ -144,6 +175,11 @@ async function main(app: HTMLElement): Promise<void> {
     (e) => {
       setStatus(`Could not run the program: ${String(e)}`);
       panel.clear(`Could not run the program: ${String(e)}`);
+      current = null;
+      statsButton.disabled = true;
+      hovered = null;
+      resting = null;
+      showMarker();
     },
     EDIT_DELAY_MS,
   );
@@ -151,7 +187,16 @@ async function main(app: HTMLElement): Promise<void> {
   editor.onChange = () => {
     runner.schedule();
   };
-  editor.onCursorLine = showLine;
+  editor.onCursorLine = (line) => {
+    showLine(line);
+  };
+  viewport.onHover = (p) => {
+    hovered = p && current ? preferArrivingMove(current, p) : null;
+    showMarker();
+  };
+  statsButton.addEventListener("click", () => {
+    if (current) showStatsDialog(current, fileName);
+  });
   viewport.onPick = (pick) => {
     if (!current || !pick) return;
     // Moving the cursor highlights the line's segments (onCursorLine).
