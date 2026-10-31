@@ -26,6 +26,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { ToolPoint } from "./readout";
 import { MARKER, markerShape } from "./marker";
+import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
 import { expandIndexed, type Toolpath } from "./toolpath";
@@ -101,6 +102,9 @@ export class Viewport {
     container.appendChild(this.overlay);
 
     const canvas = this.renderer.domElement;
+    // The middle button zooms here; it must not paste the Linux primary
+    // selection into the editor.
+    blockMiddleClickPaste(canvas);
     // In measure mode, a left press on a node starts a measurement. This
     // listens on the container in the capture phase, so it runs before the
     // orbit controls (on the canvas) and can keep them from orbiting.

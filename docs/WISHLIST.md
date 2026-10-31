@@ -25,3 +25,13 @@ The first setting it would hold:
 Other options that could live there (to be decided when it is planned):
 arc tolerance, block delete, the dialect's decimal-point setting, colours,
 and the default machine and dialect.
+
+## Remember the last machine and dialect
+
+*Raised by the owner, 2026-10-31.*
+
+The app starts on the first machine in the list (the generic VMC) every
+time, so a router program opened straight away is drawn mostly red
+(outside that machine's travel). Remember the machine and dialect chosen
+last, and start with them. Fits the settings dialog above, which would
+keep its options between sessions in the same way.
