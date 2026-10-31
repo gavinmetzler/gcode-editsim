@@ -181,15 +181,11 @@ Changing any of these is a deliberate, documented change.
   F/S/T, then M3/M4/M6/M8, then the motion, then M0/M1/M2/M5/M9/M30.
 - A rejected block has **no** effect at all, because it is validated
   before anything is applied.
-- **Motion blockers** (ARCHITECTURE.md §7.3a): G52, G10, G65, G68,
-  G51, G51.1, G16, M98, M99 and unknown G codes hide later motion until
-  their cancel code, or until the end of the program.
-- **Lenient handling (M3.0):** G92 is ignored with a warning (proper G92
-  in M3.5); G43/G44 give one note per program; unknown M codes one note
-  per code; M06 without T is a warning; `:0099` is a program number.
-  Machine files can list M codes in `ignore_codes`.
-- Canned cycles hide motion until G80 or G00–G03.
-- Hidden motion emits `Command::PositionUnknown`.
+- **Never hide moves** (owner decision, 2026-10-31; ARCHITECTURE.md
+  §7.3a): G92, G52, G10, G65, G68, G51, G51.1, G16, M98, M99 and unknown G
+  codes give one diagnostic, their words are data, and later moves are
+  drawn as programmed. Canned cycles draw their hole positions as rapids
+  in the plane. (The M1 motion blockers are gone.)
 - G28 (via `reference` in the machine file) and G53 are simulated. G30
   leaves the axes' position unknown.
 
@@ -394,6 +390,15 @@ Decided (2026-10-31), roadmap revision:
   display.
 - **Flatpak:** distributed as a single `.flatpak` file; Flathub is not
   planned.
+
+Decided (2026-10-31), after M3.4:
+- **Coordinate shifts and program coordinates (M3.5) and canned cycles
+  (M3.6) are on hold**, left to the community (`docs/WISHLIST.md`). Work
+  offsets and origins are used in ways only the machine explains (on the
+  owner's gang router, G54-G56 select spindles), and CAM output rarely
+  needs canned cycles.
+- **Never hide moves.** A backplot drawn without an unsupported code's
+  effect, with a warning, is more useful than none.
 
 Decided (2026-10-31), after M3.0:
 - **G codes that carry coordinates are implemented, never ignored.**
