@@ -1,4 +1,15 @@
 # ui
 
-TypeScript front end (three.js viewport, CodeMirror editor). Not started yet;
-UI work begins after milestone M1 (see `ARCHITECTURE.md` §13).
+The TypeScript user interface: CodeMirror editor, three.js toolpath view,
+and the diagnostics and statistics panel. Plain TypeScript (no framework),
+built with Vite into `dist/`, which the desktop app embeds. It contains no
+G-code meaning: it shows the render buffer the core produced.
+
+```bash
+npm ci
+npm run lint && npm run typecheck && npm test
+npm run build
+```
+
+`src/generated/` is written by `cargo run -p gen-ts`; never edit it by
+hand. The module layout is in `ARCHITECTURE.md` §8.6.

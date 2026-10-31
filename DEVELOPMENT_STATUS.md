@@ -1,14 +1,14 @@
 # Development status
 
 A hand-over document for anyone, human or AI agent, continuing this project:
-fixing M1 bugs, extending its scope, or starting later milestones. Read it
+fixing bugs, finishing M2, or starting later milestones. Read it
 after `CLAUDE.md` and `ARCHITECTURE.md`; it records *what exists and why*,
 the decisions made along the way, and what is still open.
 
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M2.7 (diagnostics and statistics panels). M2 is planned in
+Last updated: documentation review after M2.7 (2026-10-31). M2 is planned in
 [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
@@ -18,17 +18,25 @@ ARCHITECTURE.md §13.
 ## 1. Where things stand
 
 **M1 (core skeleton) is complete, with known limitations** (section 6).
+**M2 (render buffer and minimal desktop UI): M2.0–M2.7 are merged; M2.8
+(saving, machine file choice, dashed rapids, wrap-up) is next.** Then M3,
+a dependable backplotter (`docs/plans/M3_PLAN.md`).
+
+The app is usable today as an editor beside a synced 3D backplot of Fanuc
+milling programs, with diagnostics and statistics.
 
 | Area | Status |
 |---|---|
-| Tests | 327 pass (`cargo test --workspace`); 36 in `ir` with `--all-features` |
-| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), and a UI job (lint, typecheck, test, build); on pull requests each job runs only when its files change (`tools/ci`) |
+| Tests | 473 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 58 in the UI (`cd ui && npm test`) |
+| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter, re-run on edit) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a diagnostics and statistics panel under the viewport (M2.7); served by the app shell (embedded `ui/dist`). No saving yet |
+| Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
 
-**What works headlessly:** a Fanuc milling program plus a machine
-definition file produce IR segments in machine coordinates. That covers:
+**What the core does:** a Fanuc milling program plus a machine
+definition file produce IR segments in machine coordinates (the Osai 10
+Series stub covers a small subset). That covers:
 
 - work offsets G54–G59
 - G28 and G53
@@ -47,8 +55,8 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
 
 - **The owner** (GitHub `gavinmetzler`) reviews and merges every PR. Work
   arrives one step at a time ("do step N only").
-- **Branch:** all work happens on the session's designated branch (so far
-  `claude/hopeful-euler-b7gaff`). After a PR merges, restart the branch from
+- **Branch:** all work happens on the session's designated branch (M1:
+  `claude/hopeful-euler-b7gaff`; M2: `claude/affectionate-goodall-mi4cum`). After a PR merges, restart the branch from
   `origin/main` (`git checkout -B <branch> origin/main`) and open a **new**
   PR. Never stack on merged history.
 - **Force-push is blocked by the environment.** Fix mistakes with a new
@@ -63,8 +71,13 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
   *(unverified)* in `docs/dialect-notes/fanuc.md`. The same applies to
   Osai (`docs/dialect-notes/osai.md`).
 - **Workflow and CI files** (`.github/workflows/`) change only with
-  explicit instruction (CLAUDE.md rule 9). The owner allowed the M2 UI
-  and Tauri CI jobs as a one-off; ask again for anything else.
+  explicit instruction (CLAUDE.md rule 9). The owner approved each change
+  so far one at a time (the UI and Tauri jobs, the Flatpak job, the
+  per-area path filters); ask again for anything else.
+- **Private material:** the Osai 10 Series manual is in the owner's
+  private repository `gcode-editsim-manuals`. Cite it by title and page
+  with short quotes only; never copy it into this repository. The same
+  goes for the owner's real programs (M3.0).
 
 ---
 
@@ -91,21 +104,23 @@ in ARCHITECTURE.md §5).
 | `app/backend` | The app's behaviour without Tauri (M2.3a) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, list_machine_files}` |
 | `app/shell` | The Tauri 2 desktop shell (M2.3b), **its own Cargo workspace** | Commands in `src/lib.rs` (`interpret` raw body → raw render buffer, `load_file`, `save_file`, machine and dialect choice); IPC tests on Tauri's mock runtime in `tests/ipc.rs`; the UI (`ui/dist`) embedded at compile time |
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
-| `ui/` | TypeScript UI (M2.4: scaffold) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test); `src/viewport/` (three.js viewport); `src/editor/` (CodeMirror editor, line ↔ segment mapping); `src/panels/` (diagnostics list and statistics, M2.7); `src/ipc/backend.ts` (typed calls to the app's commands) |
+| `ui/` | TypeScript UI (M2.4–M2.7; ARCHITECTURE.md §8.6) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test); `src/viewport/` (three.js viewport); `src/editor/` (CodeMirror editor, line ↔ segment mapping); `src/panels/` (diagnostics list and statistics, M2.7); `src/ipc/backend.ts` (typed calls to the app's commands) |
 | `packaging/flatpak` | Flatpak packaging (single `.flatpak` file, installed by users; not on Flathub) | `build.sh`; manifest builds offline (UI built and crates vendored beforehand); sandbox: window and GPU only, files via the portal; **placeholder icon** |
 | `tools/ci` | Which CI jobs a pull request needs | `changed-areas.sh` (rules), `test-changed-areas.sh` (its tests, run in CI first). Unknown paths run everything; docs-only changes run nothing; pushes to `main` run everything |
 | `tools/depcheck` | The dependency-rule checker | `cargo run -p depcheck` |
 
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
-- `docs/dialect-notes/fanuc.md`: Fanuc behaviour and its sources.
+- `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`: milestone plans.
+- `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `tests/golden/README.md`: the golden-file formats.
 
 ---
 
 ## 4. Decisions that shape later work
 
-The reasons are in the PR descriptions (#2–#11) and in ARCHITECTURE.md.
+The reasons are in the PR descriptions and in ARCHITECTURE.md.
 Changing any of these is a deliberate, documented change.
 
 **Syntax**
@@ -180,12 +195,32 @@ Changing any of these is a deliberate, documented change.
 - TOML; always in mm.
 - Work offsets are numbered 1, 2, … (Fanuc G54 = 1); 0 means machine
   coordinates.
-- `family = "mill"` or `"lathe"` selects the machine type. The caller picks
-  the type today; the app (M2.3) will look it up from `family`.
+- `family = "mill"` or `"lathe"` selects the machine type; the app looks
+  it up (`app_backend::load_machine`).
 - On a lathe, `diameter_mode` X values are halved; machine coordinates are
   radius. What the lathe stub found about the traits is in ARCHITECTURE.md
   §9 (assumed G17 plane on a machine without Y; fixed diameter mode;
   where the `family` lookup lives; tool direction).
+
+**App and UI (M2)**
+- The shell (`app/shell`) is its own Cargo workspace, so the core builds
+  and tests without WebKit. All behaviour is in `app/backend`.
+- Bulk data is raw bytes both ways: the program as the request body, the
+  render buffer as the reply (`tauri::ipc::Response`). Machine, dialect
+  and options are set beforehand and kept in the app's state.
+- The commands refuse remote origins; the content security policy allows
+  inline styles (CodeMirror needs them) but only the app's own scripts.
+- Plain TypeScript, no UI framework. Pure, tested modules do the work;
+  DOM and three.js code stays thin (ARCHITECTURE.md §8.6).
+- The viewport is orthographic with Z always up; Top is tilted by 1e-4
+  rad, because orbit controls cannot look exactly along their up axis.
+- Colours are sRGB converted to linear light.
+- The editor's text is what is interpreted, so line numbers always agree.
+  Edits re-run after 300 ms; stale results are dropped.
+- Statistics are worked out in the UI from the render buffer; the units
+  the program used are not in the buffer, so they are not shown.
+- Flatpak: single file, offline build, `WEBKIT_DISABLE_DMABUF_RENDERER=1`
+  (fixes a Wayland protocol error on NVIDIA, confirmed by the owner).
 
 **Golden files**
 - `<name>.syntax.txt` (parser) and `<name>.ir.json` (pipeline, Fanuc on
@@ -238,13 +273,16 @@ was asked to try a few real programs with the `summary` example.
   - G30 positions
   - coordinate rotation, scaling, mirroring and polar input
   - rotary axes on the mill
+- The app cannot save yet; rapids are drawn solid instead of dashed
+  (three.js line distances need non-indexed geometry); positions are
+  shown in machine coordinates. The first two are M2.8, the last M3.5.
 - One real dialect (Fanuc) and one real machine type (3-axis mill). The
   Osai 10 Series dialect and the lathe are stubs; what they found is in
   ARCHITECTURE.md §7.2 and §9.
 
 ---
 
-## 7. Practical lessons from M1 (avoid repeating these)
+## 7. Practical lessons (avoid repeating these)
 
 **Writing tests**
 - **Start bug fixes with a failing test** (CLAUDE.md). It caught real
@@ -269,6 +307,18 @@ was asked to try a few real programs with the `summary` example.
 - **The "assumed …" warnings are filtered out** in the `dialect-fanuc`
   and `interpreter` helpers (`tests/common/mod.rs`), so short test programs
   stay readable. Check `Run::assumed` / `run_unfiltered` when testing them.
+
+**UI and app (M2)**
+- **Check the UI in a real browser, not only with unit tests.** Washed-out
+  colours (sRGB vs linear), invisible dashes, a misleading perspective
+  top view and unstyled CodeMirror (blocked by the content security
+  policy) were all found by looking. Headless Chromium with the app's IPC
+  mocked by a real render buffer works in the container.
+- **Flatpak in a container** needs a D-Bus session, the portals and
+  `XDG_RUNTIME_DIR` started by hand; CI needs `elfutils` and
+  `librsvg2-common`, and `--disable-rofiles-fuse`.
+- **Disk space is limited** in the cloud container: the shell's `target/`,
+  the Android SDK and Gradle caches fill it quickly.
 
 **Tooling**
 - **Fuzzing needs nightly:**

@@ -81,7 +81,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M2: Render buffer + minimal UI** (see `ARCHITECTURE.md` §13 and `docs/plans/M2_PLAN.md`). M1 is complete. Steps, in order:
+**M2: Render buffer + minimal UI** (see `ARCHITECTURE.md` §13 and `docs/plans/M2_PLAN.md`). M1 is complete. Steps, in order (0–7 are done; 8 is next):
 
 0. IR events (stop, spindle, coolant, program end)
 1. Arc tessellation + `RenderBuffer` encoding (layout v1, shared `.bin` fixture)

@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-Status: **draft v0.1**. Interfaces marked *provisional* are expected to change once a second dialect and a second machine type exist (see §12).
+Status: **living document**, kept in step with the code. M1 (core skeleton) is complete; M2 (render buffer and minimal desktop UI) is in its last step, M2.8; M3 is next (§13). Where this file describes something not built yet, it says which milestone brings it. Interfaces marked *provisional* were checked against a stub second dialect (Osai 10 Series) and a stub second machine type (lathe) in M2.2 (findings in §7.2 and §9); they may still change when those become real (M8).
 
 ## 1. Goals
 
@@ -30,10 +30,11 @@ Status: **draft v0.1**. Interfaces marked *provisional* are expected to change o
 ```
 G-code text
   → gcode-syntax   : lexer + parser → Blocks (dialect-neutral AST)
-  → dialect        : Blocks → Commands (machine-neutral intents), expands canned cycles,
-                     tracks modal state, emits Diagnostics
+  → dialect        : Blocks → Commands (machine-neutral intents), tracks modal state,
+                     emits Diagnostics; will expand canned cycles (M3.6, §7.3)
   → interpreter    : applies Commands to a Machine model → Segments (IR), per channel
-  → consumers      : backplot/render buffers, stats, cycle time, collision, material removal
+  → consumers      : render buffer → backplot and statistics (built); cycle time (M3.8, M6),
+                     material removal (M7)
 ```
 
 The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dyn Machine, Options) -> Program`. It never fails: every problem is a diagnostic. Behaviour decided in M1:
@@ -71,9 +72,15 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 ├─ app/
 │  ├─ backend/                 # the app's behaviour without Tauri: machine/dialect choice, interpret → render buffer, file access
 │  └─ shell/                   # Tauri 2 shell: thin commands over backend (its own Cargo workspace, so the rest builds without WebKit)
-├─ ui/                         # TypeScript: three.js viewport, CodeMirror editor
+├─ ui/                         # TypeScript UI: three.js viewport, CodeMirror editor, panels (§8.6)
+├─ tools/
+│  ├─ depcheck/                # the dependency-rule check below
+│  ├─ gen-ts/                  # generates the UI's render-buffer constants (§8.4)
+│  └─ ci/                      # which CI jobs a pull request needs
+├─ packaging/                  # Flatpak package and the app icon (§8.7)
+├─ docs/                       # machine file format, dialect notes, milestone plans
 └─ tests/
-   └─ golden/                  # *.nc input + expected .json / .bin output
+   └─ golden/                  # *.nc input + expected .syntax.txt / .ir.json output, render-buffer .bin fixture
 ```
 
 **Dependency rules (enforced in CI by `tools/depcheck`).** Each crate may use only the workspace crates listed for it below, as a normal or build dependency (platform-specific ones included):
@@ -353,7 +360,7 @@ A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferr
 
 ### 7.3 Canned cycles
 
-Expanded inside the dialect layer into primitive `Command`s (Rapid / Linear / Dwell), each tagged with a `CycleStep`. Downstream code never sees `G81`. The renderer can still colour or filter by `cycle_step`.
+*Planned (M3.6); today a canned cycle is reported and hides motion until it is cancelled (§7.3a).* Expanded inside the dialect layer into primitive `Command`s (Rapid / Linear / Dwell), each tagged with a `CycleStep`. Downstream code never sees `G81`. The renderer can still colour or filter by `cycle_step`.
 
 ### 7.3a Unsupported modes that affect later blocks
 
@@ -363,7 +370,7 @@ Some unsupported codes change how *later* blocks move: coordinate shifts (G92, G
 
 ### 7.4 Macros and expressions
 
-`gcode-syntax` parses expressions (`#100`, `[#1+2]`, functions) into an AST but does not evaluate them. Evaluation happens in the dialect's `MacroEnvironment`, because variable numbering, system variables and control flow (`IF`, `WHILE`, `GOTO`) differ per controller. Milestone 1 evaluates literal numbers only: a block that uses a variable or expression gets an error diagnostic and is skipped. The AST is there so adding evaluation later doesn't require a parser rewrite.
+`gcode-syntax` parses expressions (`#100`, `[#1+2]`, functions) into an AST but does not evaluate them. Evaluation happens in the dialect's `MacroEnvironment`, because variable numbering, system variables and control flow (`IF`, `WHILE`, `GOTO`) differ per controller. So far only literal numbers are evaluated: a block that uses a variable or expression gets an error diagnostic and is skipped. Simple variables are planned with subprograms (M3.7). The AST is there so adding evaluation later doesn't require a parser rewrite.
 
 ## 8. Rust → UI boundary
 
@@ -448,11 +455,32 @@ The Tauri shell (`app/shell`) forwards to `app-backend` and holds no G-code logi
 - `load_file` replies with the file's raw bytes; `save_file` takes them as the raw body, with the path in an `x-path` header (percent-encoded UTF-8, as `encodeURIComponent` writes it, since header values cannot carry arbitrary text).
 - `list_dialects`, `list_machines`, `machine_folder` and the two setters are small JSON.
 
-The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at compile time (so the UI is built before the shell, locally and in CI). Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. It allows inline *styles* (`style-src 'unsafe-inline'`), because the editor (CodeMirror) injects its styles at run time; scripts stay `'self'` only. File paths come from the user (file dialogs arrive with the UI).
+The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at compile time (so the UI is built before the shell, locally and in CI). Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. It allows inline *styles* (`style-src 'unsafe-inline'`), because the editor (CodeMirror) injects its styles at run time; scripts stay `'self'` only. File paths come from the user. Opening uses the web page's file picker today; saving needs a native save dialog for a real path (M2.8).
 
 ### 8.5 Large programs
 
 Interpretation runs off the UI thread (Rust thread on desktop/mobile; Web Worker if the core is ever compiled to WASM). Results stream in chunks (`RenderBuffer` per chunk) for programs of millions of blocks, with progress events. Chunking is a later optimisation but the header's `flags` reserve a bit for "partial / more follows".
+
+### 8.6 The UI (as built in M2)
+
+Plain TypeScript (no UI framework), built with Vite into `ui/dist`, which the shell embeds. It holds **no G-code meaning**: it draws and summarises what the core produced, and sends user actions back. The parts that compute are pure modules, tested with Vitest without a browser or GPU; the DOM and three.js code around them is thin.
+
+| Module | What it does |
+|---|---|
+| `src/buffer/decode.ts` | Checks and decodes the render buffer (§8.4) |
+| `src/viewport/` | `toolpath.ts` turns the buffer into index lists, colours, event markers and a vertex → segment map; `views.ts` holds the standard views and orthographic fitting; `viewport.ts` is the three.js view (orthographic camera, Z up, orbit/pan/zoom, picking with a pixel tolerance, highlight) |
+| `src/editor/` | CodeMirror 6: highlighting by token type, diagnostics in the gutter, and `lines.ts` (line ↔ segment lookup, re-run 300 ms after the last edit, dropping stale results) |
+| `src/panels/` | The diagnostics list and the toolpath statistics (lengths, bounds, per-tool figures, counts), all worked out from the render buffer |
+| `src/ipc/backend.ts` | Typed calls to the shell's commands (§8.4a) |
+| `src/main.ts` | Lays out the toolbar, editor, viewport, panel and status line, and wires them together |
+
+Colours are given in sRGB and converted to linear light for the renderer. Positions shown to the user are machine coordinates until program coordinates arrive (M3.5).
+
+### 8.7 Desktop distribution
+
+- **Linux:** a single `.flatpak` file that users download and install (`packaging/flatpak/`; built offline from vendored crates on the GNOME runtime). Flathub is not planned. CI builds it when the app, UI, core or packaging change (and on every push to `main`) and keeps it as a download for 30 days. The app sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`, which avoids a WebKit protocol error under Wayland on NVIDIA.
+- **Windows and macOS:** not packaged yet; the app builds from source with `cargo run` in `app/shell`.
+- The app id is `com.ncsoftbyai.gcodeeditsim`; the icon (`packaging/icons/`) is a placeholder.
 
 ## 9. Machine layer (*provisional*)
 
@@ -485,7 +513,7 @@ pub trait Machine {
 
 - **The dialect's assumed power-on plane depends on the machine.** The Fanuc dialect assumes G17 (XY) when a program sets no plane. A lathe has no Y axis, so an arc without G18 has no plane and is rejected (with an error, never drawn wrongly). A lathe dialect would assume G18. The power-on modal state may need the machine's say, e.g. a default plane in `AxisSet`. To be decided with the first real lathe dialect (M8).
 - **Diameter mode is fixed per axis.** `normalize_axis_value` has no program state, so a control whose programs can switch between diameter and radius input cannot be modelled through it. If one is needed, the dialect would convert instead, or the trait would take a mode.
-- **Choosing the machine type from `family` has no home yet.** It cannot live in `machine-api`, which may not depend on concrete machines. The app (M2.3) will hold the small `family` → machine-type lookup.
+- **Choosing the machine type from `family` cannot live in `machine-api`,** which may not depend on concrete machines. It lives in the app: `app_backend::load_machine` (M2.3).
 - **The tool direction is a guess.** `ToolPose::direction` is fixed per machine type (a lathe tool points +x). Real tool orientation comes with tool geometry (M6). `tool_model` (tool geometry and the tool table) is deferred to M6.
 
 Machine definitions are **user-editable text files** (TOML) describing the user's own machine: name, machine family, axis list (letters, kinds, directions, arc-offset letters, travel limits, rapid rates), maximum feed and spindle speed, and work offsets. `machine-api` loads and validates the file into a `MachineDef` (unknown settings are rejected, not ignored); the machine type named by `family` then checks it makes sense for that type (e.g. `Mill::new`). The format is documented for users in `docs/machine-definition.md`. A UI for editing them comes later; until then users edit the file directly. The dialect's `AxisSet` (§7.2) is built from this definition by the interpreter.
@@ -502,7 +530,7 @@ pub trait MaterialSim {
 }
 ```
 
-Not started until stages 1–3 are done. Dexels are the leading candidate for milling (good speed/memory, handles 3-axis well); revisit for 5-axis.
+Not started; planned for M7, after tool geometry (M6). Dexels are the leading candidate for milling (good speed/memory, handles 3-axis well); revisit for 5-axis.
 
 ## 11. Testing strategy
 
@@ -518,15 +546,18 @@ Not started until stages 1–3 are done. Dexels are the leading candidate for mi
 |---|---|
 | Traits designed from one implementation are wrong in ways only a second one reveals | Done in M2.2: a stub `machine-lathe` and a stub Osai 10 Series dialect. Findings are in §7.2 and §9; one interface change (`ArcCenter::Position`). |
 | Fanuc behaviour varies by series, options and parameters | Target one documented profile first; surface everything unsupported as a Diagnostic; keep parameters in the dialect TOML. |
-| Cutter compensation (G41/G42) is genuinely hard | Defer to after the basic backplot. Emit a `Warning` diagnostic and ignore compensation until implemented. |
+| Cutter compensation (G41/G42) is genuinely hard | Deferred to M6. Until then a `Warning` diagnostic is emitted and the path is drawn without compensation. |
+| Every test program so far was written by the agent, not a CAM system | A private corpus of the owner's real programs, run locally (M3.0); agreed excerpts become golden tests. |
 | Tauri mobile maturity | **Android: done (M2.3 spike).** The app's own commands ran on a real arm64 phone: the program crossed as a raw request body and the render buffer came back as raw bytes, identical in every checked value to the desktop build, and file save/load round-tripped raw bytes. Branch `claude/android-spike`, `app/shell/SPIKE.md`. **iOS: not yet tried** (needs a Mac); planned much later. |
 | Heidenhain conversational / non-G-code formats | Parser crate is isolated; a non-G-code front end can produce the same `Command` stream. Not in scope yet. |
 | `f32` GPU precision | Origin-relative vertices (§8.2). |
 
 ## 13. Milestones
 
-1. **M1: Core skeleton.** Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
-2. **M2: Render buffer + minimal UI.** Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits.
+Status: M1 done; M2 at step M2.8; M3 next.
+
+1. **M1: Core skeleton** *(done)*. Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
+2. **M2: Render buffer + minimal UI** *(in progress: M2.0–M2.7 done, M2.8 next)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), and CI jobs that run only when their files change. See `docs/plans/M2_PLAN.md`.
 3. **M3: A dependable backplotter.** Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; G92, G52, G10 and Osai origins; unsupported coordinate changes drawn approximate instead of hidden; program coordinates by default; canned cycles G81–G89; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. See `docs/plans/M3_PLAN.md`.
 4. **M4: Code transformations.** Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
 5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later.

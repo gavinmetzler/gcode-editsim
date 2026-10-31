@@ -8,7 +8,7 @@ The long-term goal is to provide a practical environment where CNC programmers c
 
 The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early development. Milestone 1 (the headless core pipeline) is complete; there is no UI yet. Next is Milestone 2: render buffer and a minimal desktop UI.
+> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestone 1 (the core pipeline) is complete; Milestone 2 (render buffer and minimal desktop UI) is finishing with M2.8 (saving and wrap-up). Next is Milestone 3: a dependable backplotter. On Linux it installs as a Flatpak.
 
 GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
@@ -21,6 +21,7 @@ GCode EditSim aims to bring together four capabilities:
 - **G-code editing:** a dedicated editor for writing and modifying CNC programs, with source lines linked to the toolpath in both directions.
 - **Toolpath visualisation (backplotting):** interactive 3D display of programmed tool movements.
 - **Program analysis:** diagnostics, statistics, bounding box, tools used and estimated cycle time.
+- **Program transformation:** translate, scale and rotate a selected part of a program.
 - **Material removal simulation:** visual simulation of how the stock changes as the tool moves through the program.
 
 It is built for extensibility. The user selects both the **controller dialect** (Fanuc, Haas, Siemens, Heidenhain, GRBL, LinuxCNC, ...) and the **machine type** (mill, lathe, mill-turn, multi-channel, 5-axis). Each is a separate module, so adding one does not mean rewriting the engine.
@@ -89,8 +90,11 @@ The full design, including the dependency rules between crates, is in [ARCHITECT
 | `core/interpreter` | Combines dialect, machine and state to produce the IR. |
 | `core/sim` | Material removal simulation, per machine family. |
 | `core/testkit` | Golden-file test helpers. |
-| `app/` | Tauri 2 shell: a thin command layer over the core. |
-| `ui/` | TypeScript user interface: three.js viewport, CodeMirror editor. |
+| `app/backend` | The app's behaviour in plain Rust: choosing machine and dialect, interpreting to a render buffer, file access. |
+| `app/shell` | Tauri 2 shell: a thin command layer over `app/backend` (its own Cargo workspace). |
+| `ui/` | TypeScript user interface: three.js viewport, CodeMirror editor, diagnostics and statistics panel. |
+| `tools/` | Development tools: the dependency-rule check, the UI constants generator, CI change detection. |
+| `packaging/` | The Flatpak package and app icon. |
 
 ### Intermediate Representation
 
@@ -120,7 +124,9 @@ These are the project's intended direction. Most are not implemented yet; see th
   - work offsets G54–G59
   - F, S and T words
   - common M codes: stops, program end, spindle, tool change, coolant
-- **Then:** tool length compensation, canned drilling cycles, subprograms, macro variables and cutter radius compensation.
+- **Next (M3):** coordinate shifts (G92, G52, G10), canned drilling cycles, subprograms and simple macro variables; machine-specific codes noted and skipped rather than reported as errors.
+- **Then (M6):** cutter radius compensation.
+- **Not planned:** tool length (height) and wear compensation. The backplot shows the path as programmed and notes these codes.
 - **Later:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.
 
 ### Machine Support
@@ -130,8 +136,10 @@ These are the project's intended direction. Most are not implemented yet; see th
 
 ### Visualisation, Analysis and Simulation
 
-- Interactive 3D toolpath display, with editor line and toolpath segment selection kept in sync.
-- Diagnostics and statistics panels: bounding box, tools used, estimated cycle time.
+- Interactive 3D toolpath display, with editor line and toolpath segment selection kept in sync *(built)*.
+- Diagnostics and statistics panels *(built)*: path lengths, bounds, feed rates and per-tool figures; a cycle-time estimate comes in M3.
+- Backplot tools (M3): a tool marker, hover info on the nearest point (position, tool, feed), measuring between two points, orbiting around a point on the toolpath.
+- Code transformations (M4): translate, scale and rotate a selected range of lines, applied as an undoable edit.
 - Tool movement playback and simulation controls.
 - Travel-limit checking.
 - Material removal simulation, milling first.
@@ -176,7 +184,7 @@ What works today, headlessly: a Fanuc milling program plus a machine definition 
 
 See [Trying it out](#trying-it-out).
 
-**Never drawing a misleading toolpath** is the rule the review hardened.
+**Never drawing a misleading toolpath** is the rule the review hardened. (M3 relaxes the first point below: common coordinate shifts get implemented, and moves after a still-unsupported one are drawn marked approximate instead of hidden.)
 
 - **Hidden moves.** Unsupported codes that change where *later* moves go (G92, G52, G68, scaling, mirroring, polar input, subprograms, canned cycles, unknown G codes) hide the moves they affect. This is explained once, where the code appears. Nothing is drawn in the wrong place.
 - **Unknown position.** After the machine has gone somewhere that isn't simulated, nothing is drawn until the position is known again.
@@ -186,12 +194,23 @@ See [Trying it out](#trying-it-out).
 
 - **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length. This is intended: height and wear compensation are not planned, and the path is shown as programmed.
 - **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M6).
-- **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used.
+- **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used (M6).
+- **The app can't save files yet, and rapids are drawn solid rather than dashed.** Both are fixed in M2.8.
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
+
+### M2 – Render Buffer and Minimal UI (finishing)
+
+- [x] IR events: stops, spindle, coolant, program end
+- [x] Arc tessellation and the binary render buffer, with a fixture checked from both Rust and TypeScript
+- [x] Stub lathe and stub Osai 10 Series dialect, to test the module boundaries
+- [x] Tauri 2 desktop app, and an Android test of the binary boundary (passed on a real phone)
+- [x] TypeScript UI, three.js viewport, CodeMirror editor with line and toolpath sync
+- [x] Diagnostics and statistics panel
+- [x] Flatpak package for Linux
+- [ ] M2.8: saving files, machine file choice, dashed rapids, wrap-up
 
 ### Later Milestones
 
-- **M2 – Render buffer and minimal UI:** binary Rust/UI boundary, 3D viewport, editor, line and toolpath sync, statistics and diagnostics. Desktop only. Stub lathe and second dialect to test the module boundaries.
 - **M3 – A dependable backplotter:** real programs without false alarms (ignorable codes noted, not errors), coordinate shifts (G92, G52, G10, Osai origins), program coordinates, canned cycles, subprograms, per-tool statistics with a simple time estimate, large programs. Backplot tools: a tool marker, hover info, measuring, orbiting around a point on the toolpath.
 - **M4 – Code transformations:** translate, scale and rotate a selected part of the program.
 - **M5 – Mobile:** the same app on Android; iOS later.
@@ -212,7 +231,7 @@ cd ui && npm ci && npm run build && cd ..   # the app embeds the built UI
 cd app/shell && cargo run
 ```
 
-The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. Edits re-run the program as you type (saving comes in a later step).
+The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. Edits re-run the program as you type (saving comes in M2.8). Under the toolpath, the **Diagnostics** tab lists every problem (click one to go to its line) and the **Statistics** tab shows path lengths, bounds and per-tool figures.
 
 With [Rust](https://rustup.rs) installed, you can also run a program through the engine and see the result as JSON:
 
@@ -280,7 +299,7 @@ The project is in active development. Architectural decisions and development co
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture and technical design (the source of truth).
 - [CLAUDE.md](CLAUDE.md): development rules, including for AI-assisted development.
 - [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md): where the project stands, the decisions made so far, open issues and lessons learned. Start here when picking up work.
-- [docs/plans/M2_PLAN.md](docs/plans/M2_PLAN.md): the plan for the next milestone.
+- [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md) (finishing) and [M3](docs/plans/M3_PLAN.md) (next).
 - [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
 - [docs/machine-definition.md](docs/machine-definition.md): the machine definition file format.
 
