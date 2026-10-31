@@ -307,10 +307,27 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
     ])
 }
 
+/// Names the program `id` for the desktop, before any window opens. On
+/// Linux, GTK reports this name as the window's Wayland app id and X11
+/// class; it must match the desktop file's name (`<id>.desktop`) for the
+/// desktop to show the app's icon. By default it is the executable's name
+/// (`gcode-editsim`), which matches nothing. Elsewhere it does nothing.
+///
+/// Tauri's own `enableGTKAppId` would also do this, but registers the app
+/// on the session bus, which allows only one copy of the app to run.
+pub fn set_window_app_id(id: &str) {
+    #[cfg(target_os = "linux")]
+    glib::set_prgname(Some(id));
+    #[cfg(not(target_os = "linux"))]
+    let _ = id;
+}
+
 /// Runs the desktop app. The user's machine folder is `machines` in the
 /// app's configuration folder; on start it gets the shipped examples if it
 /// has no machine files yet.
 pub fn run() -> Result<(), tauri::Error> {
+    let context = tauri::generate_context!();
+    set_window_app_id(&context.config().identifier);
     with_commands(tauri::Builder::default())
         // Native open, save and message dialogs (the UI picks paths with
         // them; files are still read and written by this app's commands).
@@ -325,7 +342,7 @@ pub fn run() -> Result<(), tauri::Error> {
             app.manage(AppState::new(dir));
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .run(context)
 }
 
 #[cfg(test)]
