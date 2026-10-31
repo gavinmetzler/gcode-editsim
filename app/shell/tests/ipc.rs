@@ -245,12 +245,10 @@ fn user_machine_files_are_listed_and_selectable() {
     assert!(dir.0.join("machines").is_dir(), "created: {folder}");
     std::fs::write(dir.0.join("machines/lathe.toml"), machine_lathe_text()).expect("write");
     let list = json(&w, "list_machines", serde_json::json!({})).expect("list");
-    // The user's files come after the shipped examples, however many
-    // examples there are.
+    // Once the folder has machine files, only they are listed.
     let entries = list.as_array().expect("a list");
-    let shipped = app_backend::files::SHIPPED_MACHINES.len();
-    assert_eq!(entries.len(), shipped + 1);
-    let user = &entries[shipped];
+    assert_eq!(entries.len(), 1);
+    let user = &entries[0];
     assert_eq!(user["label"], "Generic 2-axis lathe");
     assert_eq!(user["source"]["kind"], "user");
     let name = json(

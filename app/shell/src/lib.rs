@@ -124,7 +124,8 @@ pub struct MachineEntry {
     problem: Option<String>,
 }
 
-/// The shipped machine files, then those in the user's machine folder.
+/// The machine files in the user's machine folder, or the shipped examples
+/// when it has none.
 #[tauri::command]
 async fn list_machines(state: State<'_, AppState>) -> Result<Vec<MachineEntry>, String> {
     let dir = state.machine_dir.clone();
@@ -307,7 +308,8 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
 }
 
 /// Runs the desktop app. The user's machine folder is `machines` in the
-/// app's configuration folder.
+/// app's configuration folder; on start it gets the shipped examples if it
+/// has no machine files yet.
 pub fn run() -> Result<(), tauri::Error> {
     with_commands(tauri::Builder::default())
         // Native open, save and message dialogs (the UI picks paths with
@@ -315,6 +317,11 @@ pub fn run() -> Result<(), tauri::Error> {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let dir = app.path().app_config_dir()?.join("machines");
+            // Not fatal: the shipped examples are listed when the folder
+            // has no files, so the app still has machines to choose.
+            if let Err(e) = files::seed_machine_folder(&dir) {
+                eprintln!("could not set up the machine folder: {e}");
+            }
             app.manage(AppState::new(dir));
             Ok(())
         })

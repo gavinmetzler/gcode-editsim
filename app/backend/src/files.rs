@@ -98,6 +98,11 @@ pub const SHIPPED_MACHINES: &[(&str, &str)] = &[
     ("generic_2axis_lathe", machine_lathe::EXAMPLE_DEFINITION),
 ];
 
+/// The shipped examples copied into a new machine folder, by id: the
+/// machine types the app simulates (the lathe is a stub until M8). Their
+/// file names (`<id>.toml`) sort with the mill first, so it is the default.
+pub const SEEDED_MACHINES: &[&str] = &["generic_3axis_mill", "generic_3axis_router"];
+
 /// The text of a shipped example, by id.
 pub fn shipped_machine(id: &str) -> Option<&'static str> {
     SHIPPED_MACHINES
@@ -113,27 +118,13 @@ fn describe(text: &str) -> (Option<String>, Option<String>) {
     }
 }
 
-/// The shipped examples, then every `*.toml` file in `user_dir` (not its
-/// subfolders), sorted by file name. A missing `user_dir` just has no
-/// files. Files that cannot be used are listed with the problem, so the
-/// user can see why.
-pub fn list_machine_files(user_dir: &Path) -> Result<Vec<MachineFile>, BackendError> {
-    let mut list: Vec<MachineFile> = SHIPPED_MACHINES
-        .iter()
-        .map(|(id, text)| {
-            let (name, problem) = describe(text);
-            MachineFile {
-                label: name.unwrap_or_else(|| (*id).to_owned()),
-                source: MachineSource::Shipped(id),
-                problem,
-            }
-        })
-        .collect();
-
-    let entries = match fs::read_dir(user_dir) {
+/// The `*.toml` files in `dir` (not its subfolders), sorted by path. A
+/// missing `dir` has none.
+fn machine_paths(dir: &Path) -> Result<Vec<PathBuf>, BackendError> {
+    let entries = match fs::read_dir(dir) {
         Ok(entries) => entries,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(list),
-        Err(e) => return Err(io_error(user_dir, e)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(io_error(dir, e)),
     };
     let mut paths: Vec<PathBuf> = entries
         .filter_map(Result::ok)
@@ -145,6 +136,63 @@ pub fn list_machine_files(user_dir: &Path) -> Result<Vec<MachineFile>, BackendEr
         })
         .collect();
     paths.sort();
+    Ok(paths)
+}
+
+/// Gives a machine folder its starting files: creates `dir` if missing and,
+/// if it has no `*.toml` files, copies the [`SEEDED_MACHINES`] examples in
+/// as `<id>.toml`. Never overwrites a file. Returns whether it copied
+/// anything. The examples are built into the app, so nothing is fetched.
+pub fn seed_machine_folder(dir: &Path) -> Result<bool, BackendError> {
+    fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
+    if !machine_paths(dir)?.is_empty() {
+        return Ok(false);
+    }
+    let mut first_error = None;
+    for id in SEEDED_MACHINES {
+        let Some(text) = shipped_machine(id) else {
+            continue;
+        };
+        let path = dir.join(format!("{id}.toml"));
+        let write = || -> std::io::Result<()> {
+            // `create_new` refuses to replace anything already there.
+            let mut f = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)?;
+            f.write_all(text.as_bytes())
+        };
+        if let Err(e) = write() {
+            first_error.get_or_insert(io_error(&path, e));
+        }
+    }
+    match first_error {
+        Some(e) => Err(e),
+        None => Ok(true),
+    }
+}
+
+/// The machine files the user can choose: every `*.toml` file in
+/// `user_dir` (not its subfolders), sorted by file name. If there are none
+/// (or no folder), the shipped examples instead, so there is always
+/// something to choose. Files that cannot be used are listed with the
+/// problem, so the user can see why.
+pub fn list_machine_files(user_dir: &Path) -> Result<Vec<MachineFile>, BackendError> {
+    let paths = machine_paths(user_dir)?;
+    if paths.is_empty() {
+        return Ok(SHIPPED_MACHINES
+            .iter()
+            .map(|(id, text)| {
+                let (name, problem) = describe(text);
+                MachineFile {
+                    label: name.unwrap_or_else(|| (*id).to_owned()),
+                    source: MachineSource::Shipped(id),
+                    problem,
+                }
+            })
+            .collect());
+    }
+    let mut list = Vec::with_capacity(paths.len());
     for path in paths {
         let file_label = path
             .file_name()

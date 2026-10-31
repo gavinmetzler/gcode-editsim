@@ -6,7 +6,10 @@ interpret programs and to flag moves outside the machine's travel.
 
 The files use [TOML](https://toml.io), a simple `key = value` format.
 Lines starting with `#` are comments. A graphical editor for these files
-is planned. Until then, copy the example and edit it in any text editor.
+is planned. Until then, edit the files in any text editor. The desktop app
+copies the mill and router examples below into your machine folder the
+first time it starts (**Machines…** shows where it is); once the folder
+has any machine files, only they are listed.
 
 **Examples:**
 - [`core/machine-mill/data/generic_3axis_mill.toml`](../core/machine-mill/data/generic_3axis_mill.toml): a 3-axis machining centre with travel limits and two work offsets.

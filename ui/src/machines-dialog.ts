@@ -16,7 +16,7 @@ export function showMachinesDialog(folder: string, reload: () => Promise<string>
     el("h2", { textContent: "Machine files" }),
     el("p", {
       textContent:
-        "Put your machine files (.toml) in this folder, then reload the list. Copy the shipped example to start; the format is described in docs/machine-definition.md.",
+        "Your machine files (.toml) are in this folder; the app put the example mill and router files there to start from. Edit them or add your own, then reload the list. The format is described in docs/machine-definition.md.",
     }),
     path,
     result,
