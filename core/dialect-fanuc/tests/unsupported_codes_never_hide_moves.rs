@@ -1,6 +1,7 @@
 //! Codes that change how later blocks move but are not simulated (shifts,
-//! rotation, scaling, mirroring, polar input, offset setting, macro and
-//! subprogram calls, unknown G codes) never hide moves (owner decision,
+//! rotation, scaling, mirroring, polar input, offset setting, macro
+//! calls, unknown G codes; subprogram calls are followed, see
+//! subprogram_calls.rs) never hide moves (owner decision,
 //! 2026-10-31): a backplot drawn without their effect is more useful than
 //! none. Each is reported once where it appears; its words are data, never
 //! a move; later moves are drawn as programmed.
@@ -11,7 +12,7 @@ use common::{run, w};
 use dialect_api::Command;
 use ir::{DiagCode, Severity};
 
-const CODES: [&str; 10] = [
+const CODES: [&str; 9] = [
     "G92 X100. Y100.",
     "G52 X10. Y10.",
     "G68 X0 Y0 R90.",
@@ -20,7 +21,6 @@ const CODES: [&str; 10] = [
     "G16",
     "G10 L2 P1 X-100.",
     "G65 P9000 A1.",
-    "M98 P1000",
     "G33 Z-10. F1.5",
 ];
 

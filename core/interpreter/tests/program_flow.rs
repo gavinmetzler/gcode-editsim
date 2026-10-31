@@ -25,6 +25,12 @@ fn trailing_percent_and_comments_after_end_are_quiet() {
 fn block_delete_switch() {
     let src = "G0 X1.\n/G0 X2.\n/2 G0 X3.\nG0 X4.\n";
     assert_eq!(moves(&run(src)).len(), 4);
-    let skipped = run_opts(src, Options { block_delete: true });
+    let skipped = run_opts(
+        src,
+        Options {
+            block_delete: true,
+            ..Options::default()
+        },
+    );
     assert_eq!(moves(&skipped).len(), 2);
 }

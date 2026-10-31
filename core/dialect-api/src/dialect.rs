@@ -45,4 +45,13 @@ pub trait Dialect {
         out: &mut Vec<Command>,
         diag: &mut Diagnostics,
     );
+
+    /// The program number if `block` starts a program (Fanuc `O1000` or
+    /// `:1000`), so the interpreter can find the target of a
+    /// [`Command::CallSubprogram`] in the same file. The default is
+    /// `None`: a dialect without subprograms never starts one.
+    fn program_number(&self, block: &Block) -> Option<u32> {
+        let _ = block;
+        None
+    }
 }

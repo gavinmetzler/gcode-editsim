@@ -34,13 +34,637 @@
       "work_offset": 3
     },
     {
+      "line": 23,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -49.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 24,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -65.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 25,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -516.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 26,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -506.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 27,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -65.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 28,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -49.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 29,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -65.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 30,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -81.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 31,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -516.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 32,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -506.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 33,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -81.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 34,
+      "kind": "Linear",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 35,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 23,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -49.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 24,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -65.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 25,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -516.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 26,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -506.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 27,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -65.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 28,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -49.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 29,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -65.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 30,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -81.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 31,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -516.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 32,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -506.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 33,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -81.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 34,
+      "kind": "Linear",
+      "end": {
+        "X": 338.0,
+        "Y": -304.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 35,
+      "kind": "Linear",
+      "end": {
+        "X": 372.0,
+        "Y": -304.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
       "line": 15,
       "kind": "Rapid",
       "end": {
-        "X": -342.0,
+        "X": -274.0,
         "Y": -574.0,
         "Z": -40.0
       },
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 23,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -49.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 24,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -65.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 25,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -786.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 26,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -776.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 27,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -65.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 28,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -49.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 29,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -65.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 30,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -81.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 31,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -786.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 32,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -776.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 33,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -81.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 34,
+      "kind": "Linear",
+      "end": {
+        "X": -274.0,
+        "Y": -574.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 35,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 23,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -49.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 24,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -65.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 25,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -786.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 26,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -776.0,
+        "Z": -65.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 27,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -65.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 28,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -49.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 29,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -65.0
+      },
+      "feed": 5000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 30,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -81.0
+      },
+      "feed": 2000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 31,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -786.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 32,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -776.0,
+        "Z": -81.0
+      },
+      "feed": 3000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 33,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -81.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 34,
+      "kind": "Linear",
+      "end": {
+        "X": -240.0,
+        "Y": -574.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 35,
+      "kind": "Linear",
+      "end": {
+        "X": -206.0,
+        "Y": -574.0,
+        "Z": -40.0
+      },
+      "feed": 8000.0,
       "tool": 0,
       "work_offset": 3
     },
@@ -117,39 +741,21 @@
       "message": "G43 (Tool length compensation +) is not simulated: tool length (height) and wear compensation are ignored, and the path is shown as programmed. Not reported again."
     },
     {
-      "line": 13,
-      "severity": "Warning",
-      "code": "UnsupportedMCode",
-      "message": "M98 (Subprogram call) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
-    },
-    {
-      "line": 16,
-      "severity": "Warning",
-      "code": "UnsupportedMCode",
-      "message": "M98 (Subprogram call) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
-    },
-    {
       "line": 19,
       "severity": "Info",
       "code": "UnsupportedMCode",
       "message": "M95 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
-    },
-    {
-      "line": 22,
-      "severity": "Info",
-      "code": "NotYetSimulated",
-      "message": "blocks after the end of the program are not executed"
     }
   ],
   "tools_used": [],
   "bbox": {
     "min": {
-      "X": -342.0,
-      "Y": -574.0,
-      "Z": -40.0
+      "X": -274.0,
+      "Y": -786.0,
+      "Z": -81.0
     },
     "max": {
-      "X": 304.0,
+      "X": 372.0,
       "Y": 0.0,
       "Z": 0.0
     }

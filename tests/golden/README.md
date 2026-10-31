@@ -12,7 +12,10 @@
 Files named `router_*.nc` are short excerpts of the owner's real router
 programs (published with the owner's agreement, comments removed). They run
 on the generic router (`core/machine-mill/data/generic_3axis_router.toml`:
-no travel limits, every work offset at zero) instead of the generic mill.
+no travel limits, every work offset at zero) instead of the generic mill. In `router_fanuc_subprogram.nc` the calls' repeat counts are cut from
+19 (`M98P190098`) to 2 (`M98P20098`), so the expected output stays short
+enough to review; the 19-repeat form is tested in
+`core/dialect-fanuc/tests/subprogram_calls.rs`.
 
 `render_buffer_v1.bin` is the shared render-buffer fixture (ARCHITECTURE.md
 §8.4). It is built from a hand-made program in

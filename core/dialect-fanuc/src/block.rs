@@ -239,7 +239,7 @@ pub(crate) fn interpret(
 
     // 3. M codes before motion.
     for code in mcodes.iter().filter(|c| c.handler.before_motion()) {
-        apply_mcode(fanuc, code, ctx, state, out, diag);
+        apply_mcode(fanuc, code, &values, ctx, state, out, diag);
     }
 
     // 4. Motion.
@@ -250,7 +250,7 @@ pub(crate) fn interpret(
 
     // 5. M codes after motion.
     for code in mcodes.iter().filter(|c| !c.handler.before_motion()) {
-        apply_mcode(fanuc, code, ctx, state, out, diag);
+        apply_mcode(fanuc, code, &values, ctx, state, out, diag);
     }
 
     report_unused_words(fanuc, &gcodes, &mcodes, &values, ctx, state, diag);
@@ -356,6 +356,56 @@ fn assume_units(state: &mut ModalState, src: SourceRef, diag: &mut Diagnostics) 
         src,
         diag,
     );
+}
+
+/// The call an M98 block makes: `P` is the program, and `L` the repeat
+/// count; without `L`, a `P` of more than four digits holds the repeat
+/// count in its leading digits (`P190098`: 19 times program 98). Reports
+/// and returns `None` if `P` is missing or not a whole number.
+fn subprogram_call(values: &[Value], src: SourceRef, diag: &mut Diagnostics) -> Option<Command> {
+    let whole = |v: &Value| -> Option<u32> {
+        let n = v.number.value;
+        (n >= 0.0 && n.fract() == 0.0 && n <= f64::from(u32::MAX)).then_some(n as u32)
+    };
+    let Some(p) = values.iter().find(|v| v.letter == 'P') else {
+        diag.error(
+            DiagCode::MissingWord,
+            "M98 needs P (the program to call); no call is made",
+            src,
+        );
+        return None;
+    };
+    let Some(p_value) = whole(p) else {
+        diag.error(
+            DiagCode::InvalidValue,
+            format!(
+                "M98 P{} is not a program number; no call is made",
+                p.number.value
+            ),
+            at(src, p.span),
+        );
+        return None;
+    };
+    let l = values.iter().find(|v| v.letter == 'L');
+    let (program, repeat) = match l {
+        Some(l) => match whole(l) {
+            Some(count) => (p_value, count),
+            None => {
+                diag.error(
+                    DiagCode::InvalidValue,
+                    format!(
+                        "M98 L{} is not a repeat count; no call is made",
+                        l.number.value
+                    ),
+                    at(src, l.span),
+                );
+                return None;
+            }
+        },
+        None if p_value > 9999 => (p_value % 10_000, p_value / 10_000),
+        None => (p_value, 1),
+    };
+    Some(Command::CallSubprogram { program, repeat })
 }
 
 /// Reports a code that changes how later blocks move but is not simulated
@@ -593,6 +643,7 @@ fn apply_values(
 fn apply_mcode(
     fanuc: &Fanuc,
     code: &Code,
+    values: &[Value],
     ctx: &BlockContext<'_>,
     state: &mut ModalState,
     out: &mut Vec<Command>,
@@ -630,12 +681,32 @@ fn apply_mcode(
         Handler::ProgramEnd => out.push(Command::ProgramEnd { rewind: false }),
         Handler::ProgramEndRewind => out.push(Command::ProgramEnd { rewind: true }),
         Handler::Ignored => {
-            // Subprogram call or return (M3.7 adds subprograms): not
-            // simulated, and later moves are drawn as programmed.
             ignored(fanuc, code, ctx.src, diag);
             out.push(Command::Unsupported {
                 what: code.key.to_string(),
             });
+        }
+        Handler::SubprogramCall => {
+            if let Some(call) = subprogram_call(values, src, diag) {
+                out.push(call);
+            }
+        }
+        Handler::SubprogramReturn => {
+            if let Some(p) = values.iter().find(|v| v.letter == 'P') {
+                diag.push(
+                    Diagnostic::warning(
+                        DiagCode::NotYetSimulated,
+                        format!(
+                            "{} P (return to sequence number {}) is not simulated: it returns \
+                             to the block after the call",
+                            code.key, p.number.value
+                        ),
+                        at(ctx.src, p.span),
+                    )
+                    .dialect_specific(),
+                );
+            }
+            out.push(Command::ReturnFromSubprogram);
         }
         Handler::Unsupported => {
             diag.error(

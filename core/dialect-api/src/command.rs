@@ -156,6 +156,21 @@ pub enum Command {
         /// `true` if the control rewinds to the start of the program.
         rewind: bool,
     },
+    /// Run program `program` (as the dialect's [`Dialect::program_number`]
+    /// numbers it) `repeat` times, then continue after this block. The
+    /// interpreter finds the program in the same file and follows the
+    /// call; the rest of this block's commands come first.
+    ///
+    /// [`Dialect::program_number`]: crate::Dialect::program_number
+    CallSubprogram {
+        /// The program to run.
+        program: u32,
+        /// How many times; 0 runs nothing.
+        repeat: u32,
+    },
+    /// Return from the current subprogram to the block after its call (or
+    /// run it again, if repeats remain).
+    ReturnFromSubprogram,
     /// Something the dialect recognised but cannot express yet. Always
     /// accompanied by a diagnostic.
     Unsupported {

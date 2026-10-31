@@ -17,11 +17,11 @@ line 10:
 line 12:
   words: X304. Y-304.
 line 13:
-  words: M98 P190098
+  words: M98 P20098
 line 15:
   words: G0 X-646. Y-270.
 line 16:
-  words: M98 P190098
+  words: M98 P20098
 line 18:
   words: G54 G49 G40 G28 X0 Y0 Z0 M92
 line 19:

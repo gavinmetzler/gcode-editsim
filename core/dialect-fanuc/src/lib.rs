@@ -148,4 +148,12 @@ impl Dialect for Fanuc {
     ) {
         block::interpret(self, block, ctx, state, out, diag);
     }
+
+    /// `O1000` or `:1000` (the parser reads `:` as `O`) as the first word
+    /// of a block starts program 1000.
+    fn program_number(&self, block: &Block) -> Option<u32> {
+        let word = block.words.first().filter(|w| w.letter == 'O')?;
+        let n = dialect_api::literal(&word.value)?.value;
+        (n >= 0.0 && n.fract() == 0.0 && n <= f64::from(u32::MAX)).then_some(n as u32)
+    }
 }
