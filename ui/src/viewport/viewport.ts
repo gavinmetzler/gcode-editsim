@@ -30,7 +30,7 @@ import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
 import { expandIndexed, type Toolpath } from "./toolpath";
-import { VIEWS, fitOrtho, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
+import { VIEWS, fitOrtho, orbitAbout, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -72,6 +72,8 @@ export class Viewport {
   private measurement: Measurement | null = null;
   private dragging = false;
   private snapped: Vec3 | null = null;
+  /** An orbit about a node, while the left button is down. */
+  private pivot: { point: Vec3; x: number; y: number; startX: number; startY: number } | null = null;
   private hoverFrame = 0;
 
   /** Called with the toolpath point a click picked (snapped as for
@@ -111,7 +113,20 @@ export class Viewport {
     container.addEventListener(
       "pointerdown",
       (e) => {
-        if (!this.measuring || e.button !== 0 || e.target !== canvas) return;
+        if (e.button !== 0 || e.target !== canvas) return;
+        // Outside measure mode, a left (rotate) press on a node orbits about
+        // that node. Modifier keys make the left button pan: leave those,
+        // and touch, to the orbit controls.
+        if (!this.measuring) {
+          if (e.shiftKey || e.ctrlKey || e.metaKey || e.pointerType === "touch") return;
+          const node = this.pointAt(e.clientX, e.clientY);
+          if (!node) return; // No node snapped: orbit as usual.
+          e.stopPropagation();
+          e.preventDefault();
+          canvas.setPointerCapture(e.pointerId);
+          this.pivot = { point: node.point, x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY };
+          return;
+        }
         const p = this.pointAt(e.clientX, e.clientY);
         if (!p) return; // Not on a node: orbit as usual.
         e.stopPropagation();
@@ -129,6 +144,15 @@ export class Viewport {
       this.pointerDown = { x: e.clientX, y: e.clientY };
     });
     canvas.addEventListener("pointerup", (e) => {
+      const pivot = this.pivot;
+      if (pivot) {
+        this.pivot = null;
+        // Hardly moved: a click, which picks as usual.
+        if (Math.hypot(e.clientX - pivot.startX, e.clientY - pivot.startY) < 4) {
+          this.onPick(this.pointAt(e.clientX, e.clientY));
+        }
+        return;
+      }
       if (this.measuring) {
         this.pointerDown = null;
         if (this.dragging) {
@@ -148,6 +172,10 @@ export class Viewport {
       }
     });
     canvas.addEventListener("pointermove", (e) => {
+      if (this.pivot) {
+        this.orbitAboutPivot(e.clientX, e.clientY);
+        return;
+      }
       // While a button is down the view is orbiting or panning, unless a
       // measuring drag is in progress.
       if (e.buttons !== 0 && !this.dragging) return;
@@ -372,6 +400,26 @@ export class Viewport {
     this.snapped = null;
     this.drawOverlay();
     this.onMeasure(null);
+  }
+
+  /** Turns the view about the pivot node for a pointer move to (`x`, `y`),
+   *  at the orbit controls' speed (a full turn per view height). */
+  private orbitAboutPivot(x: number, y: number): void {
+    const pivot = this.pivot;
+    if (!pivot) return;
+    const height = Math.max(1, this.renderer.domElement.clientHeight);
+    const speed = (2 * Math.PI * this.controls.rotateSpeed) / height;
+    const dTheta = -(x - pivot.x) * speed;
+    const dPhi = -(y - pivot.y) * speed;
+    pivot.x = x;
+    pivot.y = y;
+    const c = this.camera.position;
+    const t = this.controls.target;
+    const next = orbitAbout([c.x, c.y, c.z], [t.x, t.y, t.z], pivot.point, dTheta, dPhi);
+    this.camera.position.set(...next.position);
+    this.controls.target.set(...next.target);
+    // Looks at the moved target; fires "change", which redraws.
+    this.controls.update();
   }
 
   /** Whether measure mode is on. */

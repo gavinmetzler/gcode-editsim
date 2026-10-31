@@ -196,6 +196,15 @@ because they help with every test of the later steps.
 - If a point is snapped when a rotate drag starts, the view orbits around
   that point; otherwise it orbits as now. The view must not jump when the
   orbit centre changes (move the target and keep the camera's position).
+- **As built:** a left press on a node (snapped within 15 px, as for
+  hovering) turns the view about that node: the camera and its target
+  rotate together about it (`orbitAbout` in `ui/src/viewport/views.ts`,
+  pure and tested), so the node keeps its place on screen and nothing
+  jumps when the drag starts. The orbit controls can only turn about the
+  screen centre, so this one drag is handled by the view itself, at the
+  same speed. A press away from nodes, Shift/Ctrl + left (pan), the
+  middle and right buttons, and touch work as before. A click on a node
+  still picks. In measure mode a press on a node measures instead.
 
 ### M3.5: Program coordinates and coordinate shifts (core)
 
