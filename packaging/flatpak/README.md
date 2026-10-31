@@ -14,8 +14,13 @@ flatpak install --user gcode-editsim.flatpak
 flatpak run com.ncsoftbyai.gcodeeditsim
 ```
 
-The app also appears in your desktop's app list. Your own machine files
-go in `~/.var/app/com.ncsoftbyai.gcodeeditsim/config/com.ncsoftbyai.gcodeeditsim/machines/`.
+The app also appears in your desktop's app list. Your machine files
+are in `~/.var/app/com.ncsoftbyai.gcodeeditsim/config/com.ncsoftbyai.gcodeeditsim/machines/`.
+Flatpak cannot run anything at install time, so the app makes that folder
+the first time it starts and copies the example mill and router files
+into it (they are packaged in the app, not downloaded). Edit them or add
+your own, then use **Machines… → Reload list**. If you delete every file,
+the examples come back on the next start.
 
 ## Building
 
