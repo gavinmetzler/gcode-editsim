@@ -46,7 +46,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 - **Full circles are decided exactly.** An offset-style arc whose end is within 1e-6 mm of its start (floating-point drift from incremental moves is ~1e-10 mm; the smallest programmable step is 0.001 mm) has its end set exactly to the start, so the IR's coincident-end-points rule applies. Without this, drift could turn a full circle into a near-zero arc.
 - **Arc centres** are computed here. Offset-style centres are checked so that start and end lie within 0.01 mm of the same radius (real controls make this a parameter); R-style centres are solved for the short or long arc by the sign of R. An impossible arc is an error and the block does not move.
 - **Travel limits** are checked for every motion segment, including arc bulges (via the segment's bounding box). Offending segments get `OUT_OF_LIMITS` and a warning; after 50 warnings the rest are only flagged.
-- **Program end** stops execution: later blocks with content are not run, with one info note.
+- **Program end** stops execution: later blocks with content are not run, with one info note, unless they are a subprogram the program calls (see §7.2, "Subprograms").
 - **Block delete** (`/`) is an option (`Options::block_delete`), off by default, matching the operator switch.
 - **Events** (program and optional stops, spindle start/stop with direction, coolant on/off, program end) become zero-length segments at the current position, in program order, one per command the program gives (a repeated command is recorded again). An event that happens while the position is unknown is flagged `POSITION_UNKNOWN`, because its position is only the last known one.
 
@@ -185,6 +185,8 @@ pub enum Command {
     Coolant(CoolantState),
     Stop { optional: bool },            // operator stop / optional stop
     ProgramEnd { rewind: bool },
+    CallSubprogram { program: u32, repeat: u32 }, // run a program in the same file (M3.7)
+    ReturnFromSubprogram,               // M99: back to after the call, or run again
     Unsupported { what: String },       // always accompanied by a Diagnostic
 }
 
@@ -276,7 +278,7 @@ Design notes:
 
 - **Events are segments.** Everything that is not motion (dwell, tool change, stops, spindle, coolant, program end, `Sync`) is a zero-length segment with `start == end`, rather than a separate event list. That keeps one list in program order, so the line lookup below finds a line's events as well as its moves, and a later playback can walk a single list. Each event is its own kind, because the render buffer stores only the kind byte. `SegKind` and `SegFlags` values are fixed once the render buffer exists.
 - **Arcs stay arcs in the IR.** They are exact, compact, and let stats and sim choose their own tolerance. Tessellation is a function in `ir` (`tessellate(&Segment, tol) -> impl Iterator<Item = Pos>`), used by the render-buffer builder and by sim. It gives the exact start and end, points on the arc with chord error ≤ `tol`, at least one point every 90°, and at most `MAX_ARC_POINTS` (100 000) per arc; an unusable tolerance gets the maximum.
-- Segments are emitted **in program order**, so a source line maps to a contiguous segment range (binary search on `src.line`). This holds for straight-line, single-file programs. Subprograms, macro loops and `GOTO` (M3 and later) break it, because one line can then produce segments at several places in the stream; the lookup will need a separate line index by then.
+- Segments are emitted **in the order the program runs**. For a straight-line program that is line order, so a line's segments are one contiguous range (`ir::segments_for_line`, binary search). Subprograms (M3.7) break this: a subprogram line produces segments at every call. The UI therefore builds a **line index** (`buildLineIndex` in `ui/src/editor/lines.ts`: segment indices sorted by line, then run order), which gives every run of a line, and where the tool is after it (the end of its first run).
 - **Arc plane is a pair of axis indices**, not a fixed `XY | ZX | YZ` enum, so the IR names no axes (the machine maps G17/G18/G19 or any other plane selection to indices). The swept angle is the shortest turn in the arc's direction from `start` to `end`, plus `turns` full revolutions; coincident end points mean a full circle. Axes outside the plane move linearly from `start` to `end`, which describes a helix without a separate `helical_delta` field (that field would duplicate `end - start` and could disagree with it).
 - A `Segment` is deliberately fat (~250 bytes). If memory becomes an issue on huge programs, the render path already uses a compact encoding (§8) and the IR can later move to a struct-of-arrays layout without changing consumers' API.
 
@@ -343,12 +345,17 @@ pub trait Dialect {
         out: &mut Vec<Command>,
         diag: &mut Diagnostics,
     );
+
+    /// The program number if `block` starts a program (Fanuc `O1000` or
+    /// `:1000`), so the interpreter can follow calls within the file. The
+    /// default is `None`: a dialect without subprograms (Osai stub).
+    fn program_number(&self, block: &Block) -> Option<u32> { None }
 }
 ```
 
 `AxisSet` is the machine's ordered axis list as the dialect sees it: each axis's address letter, whether it is rotary, and optionally the letter for its arc-centre offset (e.g. `I` for `X`). Index *i* in the set is index *i* in `Pos`. The dialect looks letters up there instead of assuming X/Y/Z exist; it cannot depend on `machine-api` (which comes later in the dependency order), so the caller builds the `AxisSet` from the user's machine definition (§9).
 
-A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferred until macros are in scope (M3.7); see §7.4.
+**Subprograms (M3.7)** are control flow, so the interpreter follows them, not the dialect: the dialect numbers the programs in the file (`program_number`) and turns M98/M99 into `Command::CallSubprogram { program, repeat }` and `ReturnFromSubprogram`; the interpreter runs blocks with a program counter and a call stack (at most `MAX_CALL_DEPTH` = 10 deep, and `Options::max_blocks` blocks in all, 2,000,000 by default). A call to a program not in the file gives a warning and is skipped; running on into another program's number block ends the main program (or returns from a subprogram); M99 in the main program ends it, drawn once; blocks never run (after the end, and not in a called subprogram) get one note. Diagnostics repeated by a subprogram's runs are reported once. A `MacroEnvironment` hook (macro variables, `IF`/`WHILE`/`GOTO`) stays deferred (`docs/WISHLIST.md`); see §7.4.
 
 **What the second dialect showed (M2.2).** `dialect-osai`, a stub of the Osai 10 Series, implements the same `Dialect` trait from its own code table, with no Fanuc code. G17-G19 there pick planes by position in the axis list rather than by letter, which `AxisSet` supports as it is. One interface change was needed: `ArcCenter::Position` (§6.5). Other findings, recorded rather than fixed:
 

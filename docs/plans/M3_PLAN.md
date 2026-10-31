@@ -237,6 +237,17 @@ R levels, pecks and retracts are not drawn.
   (ARCHITECTURE.md §6.6).
 - Simple `#` variables and arithmetic, if the corpus needs them;
   otherwise later.
+- **As built:** Fanuc `O`/`:` numbers start programs; `M98 P1000 L3` and
+  `M98 P31000` (leading digits repeat, *(unverified)*) call one; M99
+  returns (with P, a warning: it returns to after the call). The
+  interpreter follows calls with a program counter and call stack
+  (ARCHITECTURE.md §7.2, "Subprograms"): programs not in the file are
+  skipped with a warning (moves are never hidden), nesting stops at 10,
+  runaway programs at 2,000,000 blocks, diagnostics from repeated runs
+  are reported once. The UI's line lookup is now a line index: a
+  subprogram line highlights every run. The owner's "Slotted panel" now
+  draws completely (7 calls of 19 runs). **Macro variables are left
+  out:** the corpus does not use them (`docs/WISHLIST.md`).
 
 ### M3.8: Statistics, extended
 

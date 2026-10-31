@@ -83,3 +83,14 @@ each cycle into rapids and feeds (approach, R level, feed in, pecks,
 dwell, retract to the initial or R level per G98/G99), tagged with the
 IR's `CycleStep`, all pointing back at the cycle's line.
 
+## Macro variables and control flow
+
+*Left out of M3.7 (2026-10-31): the owner's programs do not use them.*
+
+Fanuc custom macro B (`#100 = 5`, `#[#1+2]`, `IF`/`WHILE`/`GOTO`, G65
+calls with arguments) and the Osai equivalents. The parser already reads
+expressions into a tree (ARCHITECTURE.md §7.4); evaluation would live in
+a per-dialect `MacroEnvironment`, with the interpreter following jumps
+as it follows subprogram calls. Today a block using a variable or an
+expression is reported and skipped.
+
