@@ -42,7 +42,8 @@ fn incremental_moves_do_not_make_an_unknown_axis_known() {
 #[test]
 fn moves_after_an_unknown_position_wait_for_a_known_one() {
     // G30 goes to a reference position the machine file does not give.
-    let src = "G21 G90 G54 G0 X0. Y0. Z5.\nG91 G30 X0. Y0. Z0.\nG90 G0 X5.\nG0 X1. Y1. Z5.\nG0 X2.\n";
+    let src =
+        "G21 G90 G54 G0 X0. Y0. Z5.\nG91 G30 X0. Y0. Z0.\nG90 G0 X5.\nG0 X1. Y1. Z5.\nG0 X2.\n";
     let p = run(src);
     let lines: Vec<u32> = moves(&p).iter().map(|m| m.src.line).collect();
     // Line 3 sets only X, so Y and Z are still unknown: it is not drawn.
