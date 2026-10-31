@@ -17,7 +17,44 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
+  # Decides which jobs a pull request needs, from the files it changes
+  # (rules and their tests in tools/ci/). Pushes to main run everything. A
+  # job skipped here shows as "skipped", which GitHub counts as passing.
+  changes:
+    name: changed areas
+    runs-on: ubuntu-24.04
+    outputs:
+      rust: ${{ steps.areas.outputs.rust }}
+      fuzz: ${{ steps.areas.outputs.fuzz }}
+      ui: ${{ steps.areas.outputs.ui }}
+      app: ${{ steps.areas.outputs.app }}
+      flatpak: ${{ steps.areas.outputs.flatpak }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Test the rules
+        run: tools/ci/test-changed-areas.sh
+      - name: Decide
+        id: areas
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Three dots: what the PR changed since it branched off, not what
+          # main changed meanwhile.
+          if [ "$EVENT" = pull_request ] && files=$(git diff --name-only "$BASE...$HEAD"); then
+            echo "Changed files:"; echo "$files"
+            echo "$files" | tools/ci/changed-areas.sh | tee -a "$GITHUB_OUTPUT"
+          else
+            # Not a pull request, or the diff failed: run everything.
+            printf '%s\n' rust=true fuzz=true ui=true app=true flatpak=true | tee -a "$GITHUB_OUTPUT"
+          fi
+
   rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     name: fmt, clippy, dependency rules, test
     runs-on: ubuntu-24.04
     steps:
@@ -39,6 +76,8 @@ jobs:
         run: cargo test --workspace
 
   app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     name: desktop app shell (Tauri)
     runs-on: ubuntu-24.04
     defaults:
@@ -77,6 +116,8 @@ jobs:
         run: cargo test
 
   ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
     name: UI (lint, typecheck, test, build)
     runs-on: ubuntu-24.04
     defaults:
@@ -105,6 +146,8 @@ jobs:
         run: npm run build
 
   flatpak:
+    needs: changes
+    if: needs.changes.outputs.flatpak == 'true'
     name: Flatpak bundle
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -143,6 +186,8 @@ jobs:
           retention-days: 30
 
   fuzz:
+    needs: changes
+    if: needs.changes.outputs.fuzz == 'true'
     name: fuzz parser (60 s)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
