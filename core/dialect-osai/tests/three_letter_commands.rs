@@ -36,15 +36,6 @@ fn uao_in_a_block_with_motion_applies_first() {
 }
 
 #[test]
-fn per_axis_origins_hide_motion_until_one_origin_for_all() {
-    let r = run("(UAO,2,X,Y)\nG0 X1\n(UAO,1)\nG0 X2 Y2 Z2\n");
-    assert!(r.has(DiagCode::NotYetSimulated, "(UAO,2,X,Y) is not supported"));
-    assert!(r.position_lost());
-    // After (UAO,1) motion is emitted again.
-    assert_eq!(r.moves().len(), 1);
-}
-
-#[test]
 fn messages_and_graphics_commands_do_not_affect_the_path() {
     let r = run("(DIS,\"ROUGHING\")\n(UGS,1,X,-50,100,Y,50,100)\n(CGS)\nG71 G0 X1\n");
     assert!(r.diags.is_empty(), "{:?}", r.diags);

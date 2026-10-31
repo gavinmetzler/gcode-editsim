@@ -329,6 +329,27 @@ fn three_letter_command(
             [n] => n.parse::<u16>().ok().filter(|&n| n <= 10),
             _ => None,
         };
+        // (UAO,n,axes...) selects origin n for the named axes only. Not
+        // simulated yet (M3.5); soft-ignored at the owner's request: the
+        // current origin stays in use and moves keep being drawn.
+        if let [n, axes @ ..] = command.args.as_slice() {
+            if !axes.is_empty() && n.parse::<u16>().is_ok_and(|n| n <= 10) {
+                diag.push(
+                    Diagnostic::warning(
+                        DiagCode::NotYetSimulated,
+                        format!(
+                            "({name},{}) is not simulated yet: the current origin stays in \
+                             use for {}, so moves on those axes may be drawn offset",
+                            command.args.join(","),
+                            axes.join(", ")
+                        ),
+                        src,
+                    )
+                    .dialect_specific(),
+                );
+                return;
+            }
+        }
         if let Some(n) = n {
             let id = WorkOffsetId(n);
             state.work_offset = id;

@@ -115,7 +115,7 @@ Two codes of one group in a block are an error and the block is skipped
 | Command | What we do |
 |---|---|
 | `(UAO,n)` | Origin n (0-10) for all axes; 0 is the home position (p. 2-95). Origin n is work offset n in the machine file. |
-| `(UAO,n,axes...)` | Per-axis origins are not supported: motion hidden until a `(UAO,n)` for all axes |
+| `(UAO,n,axes...)` | Origin n for the named axes only (p. 2-95). **Not simulated yet (M3.5); soft-ignored** at the owner's request (2026-10-31): a warning, the current origin stays in use, and moves keep being drawn, so moves on the named axes may be offset. An origin number outside 0-10 is still an error that hides motion until a `(UAO,n)` for all axes |
 | `(DIS,...)`, `(UGS ...)`, `(CGS)`, `(DGS)` | Messages and the graphics window: no effect on the path |
 | Anything else (`ROT`, `SCF`, `MIR`, `UTO`, `UIO`, `CLS`, `GTO`, `RPT`, ...) | An error, and motion is hidden to the end of the program |
 
