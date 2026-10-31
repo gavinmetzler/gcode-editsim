@@ -23,9 +23,12 @@ fn preselect_then_change_later() {
 }
 
 #[test]
-fn change_without_selection_is_an_error() {
+fn change_without_selection_is_a_warning() {
+    // Some machines use M6 without a T word for their own purposes (a head
+    // change on a router, for example), so it is a warning, not an error.
     let r = run("M6\n");
     assert_eq!(r.codes(), vec![DiagCode::MissingWord]);
+    assert!(r.errors().is_empty(), "{:?}", r.diags);
     assert!(r.commands.is_empty());
 }
 

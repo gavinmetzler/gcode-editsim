@@ -173,11 +173,21 @@ pub(crate) fn interpret(
                 at(src, *span),
             );
             motion_effect = Motion::Hidden(format!("unknown code {what} on line {}", src.line));
-        } else {
-            diag.error(
-                DiagCode::UnsupportedMCode,
-                format!("{what} is not supported"),
-                at(src, *span),
+        } else if state.first_report(&format!("fanuc.machine_m.{what}")) {
+            // Not a Fanuc code, so the machine builder's (head selection,
+            // clamps, vacuum, ...): noted once and ignored.
+            diag.push(
+                Diagnostic::info(
+                    DiagCode::UnsupportedMCode,
+                    format!(
+                        "{what} is not a standard Fanuc code; it is taken to be \
+                         machine-specific and ignored (no movement). If it moves the \
+                         machine, list it in the machine file's ignore_codes or expect \
+                         the drawing to differ. Not reported again."
+                    ),
+                    at(src, *span),
+                )
+                .dialect_specific(),
             );
         }
         out.push(Command::Unsupported { what });
@@ -478,6 +488,37 @@ fn apply_gcode(
                 src,
             );
         }
+        Handler::LengthCompensation => {
+            set_active(fanuc, state, code.key);
+            if state.first_report("fanuc.length_compensation") {
+                diag.info(
+                    DiagCode::NotYetSimulated,
+                    format!(
+                        "{} is not simulated: tool length (height) and wear compensation are \
+                         ignored, and the path is shown as programmed. Not reported again.",
+                        description(fanuc, code.key)
+                    ),
+                    src,
+                );
+            }
+        }
+        Handler::IgnoredShift => {
+            diag.push(
+                Diagnostic::warning(
+                    DiagCode::UnsupportedGCode,
+                    format!(
+                        "{} is not simulated yet and is ignored: later moves are drawn \
+                         without its shift, so they may be offset from where the machine \
+                         goes",
+                        description(fanuc, code.key)
+                    ),
+                    src,
+                )
+                .dialect_specific(),
+            );
+            // The axis words are the new coordinates, not a move.
+            return Motion::Consumed;
+        }
         Handler::Unsupported => {
             set_active(fanuc, state, code.key);
             let (effect, note) = match group {
@@ -658,7 +699,9 @@ fn apply_mcode(
                 state.current_tool = Some(tool);
                 out.push(Command::ToolChange { tool });
             }
-            None => diag.error(
+            // A warning: some machines use M6 alone for their own purposes,
+            // such as a head change on a router.
+            None => diag.warning(
                 DiagCode::MissingWord,
                 format!("{} with no tool selected (no T word yet)", code.key),
                 src,

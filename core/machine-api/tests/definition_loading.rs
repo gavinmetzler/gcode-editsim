@@ -226,3 +226,36 @@ fn rejects_reference_outside_travel() {
         );
     }
 }
+
+#[test]
+fn ignore_codes_are_read() {
+    let def = MachineDef::from_toml_str(
+        "[machine]\nname = \"m\"\nfamily = \"mill\"\nignore_codes = [\"M92\", \"m213\", \"M400.1\"]\n",
+    )
+    .unwrap();
+    assert_eq!(def.ignore_codes, vec!["M92", "M213", "M400.1"]);
+}
+
+#[test]
+fn ignore_codes_default_to_none() {
+    let def = MachineDef::from_toml_str(&minimal("")).unwrap();
+    assert!(def.ignore_codes.is_empty());
+}
+
+#[test]
+fn ignore_codes_must_be_m_codes() {
+    // A G code's axis words would be left behind and read as a move.
+    for bad in [
+        "92", "M", "MM2", "M9.2.1", "M-1", " M92", "M9 2", "M1.23", "G92", "T1",
+    ] {
+        let text =
+            format!("[machine]\nname = \"m\"\nfamily = \"mill\"\nignore_codes = [{bad:?}]\n");
+        assert!(
+            matches!(
+                MachineDef::from_toml_str(&text),
+                Err(MachineDefError::InvalidIgnoreCode(_))
+            ),
+            "{bad:?}"
+        );
+    }
+}

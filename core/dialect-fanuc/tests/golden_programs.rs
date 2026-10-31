@@ -18,14 +18,10 @@ fn golden(name: &str) -> String {
 fn basic_mill_program_has_no_errors() {
     let r = run(&golden("basic_mill.nc"));
     assert!(r.errors().is_empty(), "{:?}", r.errors());
-    // G43 H1 (tool length compensation) is the only thing not simulated.
-    let warnings: Vec<DiagCode> = r
-        .diags
-        .iter()
-        .filter(|d| d.severity == Severity::Warning)
-        .map(|d| d.code)
-        .collect();
-    assert_eq!(warnings, vec![DiagCode::NotYetSimulated]);
+    // G43 H1 (tool length compensation) is the only thing not simulated,
+    // and it is a note, not a warning (never simulated, by design).
+    let notes: Vec<(Severity, DiagCode)> = r.diags.iter().map(|d| (d.severity, d.code)).collect();
+    assert_eq!(notes, vec![(Severity::Info, DiagCode::NotYetSimulated)]);
     assert_eq!(r.moves().len(), 8);
 }
 

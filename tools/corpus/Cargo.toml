@@ -1,0 +1,16 @@
+[package]
+name = "corpus"
+description = "Runs real G-code programs through the pipeline and reports what each one gave."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+app-backend = { path = "../../app/backend" }
+interpreter = { path = "../../core/interpreter" }
+ir = { path = "../../core/ir" }

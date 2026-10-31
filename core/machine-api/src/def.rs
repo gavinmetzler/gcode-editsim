@@ -88,6 +88,11 @@ pub struct MachineDef {
     pub axes: Vec<AxisDef>,
     /// Machine-wide speed limits.
     pub speeds: SpeedLimits,
+    /// M codes such as `"M92"` that this machine's programs use but that do
+    /// not move it (head selection, clamps): removed from every block before
+    /// the dialect sees them. Upper-case, as written. Only M codes: a G
+    /// code's axis words would be left behind and read as a move.
+    pub ignore_codes: Vec<String>,
     work_offsets: BTreeMap<WorkOffsetId, Pos>,
 }
 
@@ -135,6 +140,12 @@ pub enum MachineDefError {
         /// The letter given.
         axis: String,
     },
+    /// An `ignore_codes` entry that is not an M code such as `M92`.
+    #[error(
+        "ignore_codes: {0:?} is not an M code such as \"M92\" (only M codes can be ignored: a \
+         G code's axis words would be left behind and read as a move)"
+    )]
+    InvalidIgnoreCode(String),
     /// A work offset value that is not finite.
     #[error("work offset {id}: value for {axis} must be a finite number")]
     InvalidWorkOffsetValue {
@@ -164,6 +175,8 @@ struct RawMachine {
     max_feed: Option<f64>,
     #[serde(default)]
     max_spindle_rpm: Option<f64>,
+    #[serde(default)]
+    ignore_codes: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -191,6 +204,27 @@ fn letter(text: &str) -> Result<char, MachineDefError> {
         (Some(c), None) if c.is_ascii_alphabetic() => Ok(c.to_ascii_uppercase()),
         _ => Err(MachineDefError::InvalidLetter(text.to_owned())),
     }
+}
+
+/// Checks an `ignore_codes` entry: `M`, then a whole number with at most
+/// one decimal place (`M92`, `M400.1`). Returns it upper-case.
+fn ignore_code(text: &str) -> Result<String, MachineDefError> {
+    let bad = || MachineDefError::InvalidIgnoreCode(text.to_owned());
+    let mut chars = text.chars();
+    let letter = chars
+        .next()
+        .filter(|c| c.eq_ignore_ascii_case(&'M'))
+        .ok_or_else(bad)?;
+    let number = chars.as_str();
+    let (whole, tenths) = number.split_once('.').unwrap_or((number, ""));
+    let digits = |s: &str| s.chars().all(|c| c.is_ascii_digit());
+    if whole.is_empty() || !digits(whole) || !digits(tenths) || tenths.len() > 1 {
+        return Err(bad());
+    }
+    if number.contains('.') && tenths.is_empty() {
+        return Err(bad());
+    }
+    Ok(format!("{}{number}", letter.to_ascii_uppercase()))
 }
 
 fn speed(
@@ -287,11 +321,19 @@ impl MachineDef {
             work_offsets.insert(WorkOffsetId(id), pos);
         }
 
+        let ignore_codes = raw
+            .machine
+            .ignore_codes
+            .iter()
+            .map(|c| ignore_code(c))
+            .collect::<Result<_, _>>()?;
+
         Ok(Self {
             name: raw.machine.name,
             family: raw.machine.family,
             axes,
             speeds,
+            ignore_codes,
             work_offsets,
         })
     }

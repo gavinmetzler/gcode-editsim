@@ -17,6 +17,7 @@ members = [
     "core/testkit",
     "tools/depcheck",
     "tools/gen-ts",
+    "tools/corpus",
     "app/backend",
 ]
 

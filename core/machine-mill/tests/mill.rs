@@ -125,3 +125,22 @@ fn works_as_a_trait_object() {
     let m: Box<dyn Machine> = Box::new(Mill::generic().unwrap());
     assert_eq!(m.axes()[2].name, 'Z');
 }
+
+#[test]
+fn router_example_loads_without_travel_limits() {
+    use machine_api::{Machine, MachineDef};
+    use machine_mill::{Mill, ROUTER_EXAMPLE_DEFINITION};
+    let mill = Mill::new(MachineDef::from_toml_str(ROUTER_EXAMPLE_DEFINITION).unwrap()).unwrap();
+    assert!(mill.axes().iter().all(|a| a.travel.is_none()));
+    // Far from the origin, nothing is out of limits.
+    let mut far = [0.0; ir::MAX_AXES];
+    far[0] = 3000.0;
+    far[1] = -1500.0;
+    assert!(mill.check_limits(&far).is_empty());
+    for n in 1..=6 {
+        assert_eq!(
+            mill.work_offset(ir::WorkOffsetId(n)),
+            Some([0.0; ir::MAX_AXES])
+        );
+    }
+}

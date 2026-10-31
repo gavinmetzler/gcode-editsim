@@ -1,0 +1,130 @@
+{
+  "segments": [
+    {
+      "line": 8,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 10,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": -40.0
+      },
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 12,
+      "kind": "Rapid",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -40.0
+      },
+      "tool": 0,
+      "work_offset": 3
+    },
+    {
+      "line": 20,
+      "kind": "ProgramEnd",
+      "end": {
+        "X": 304.0,
+        "Y": -304.0,
+        "Z": -40.0
+      },
+      "tool": 0,
+      "work_offset": 1,
+      "flags": 4
+    }
+  ],
+  "diagnostics": [
+    {
+      "line": 4,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M92 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 5,
+      "severity": "Warning",
+      "code": "UnsupportedGCode",
+      "message": "G92 (Workpiece coordinate system setting) is not simulated yet and is ignored: later moves are drawn without its shift, so they may be offset from where the machine goes"
+    },
+    {
+      "line": 5,
+      "severity": "Warning",
+      "code": "MissingWord",
+      "message": "M6 with no tool selected (no T word yet)"
+    },
+    {
+      "line": 6,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M23 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 7,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M93 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 8,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
+    },
+    {
+      "line": 9,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M21 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 10,
+      "severity": "Info",
+      "code": "NotYetSimulated",
+      "message": "G43 (Tool length compensation +) is not simulated: tool length (height) and wear compensation are ignored, and the path is shown as programmed. Not reported again."
+    },
+    {
+      "line": 13,
+      "severity": "Error",
+      "code": "UnsupportedMCode",
+      "message": "M98 (Subprogram call) is not supported yet. It changes where later moves go, so moves are not shown from here until the end of the program"
+    },
+    {
+      "line": 19,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M95 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 22,
+      "severity": "Info",
+      "code": "NotYetSimulated",
+      "message": "blocks after the end of the program are not executed"
+    }
+  ],
+  "tools_used": [],
+  "bbox": {
+    "min": {
+      "X": 0.0,
+      "Y": -304.0,
+      "Z": -40.0
+    },
+    "max": {
+      "X": 304.0,
+      "Y": 0.0,
+      "Z": 0.0
+    }
+  }
+}

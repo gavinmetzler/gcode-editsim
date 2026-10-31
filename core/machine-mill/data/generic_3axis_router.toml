@@ -1,0 +1,46 @@
+# Example machine definition: a generic 3-axis router with no travel limits.
+#
+# For programs whose machine is not described yet: nothing is flagged as
+# outside the travel, and every work offset (G54-G59 on Fanuc, origins 1-6
+# on Osai) is at machine zero, so programmed coordinates are drawn as they
+# are. Copy this file and change it to match your machine. All lengths are
+# in mm, speeds in mm/min, spindle speed in rpm. See
+# docs/machine-definition.md.
+
+[machine]
+name = "Generic 3-axis router (no travel limits)"
+family = "mill"
+max_feed = 30000.0
+max_spindle_rpm = 24000.0
+# M codes your programs use that do not move the machine (head selection,
+# clamps, vacuum). Listed codes are ignored with one note each. Example:
+# ignore_codes = ["M92", "M213"]
+
+[[axis]]
+letter = "X"
+kind = "linear"
+arc_offset = "I"
+rapid = 60000.0
+reference = 0.0
+
+[[axis]]
+letter = "Y"
+kind = "linear"
+arc_offset = "J"
+rapid = 60000.0
+reference = 0.0
+
+[[axis]]
+letter = "Z"
+kind = "linear"
+arc_offset = "K"
+rapid = 20000.0
+reference = 0.0
+
+[work_offsets]
+1 = {}
+2 = {}
+3 = {}
+4 = {}
+5 = {}
+6 = {}

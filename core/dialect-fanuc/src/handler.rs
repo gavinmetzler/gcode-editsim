@@ -21,6 +21,13 @@ pub(crate) enum Handler {
     NoEffect,
     /// Accepted with a warning; the path is shown without its effect.
     NotSimulated,
+    /// Tool length compensation (G43, G44): never simulated, by design; the
+    /// path is shown as programmed, with one note per program.
+    LengthCompensation,
+    /// G92: a coordinate shift not simulated yet, ignored with a warning
+    /// (owner's request) instead of hiding later moves. Its axis words are
+    /// data.
+    IgnoredShift,
     /// Reported as an error.
     Unsupported,
     /// Not supported, and changes how later blocks move: hides motion until
@@ -66,6 +73,8 @@ impl Handler {
             "feed_per_minute" => Self::FeedPerMinute,
             "no_effect" => Self::NoEffect,
             "not_simulated" => Self::NotSimulated,
+            "length_compensation" => Self::LengthCompensation,
+            "ignored_shift" => Self::IgnoredShift,
             "unsupported" => Self::Unsupported,
             "blocker" => Self::Blocker,
             "cancel_blocker" => Self::CancelBlocker,

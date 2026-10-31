@@ -12,7 +12,6 @@ use ir::DiagCode;
 #[test]
 fn coordinate_changing_codes_hide_later_moves() {
     for (code, cancel) in [
-        ("G92 X100. Y100.", None),
         ("G52 X10. Y10.", Some("G52 X0 Y0")),
         ("G68 X0 Y0 R90.", Some("G69")),
         ("G51 X0 Y0 P2", Some("G50")),
@@ -74,7 +73,7 @@ fn subprogram_call_hides_later_moves() {
 
 #[test]
 fn non_motion_commands_still_apply_while_moves_are_hidden() {
-    let r = run("G92 X0\nM5\nM30\n");
+    let r = run("G10 L2 P1 X0\nM5\nM30\n");
     assert!(r.commands.contains(&Command::ProgramEnd { rewind: true }));
 }
 

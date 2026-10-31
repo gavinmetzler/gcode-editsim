@@ -1,0 +1,281 @@
+{
+  "segments": [
+    {
+      "line": 7,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
+      "line": 10,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 12,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": -40.0
+      },
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 14,
+      "kind": "Rapid",
+      "end": {
+        "X": -29.21,
+        "Y": 29.21,
+        "Z": -40.0
+      },
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 15,
+      "kind": "Linear",
+      "end": {
+        "X": -29.21,
+        "Y": 29.21,
+        "Z": -68.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 16,
+      "kind": "Linear",
+      "end": {
+        "X": -8.0,
+        "Y": 8.0,
+        "Z": -68.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 17,
+      "kind": "Linear",
+      "end": {
+        "X": -8.0,
+        "Y": -1018.0,
+        "Z": -68.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 18,
+      "kind": "Linear",
+      "end": {
+        "X": 2976.0,
+        "Y": -1018.0,
+        "Z": -68.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 19,
+      "kind": "Linear",
+      "end": {
+        "X": 2976.0,
+        "Y": 8.0,
+        "Z": -68.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 20,
+      "kind": "Linear",
+      "end": {
+        "X": -8.0,
+        "Y": 8.0,
+        "Z": -68.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 21,
+      "kind": "Linear",
+      "end": {
+        "X": -8.0,
+        "Y": -15.0,
+        "Z": -68.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 22,
+      "kind": "Rapid",
+      "end": {
+        "X": -8.0,
+        "Y": -15.0,
+        "Z": -40.0
+      },
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 23,
+      "kind": "Linear",
+      "end": {
+        "X": -8.0,
+        "Y": 184.59,
+        "Z": -40.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 24,
+      "kind": "Linear",
+      "end": {
+        "X": -8.0,
+        "Y": 199.59,
+        "Z": -40.0
+      },
+      "feed": 4000.0,
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 25,
+      "kind": "Rapid",
+      "end": {
+        "X": -8.0,
+        "Y": 199.59,
+        "Z": -12.0
+      },
+      "tool": 0,
+      "work_offset": 2
+    },
+    {
+      "line": 27,
+      "kind": "Rapid",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 1
+    },
+    {
+      "line": 29,
+      "kind": "ProgramEnd",
+      "end": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "tool": 0,
+      "work_offset": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "line": 4,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M92 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 5,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M213 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 5,
+      "severity": "Warning",
+      "code": "UnsupportedGCode",
+      "message": "G92 (Workpiece coordinate system setting) is not simulated yet and is ignored: later moves are drawn without its shift, so they may be offset from where the machine goes"
+    },
+    {
+      "line": 6,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M211 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 7,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "assumed G00 (rapid): the program has not selected this mode yet. The power-on motion mode is set by a parameter (3402 bit 0). Add G00 (rapid) near the start of the program to make it explicit."
+    },
+    {
+      "line": 7,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
+    },
+    {
+      "line": 8,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M40 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 9,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M13 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 11,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M11 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    },
+    {
+      "line": 12,
+      "severity": "Info",
+      "code": "NotYetSimulated",
+      "message": "G43 (Tool length compensation +) is not simulated: tool length (height) and wear compensation are ignored, and the path is shown as programmed. Not reported again."
+    },
+    {
+      "line": 28,
+      "severity": "Info",
+      "code": "UnsupportedMCode",
+      "message": "M95 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
+    }
+  ],
+  "tools_used": [],
+  "bbox": {
+    "min": {
+      "X": -29.21,
+      "Y": -1018.0,
+      "Z": -68.0
+    },
+    "max": {
+      "X": 2976.0,
+      "Y": 199.59,
+      "Z": 0.0
+    }
+  }
+}

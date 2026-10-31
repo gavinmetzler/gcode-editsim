@@ -147,7 +147,7 @@ words = { optional = ["D"] }
 code = "G43"
 group = 8
 modal = true
-handler = "not_simulated"
+handler = "length_compensation"
 description = "Tool length compensation +"
 words = { optional = ["H"] }
 
@@ -155,7 +155,7 @@ words = { optional = ["H"] }
 code = "G44"
 group = 8
 modal = true
-handler = "not_simulated"
+handler = "length_compensation"
 description = "Tool length compensation -"
 words = { optional = ["H"] }
 
@@ -344,7 +344,7 @@ description = "Incremental programming"
 code = "G92"
 group = 0
 modal = false
-handler = "blocker"
+handler = "ignored_shift"
 description = "Workpiece coordinate system setting"
 
 [[g]]

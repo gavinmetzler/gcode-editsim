@@ -41,6 +41,10 @@ app-backend = [
     "machine-mill",
 ]
 
+# Runs real programs through the app's pipeline and reports diagnostics
+# (M3.0). A development tool: nothing depends on it.
+corpus = ["app-backend", "interpreter", "ir"]
+
 # Test-only (dev) dependencies may use any workspace crate in these
 # directories: tests wire concrete dialects and machines together. They may
 # still never reach outside them (e.g. core/ tests must not use app/).

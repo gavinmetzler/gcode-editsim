@@ -8,8 +8,8 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: documentation review after M2.7 (2026-10-31). M2 is planned in
-[`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
+Last updated: M3.0 (real-program corpus, lenient handling of ignorable codes).
+M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
 
@@ -29,7 +29,7 @@ files.
 
 | Area | Status |
 |---|---|
-| Tests | 476 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 85 in the UI (`cd ui && npm test`) |
+| Tests | 494 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 85 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
@@ -112,6 +112,7 @@ in ARCHITECTURE.md §5).
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
 | `ui/` | TypeScript UI (M2.4–M2.7; ARCHITECTURE.md §8.6) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test); `src/viewport/` (three.js viewport); `src/editor/` (CodeMirror editor, line ↔ segment mapping); `src/panels/` (diagnostics panel, statistics dialog, M2.7); `src/dom.ts` (element helper); `src/ipc/backend.ts` (typed calls to the app's commands) |
 | `packaging/flatpak` | Flatpak packaging (single `.flatpak` file, installed by users; not on Flathub) | `build.sh`; manifest builds offline (UI built and crates vendored beforehand); sandbox: window and GPU only, files via the portal; **placeholder icon** |
+| `tools/corpus` | Runs real programs (kept private) through the pipeline and reports diagnostics per file (M3.0) | `cargo run -p corpus -- --dialect fanuc FILE...` |
 | `tools/ci` | Which CI jobs a pull request needs | `changed-areas.sh` (rules), `test-changed-areas.sh` (its tests, run in CI first). Unknown paths run everything; docs-only changes run nothing; pushes to `main` run everything |
 | `tools/depcheck` | The dependency-rule checker | `cargo run -p depcheck` |
 
@@ -180,9 +181,13 @@ Changing any of these is a deliberate, documented change.
   F/S/T, then M3/M4/M6/M8, then the motion, then M0/M1/M2/M5/M9/M30.
 - A rejected block has **no** effect at all, because it is validated
   before anything is applied.
-- **Motion blockers** (ARCHITECTURE.md §7.3a): G92, G52, G10, G65, G68,
+- **Motion blockers** (ARCHITECTURE.md §7.3a): G52, G10, G65, G68,
   G51, G51.1, G16, M98, M99 and unknown G codes hide later motion until
   their cancel code, or until the end of the program.
+- **Lenient handling (M3.0):** G92 is ignored with a warning (proper G92
+  in M3.5); G43/G44 give one note per program; unknown M codes one note
+  per code; M06 without T is a warning; `:0099` is a program number.
+  Machine files can list M codes in `ignore_codes`.
 - Canned cycles hide motion until G80 or G00–G03.
 - Hidden motion emits `Command::PositionUnknown`.
 - G28 (via `reference` in the machine file) and G53 are simulated. G30
@@ -389,6 +394,13 @@ Decided (2026-10-31), roadmap revision:
   display.
 - **Flatpak:** distributed as a single `.flatpak` file; Flathub is not
   planned.
+
+Decided (2026-10-31), after M3.0:
+- **G codes that carry coordinates are implemented, never ignored.**
+  Ignoring one leaves its axis words behind to be read as a move (found
+  with `ignore_codes`, which therefore takes M codes only). G92 is the one
+  such code not implemented yet: until M3.5 it is skipped with a warning,
+  its axis words consumed as data so they are never a move.
 
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their

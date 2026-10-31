@@ -97,6 +97,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `sim` | `machine-api`, `ir` |
 | `testkit` | `ir` |
 | `gen-ts` (`tools/gen-ts`) | `ir` |
+| `corpus` (`tools/corpus`) | `app-backend`, `interpreter`, `ir` |
 | `app-backend` (`app/backend`) | `interpreter`, `ir`, the `*-api` crates, and the concrete dialects and machines |
 
 The principles behind the table:
@@ -364,9 +365,9 @@ A `MacroEnvironment` hook (subprograms, macro variables, control flow) is deferr
 
 ### 7.3a Unsupported modes that affect later blocks
 
-Some unsupported codes change how *later* blocks move: coordinate shifts (G92, G52, G10), rotation, scaling, mirroring, polar input, subprograms, and unknown G codes. Reporting only the code's own block would leave every following move drawn in the wrong place without a diagnostic. Such codes start a **motion blocker** (`ModalState::motion_blockers`): an error explains, once, that moves are not shown from that line until the matching cancel code (or the end of the program). While a blocker is in effect the dialect emits no motion, only `PositionUnknown`, so when the blocker ends the interpreter waits for a known position before drawing again.
+Some unsupported codes change how *later* blocks move: coordinate shifts (G52, G10), rotation, scaling, mirroring, polar input, subprograms, and unknown G codes. Reporting only the code's own block would leave every following move drawn in the wrong place without a diagnostic. Such codes start a **motion blocker** (`ModalState::motion_blockers`): an error explains, once, that moves are not shown from that line until the matching cancel code (or the end of the program). While a blocker is in effect the dialect emits no motion, only `PositionUnknown`, so when the blocker ends the interpreter waits for a known position before drawing again.
 
-*Planned change (M3.5, owner decision 2026-10-31):* G92, G52, G10 and Osai origins are implemented, and the codes that remain unsupported no longer hide later moves. Those moves are drawn, flagged approximate, with one warning at the code. This section is rewritten in that PR.
+*Since M3.0* G92 is ignored with a warning instead (its axis words are data), because real programs start with it. *Planned change (M3.5, owner decision 2026-10-31):* G92, G52, G10 and Osai origins are implemented, and the codes that remain unsupported no longer hide later moves. Those moves are drawn, flagged approximate, with one warning at the code. This section is rewritten in that PR.
 
 ### 7.4 Macros and expressions
 
@@ -504,6 +505,12 @@ pub trait Machine {
     fn work_offset(&self, id: WorkOffsetId) -> Option<Pos>;
 
     fn speeds(&self) -> &SpeedLimits;   // max feed, max spindle rpm
+
+    /// M codes the machine file lists in `ignore_codes` (M3.0). The
+    /// interpreter removes them from every block, with one note per code,
+    /// before the dialect sees it. M codes only: a G code's axis words
+    /// would be left behind and read as a move.
+    fn ignored_codes(&self) -> &[String] { &[] }
 
     /// Lathe-style X diameter handling etc. is applied here, not in the dialect.
     fn normalize_axis_value(&self, axis: usize, value: f64) -> f64 { value }
