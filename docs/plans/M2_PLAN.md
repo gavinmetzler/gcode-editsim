@@ -244,6 +244,17 @@ Linux CI build job).
   units used, feed-move length. Cycle time is not shown (a simple estimate comes in M3.8).
 - **Wording:** never call output "verified" or "safe" (CLAUDE.md). Show
   the disclaimer.
+- **Done (as built):** a tabbed panel under the viewport
+  (`ui/src/panels/`). Diagnostics are listed whole-program first, then by
+  line, with severity filters; clicking a row moves the editor cursor,
+  which highlights the line's toolpath. Statistics: feed and rapid
+  length, feed-rate range, bounds of feed moves and of all motion
+  (machine coordinates), feed and rapid length per tool, counts of
+  out-of-limits and unknown-position segments, and segment counts by
+  kind. All worked out in the UI from the render buffer, so the layout
+  did not change. **Not shown:** the units the program used, which the
+  render buffer does not carry (everything is in mm); it can come with
+  layout v2 (M3.5).
 
 ### M2.8: Wrap-up
 

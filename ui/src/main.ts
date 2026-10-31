@@ -1,6 +1,7 @@
-// The UI: a toolbar, the program editor, the toolpath viewport and a status
-// line. Editing re-runs the program; the cursor's line is highlighted in
-// the toolpath, and clicking the toolpath jumps to its line.
+// The UI: a toolbar, the program editor, the toolpath viewport, the
+// diagnostics and statistics panel, and a status line. Editing re-runs the
+// program; the cursor's line is highlighted in the toolpath, and clicking
+// the toolpath or a diagnostic jumps to its line.
 //
 // No G-code meaning here: the core interprets, the UI shows what it got.
 
@@ -20,6 +21,7 @@ import {
   type MachineEntry,
 } from "./ipc/backend";
 import { readProgramFile } from "./open-file";
+import { InfoPanel } from "./panels/panel";
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
@@ -56,6 +58,7 @@ async function main(app: HTMLElement): Promise<void> {
   const fileLabel = el("span", { className: "file" });
   const editorBox = el("div", { className: "editor" });
   const viewportBox = el("div", { className: "viewport" });
+  const panelBox = el("div", { className: "panel" });
   fileInput.hidden = true;
 
   app.replaceChildren(
@@ -73,7 +76,7 @@ async function main(app: HTMLElement): Promise<void> {
       ...viewButtons,
       fitButton,
     ),
-    el("main", {}, editorBox, viewportBox),
+    el("main", {}, editorBox, el("div", { className: "right" }, viewportBox, panelBox)),
     el(
       "footer",
       {},
@@ -89,6 +92,10 @@ async function main(app: HTMLElement): Promise<void> {
   fileLabel.textContent = fileName;
   const editor = new GcodeEditor(editorBox, sample);
   const viewport = new Viewport(viewportBox);
+  const panel = new InfoPanel(panelBox);
+  panel.onLine = (line) => {
+    editor.revealLine(line);
+  };
   (Object.keys(VIEWS) as ViewName[]).forEach((name, i) => {
     viewButtons[i]?.addEventListener("click", () => {
       viewport.setView(name);
@@ -100,6 +107,7 @@ async function main(app: HTMLElement): Promise<void> {
 
   if (!inApp()) {
     setStatus("Running outside the app: open the desktop app to interpret programs.");
+    panel.clear("Programs are interpreted in the desktop app.");
     return;
   }
 
@@ -127,6 +135,7 @@ async function main(app: HTMLElement): Promise<void> {
       viewport.show(buildToolpath(rb), fitNext);
       fitNext = false;
       editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
+      panel.show(rb);
       const d = rb.header.diagCount;
       setStatus(
         `${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to find its line.`,
@@ -134,6 +143,7 @@ async function main(app: HTMLElement): Promise<void> {
     },
     (e) => {
       setStatus(`Could not run the program: ${String(e)}`);
+      panel.clear(`Could not run the program: ${String(e)}`);
     },
     EDIT_DELAY_MS,
   );
