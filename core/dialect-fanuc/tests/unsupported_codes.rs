@@ -26,18 +26,6 @@ fn unknown_g_code_is_an_error_and_the_block_does_not_move() {
 }
 
 #[test]
-fn unknown_m_code_is_an_error_but_motion_continues() {
-    let r = run("G0 X1. M50\n");
-    assert_eq!(r.codes(), vec![DiagCode::UnsupportedMCode]);
-    assert_eq!(
-        r.moves(),
-        vec![&Command::Rapid {
-            target: vec![w(0, 1.0)]
-        }]
-    );
-}
-
-#[test]
 fn canned_cycle_blocks_motion_until_cancelled() {
     let r = run("G81 X1. Y1. Z-5. R2. F100.\nX2.\nG80\nG0 X3.\n");
     // Explained once, where the cycle starts; the later hole is hidden too
@@ -81,17 +69,11 @@ fn one_shot_codes_use_axis_words_as_data() {
 }
 
 #[test]
-fn compensation_codes_warn_and_still_move() {
-    let r = run("G43 H1 Z25.\nG41 D1 G1 X5. F100.\n");
+fn cutter_compensation_warns_and_still_moves() {
+    let r = run("G41 D1 G1 X5. F100.\n");
     let found: Vec<(DiagCode, Severity)> = r.diags.iter().map(|d| (d.code, d.severity)).collect();
-    assert_eq!(
-        found,
-        vec![
-            (DiagCode::NotYetSimulated, Severity::Warning),
-            (DiagCode::NotYetSimulated, Severity::Warning)
-        ]
-    );
-    assert_eq!(r.moves().len(), 2);
+    assert_eq!(found, vec![(DiagCode::NotYetSimulated, Severity::Warning)]);
+    assert_eq!(r.moves().len(), 1);
 }
 
 #[test]

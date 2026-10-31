@@ -1,0 +1,52 @@
+line 1: %
+line 2:
+  words: O99
+line 4:
+  words: M92
+line 5:
+  words: G54 G92 X1000. Y1250. Z0 M213
+line 6:
+  words: M211
+line 7:
+  words: G91 G17 Y0
+line 8:
+  words: M40
+line 9:
+  words: M13 S18000
+line 10:
+  words: G90 G55 G0 X0 Y0 Z0
+line 11:
+  words: M11
+line 12:
+  words: G91 G43 Z-40. H11
+line 14:
+  words: G0 X-29.21 Y29.21
+line 15:
+  words: G1 Z-28. F4000
+line 16:
+  words: G1 X21.21 Y-21.21
+line 17:
+  words: Y-1026.
+line 18:
+  words: X2984.
+line 19:
+  words: Y1026.
+line 20:
+  words: X-2984.
+line 21:
+  words: Y-23.
+line 22:
+  words: G0 Z28.
+line 23:
+  words: G1 Y199.59
+line 24:
+  words: Y15.
+line 25:
+  words: G0 Z28.
+line 27:
+  words: G54 G49 G40 G28 X0 Y0 Z0 M92
+line 28:
+  words: M95
+line 29:
+  words: M30
+line 30: %

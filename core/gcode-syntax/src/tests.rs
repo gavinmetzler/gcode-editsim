@@ -597,6 +597,25 @@ fn percent_marks_program_delimiter() {
 }
 
 #[test]
+fn colon_program_number_reads_as_o() {
+    // ISO-code programs may write the program number as ":0099" instead of
+    // "O0099" (Fanuc; see docs/dialect-notes/fanuc.md).
+    let p = parse_str(":0099\n :99 \nG0 X1.\n");
+    assert!(p.blocks[0].errors.is_empty(), "{:?}", p.blocks[0].errors);
+    assert_eq!(words(&p.blocks[0]), vec![('O', num(99.0))]);
+    assert_eq!(words(&p.blocks[1]), vec![('O', num(99.0))]);
+    assert_eq!(p.blocks[0].words[0].span, Span::new(0, 5));
+}
+
+#[test]
+fn colon_anywhere_else_is_still_an_error() {
+    for src in ["G0 :1\n", ":\n", "N10 :5\n"] {
+        let p = parse_str(src);
+        assert!(!p.blocks[0].errors.is_empty(), "{src:?}");
+    }
+}
+
+#[test]
 fn error_on_one_line_does_not_affect_the_next() {
     let p = parse_str("G1 X$ Y2\nG1 X3\n");
     assert_eq!(p.blocks.len(), 2);

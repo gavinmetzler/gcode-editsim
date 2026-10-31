@@ -151,6 +151,16 @@ fn parse_items(c: &mut Cursor<'_>, block: &mut Block) -> PResult<()> {
                     block.words.push(word);
                 }
             }
+            // A program number written ":0099" (ISO code) instead of "O0099",
+            // only as the first thing in a block. It reads as an O word.
+            b':' if block.sequence_number.is_none()
+                && block.words.is_empty()
+                && block.assignments.is_empty() =>
+            {
+                let mut word = parse_word(c)?;
+                word.letter = 'O';
+                block.words.push(word);
+            }
             _ => return Err(c.unexpected()),
         }
     }

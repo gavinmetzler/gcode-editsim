@@ -227,15 +227,9 @@
   "diagnostics": [
     {
       "line": 6,
-      "severity": "Warning",
+      "severity": "Info",
       "code": "NotYetSimulated",
-      "message": "G43 (Tool length compensation +) is not simulated yet; the path is shown without it"
-    },
-    {
-      "line": 20,
-      "severity": "Warning",
-      "code": "NotYetSimulated",
-      "message": "G43 (Tool length compensation +) is not simulated yet; the path is shown without it"
+      "message": "G43 (Tool length compensation +) is not simulated: tool length (height) and wear compensation are ignored, and the path is shown as programmed. Not reported again."
     },
     {
       "line": 22,

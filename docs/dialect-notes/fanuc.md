@@ -101,6 +101,13 @@ M code acts with or after motion. *(unverified)*
 
 - **Defined by Fanuc:** only M00, M01, M02, M30, M98 and M99. Everything
   else is defined by the machine builder.
+- **Unknown M codes** (M92, M213, M400 and the like, seen in the owner's
+  router programs) are the machine builder's. Each is noted once per
+  program (`UnsupportedMCode`, info) and ignored: no movement. A machine
+  file can list them in `ignore_codes` instead (owner decision,
+  2026-10-31).
+- **M06 without a T word** is a warning, not an error: router programs
+  use it on their own (a head change). No tool change is recorded.
 - **What we do:** M03/M04/M05 (spindle), M06 (tool change), M08/M09
   (coolant) follow the near-universal convention. M07 (mist) is not mapped
   because builders disagree. *(unverified)*
@@ -131,11 +138,34 @@ M code acts with or after motion. *(unverified)*
 G80 **or any group 01 code** (G00, G01, G02, G03) cancels a canned cycle.
 *(unverified, but widely documented)*
 
+## Program number with a colon
+
+`:0099` at the start of a block is read as the program number `O0099`.
+ISO-code programs may use `:` instead of `O` for the program number.
+*(unverified: seen in the owner's programs; not checked against a Fanuc
+manual)*
+
+## G92: ignored for now
+
+G92 (workpiece coordinate system setting) shifts every work coordinate
+system so that the current position gets the programmed values. That
+depends on where the machine is when G92 runs, which a backplot does not
+know. Until M3.5 implements it (relative to the machine file's reference
+position), **G92 is ignored with a warning**: its X/Y/Z are data, not a
+move, and later moves are drawn without the shift (owner decision,
+2026-10-31). Real router programs start with `G54G92X…Y…Z0` and then
+select G55/G56, so the drawing uses those offsets from the machine file.
+
+## Tool length compensation: never simulated
+
+G43, G44 and their H words are ignored by design: the path is shown as
+programmed. One note (info) per program says so. G49 is quiet.
+
 ## Unsupported modes that affect later blocks
 
 These codes change where *later* moves go, and are not simulated yet:
-G92, G52, G10, G65, G68, G51, G51.1, G16, M98, M99 and any unknown G
-code. Each reports one error. No moves are shown after it until:
+G52, G10, G65, G68, G51, G51.1, G16, M98, M99 and any unknown G code.
+Each reports one error. No moves are shown after it until:
 
 | Code | Shown again after |
 |---|---|
@@ -144,7 +174,7 @@ code. Each reports one error. No moves are shown after it until:
 | G51.1 | G50.1 |
 | G16 | G15 |
 | G52 | G52 with all axes 0 |
-| G92, G10, G65, M98, M99, unknown G codes | never (the end of the program) |
+| G10, G65, M98, M99, unknown G codes | never (the end of the program) |
 
 After the mode ends, the position is unknown until every axis has been
 given an absolute position, because the machine moved while its moves
@@ -160,14 +190,16 @@ Each of these produces a diagnostic, never silence:
 
 | Code(s) | Severity | Does the block still move? | Notes |
 |---|---|---|---|
-| G41/G42 (cutter compensation), G43/G44 (tool length compensation) | warning (`NotYetSimulated`) | yes | Shown without the compensation |
+| G41/G42 (cutter compensation) | warning (`NotYetSimulated`) | yes | Shown without the compensation |
+| G43/G44 (tool length compensation) | info, once per program | yes | Never simulated, by design |
+| G92 | warning | no (its words are data) | Ignored until M3.5; later moves drawn without its shift |
 | G04 | error | no | X/P is a dwell time, not a move |
-| G10, G52, G65, G68, G51, G51.1, G16, G92 | error | no, and later moves are hidden | See "Unsupported modes that affect later blocks" |
+| G10, G52, G65, G68, G51, G51.1, G16 | error | no, and later moves are hidden | See "Unsupported modes that affect later blocks" |
 | Canned cycles G73, G74, G76, G81–G89 | error | no | Later blocks are not moved until G80 or G00–G03, and the position is then unknown |
 | G95 (feed per revolution) | error | yes | The path is still drawn |
 | M98/M99 (subprograms) | error | later moves are hidden until the end of the program | |
 | Unknown G code | error | no, and later moves are hidden | Its effect is unknown |
-| Unknown M code | error | yes | |
+| Unknown M code | info, once per code | yes | Taken to be machine-specific; see "M codes" |
 | Macro variables and expressions (`#100`, `[...]`) | error | no | The block is skipped |
 | Macro assignments (`#100 = 5`) | warning | n/a | Has no effect |
 

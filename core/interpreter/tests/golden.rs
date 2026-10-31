@@ -1,6 +1,8 @@
 //! End-to-end golden tests: every `tests/golden/*.nc` file is interpreted
 //! with the Fanuc dialect on the generic 3-axis mill and compared with
-//! `<name>.ir.json`.
+//! `<name>.ir.json`. Files named `router_*.nc` (excerpts of real router
+//! programs) run on the generic router instead, which has no travel limits
+//! and every work offset at zero.
 //!
 //! To regenerate after a deliberate change:
 //! `UPDATE_GOLDEN=1 cargo test -p interpreter --test golden`, then review the
@@ -11,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 use dialect_fanuc::Fanuc;
 use interpreter::{interpret, Options};
-use machine_api::Machine;
+use machine_api::{Machine, MachineDef};
 use machine_mill::Mill;
 
 fn golden_dir() -> PathBuf {
@@ -22,6 +24,9 @@ fn golden_dir() -> PathBuf {
 fn golden_programs() {
     let fanuc = Fanuc::new().unwrap();
     let mill = Mill::generic().unwrap();
+    let router =
+        Mill::new(MachineDef::from_toml_str(machine_mill::ROUTER_EXAMPLE_DEFINITION).unwrap())
+            .unwrap();
     let letters: Vec<char> = mill.axes().iter().map(|a| a.name).collect();
 
     let mut inputs: Vec<PathBuf> = fs::read_dir(golden_dir())
@@ -36,7 +41,12 @@ fn golden_programs() {
     for input in &inputs {
         let name = input.file_name().unwrap().to_string_lossy().into_owned();
         let source = fs::read(input).unwrap();
-        let program = interpret(&source, &name, &fanuc, &mill, Options::default());
+        let machine = if name.starts_with("router_") {
+            &router
+        } else {
+            &mill
+        };
+        let program = interpret(&source, &name, &fanuc, machine, Options::default());
         // Messages are shown to users: no stray whitespace from string
         // continuation mistakes.
         for d in &program.diagnostics {
