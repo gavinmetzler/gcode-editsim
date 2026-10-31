@@ -9,10 +9,14 @@
 
 import "./style.css";
 
+import { ask, open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
 import sample from "../../tests/golden/basic_mill.nc?raw";
 import { decodeRenderBuffer, type RenderBuffer } from "./buffer/decode";
 import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
+import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from "./files";
 import { Freshness } from "./freshness";
 import { latestOnly, lineMarks, segmentRange } from "./editor/lines";
 import {
@@ -20,12 +24,15 @@ import {
   interpret,
   listDialects,
   listMachines,
+  loadFile,
+  machineFolder,
+  saveFile,
   selectMachine,
   setRunOptions,
   type MachineEntry,
 } from "./ipc/backend";
-import { readProgramFile } from "./open-file";
 import { DiagnosticsPanel } from "./panels/panel";
+import { showMachinesDialog } from "./machines-dialog";
 import { showStatsDialog } from "./panels/stats-dialog";
 import {
   preferArrivingMove,
@@ -39,6 +46,26 @@ import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
 
+/** The bundled sample's name, and its name when saved. */
+const SAMPLE_NAME = "basic_mill.nc (sample)";
+const SAMPLE_FILE = "basic_mill.nc";
+
+/** File types offered by the open and save dialogs. */
+const FILTERS = [
+  { name: "G-code programs", extensions: ["nc", "ngc", "tap", "cnc", "gcode", "iso", "mpf", "txt"] },
+  { name: "All files", extensions: ["*"] },
+];
+
+/** The program in the editor and the file it came from. */
+interface ProgramFile {
+  /** Null for the sample, or a program not saved yet. */
+  readonly path: string | null;
+  readonly name: string;
+  readonly ending: LineEnding;
+  /** The file had bytes that are not UTF-8 (shown as U+FFFD). */
+  readonly notUtf8: boolean;
+}
+
 const status = el("span", { className: "status" });
 const setStatus = (text: string): void => {
   status.textContent = text;
@@ -47,8 +74,10 @@ const setStatus = (text: string): void => {
 async function main(app: HTMLElement): Promise<void> {
   const machineSelect = el("select", { title: "Machine" });
   const dialectSelect = el("select", { title: "Dialect" });
-  const fileInput = el("input", { type: "file" });
-  const openButton = el("button", { type: "button", textContent: "Open…" });
+  const openButton = el("button", { type: "button", textContent: "Open…", title: "Open a program (Ctrl+O)" });
+  const saveButton = el("button", { type: "button", textContent: "Save", title: "Save (Ctrl+S)" });
+  const saveAsButton = el("button", { type: "button", textContent: "Save As…", title: "Save as (Ctrl+Shift+S)" });
+  const machinesButton = el("button", { type: "button", textContent: "Machines…", title: "Where your machine files go" });
   const sampleButton = el("button", { type: "button", textContent: "Sample" });
   const viewButtons = (Object.keys(VIEWS) as ViewName[]).map((name) =>
     el("button", { type: "button", textContent: VIEWS[name].label, className: "view" }),
@@ -59,7 +88,6 @@ async function main(app: HTMLElement): Promise<void> {
   const editorBox = el("div", { className: "editor" });
   const viewportBox = el("div", { className: "viewport" });
   const panelBox = el("div", { className: "panel" });
-  fileInput.hidden = true;
 
   app.replaceChildren(
     el(
@@ -67,15 +95,16 @@ async function main(app: HTMLElement): Promise<void> {
       {},
       el("strong", {}, "GCode EditSim"),
       machineSelect,
+      machinesButton,
       dialectSelect,
       openButton,
+      saveButton,
+      saveAsButton,
       sampleButton,
-      fileInput,
       fileLabel,
       statsButton,
-      el("span", { className: "spacer" }),
-      ...viewButtons,
-      fitButton,
+      // The view buttons wrap to the next row together, kept to the right.
+      el("span", { className: "views" }, ...viewButtons, fitButton),
     ),
     el("main", {}, editorBox, el("div", { className: "right" }, viewportBox, panelBox)),
     el(
@@ -89,8 +118,15 @@ async function main(app: HTMLElement): Promise<void> {
     ),
   );
 
-  let fileName = "basic_mill.nc (sample)";
-  fileLabel.textContent = fileName;
+  let file: ProgramFile = { path: null, name: SAMPLE_NAME, ending: "\n", notUtf8: false };
+  /** The editor's text differs from the file (or the sample). */
+  let dirty = false;
+  const showFileName = (): void => {
+    fileLabel.textContent = file.name + (dirty ? " •" : "");
+    fileLabel.title = file.path ?? file.name;
+    document.title = `${dirty ? "• " : ""}${file.name} – GCode EditSim`;
+  };
+  showFileName();
   const editor = new GcodeEditor(editorBox, sample);
   const viewport = new Viewport(viewportBox);
   const readout = el("div", { className: "readout" });
@@ -196,7 +232,7 @@ async function main(app: HTMLElement): Promise<void> {
   const runner = latestOnly(
     async () => {
       const token = freshness.runStarted();
-      const rb = decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), fileName));
+      const rb = decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), file.name));
       return { rb, token };
     },
     ({ rb, token }) => {
@@ -234,6 +270,10 @@ async function main(app: HTMLElement): Promise<void> {
     void runner.runNow();
   };
   editor.onChange = () => {
+    if (!dirty) {
+      dirty = true;
+      showFileName();
+    }
     freshness.edited();
     showFreshness();
     showMarker();
@@ -244,6 +284,16 @@ async function main(app: HTMLElement): Promise<void> {
       // Also stops the web view from reloading the page.
       e.preventDefault();
       refresh();
+      return;
+    }
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const key = e.key.toLowerCase();
+    if (key === "s") {
+      e.preventDefault();
+      void saveProgram(e.shiftKey);
+    } else if (key === "o") {
+      e.preventDefault();
+      void openProgram();
     }
   });
   editor.onCursorLine = (line) => {
@@ -254,7 +304,7 @@ async function main(app: HTMLElement): Promise<void> {
     showMarker();
   };
   statsButton.addEventListener("click", () => {
-    if (current) showStatsDialog(current, freshness.stale ? `${fileName} (out of date: refresh first)` : fileName);
+    if (current) showStatsDialog(current, freshness.stale ? `${file.name} (out of date: refresh first)` : file.name);
   });
   viewport.onPick = (p) => {
     if (!current || !p || freshness.stale) return;
@@ -270,17 +320,32 @@ async function main(app: HTMLElement): Promise<void> {
     editor.revealLine(line);
   };
 
-  const [dialects, machines] = await Promise.all([listDialects(), listMachines()]);
+  const dialects = await listDialects();
   for (const d of dialects) {
     dialectSelect.append(el("option", { value: d.id, textContent: d.name }));
   }
-  const usable = machines.filter((m) => m.problem === null);
-  usable.forEach((m: MachineEntry, i) => {
-    machineSelect.append(el("option", { value: String(i), textContent: m.label }));
-  });
-  for (const m of machines.filter((x) => x.problem !== null)) {
-    machineSelect.append(el("option", { disabled: true, textContent: `${m.label} (${m.problem ?? ""})` }));
-  }
+  /** The machines that can be chosen, in the select's order. */
+  let usable: MachineEntry[] = [];
+  /** Fills the machine list, keeping the current choice if it is still
+   *  there. Returns a short summary. */
+  const fillMachines = async (): Promise<string> => {
+    const chosen = usable[Number(machineSelect.value)]?.source;
+    const machines = await listMachines();
+    usable = machines.filter((m) => m.problem === null);
+    machineSelect.replaceChildren(
+      ...usable.map((m, i) => el("option", { value: String(i), textContent: m.label })),
+      ...machines
+        .filter((x) => x.problem !== null)
+        .map((m) => el("option", { disabled: true, textContent: `${m.label} (${m.problem ?? ""})` })),
+    );
+    const keep = usable.findIndex((m) => m.source.kind === chosen?.kind && m.source.id === chosen.id);
+    if (keep >= 0) machineSelect.value = String(keep);
+    const problems = machines.length - usable.length;
+    return `${String(usable.length)} machine file${usable.length === 1 ? "" : "s"} listed${
+      problems > 0 ? `, ${String(problems)} with problems (shown greyed out)` : ""
+    }.`;
+  };
+  await fillMachines();
 
   const applySettings = async (): Promise<void> => {
     const machine = usable[Number(machineSelect.value)];
@@ -297,32 +362,103 @@ async function main(app: HTMLElement): Promise<void> {
   dialectSelect.addEventListener("change", () => {
     void applySettings().then(rerunFitted);
   });
-  const load = (text: string, name: string): void => {
-    fileName = name;
-    fileLabel.textContent = name;
+  machinesButton.addEventListener("click", () => {
+    void machineFolder().then((folder) => {
+      showMachinesDialog(folder, async () => {
+        const before = machineSelect.value;
+        const summary = await fillMachines();
+        if (machineSelect.value !== before) {
+          await applySettings();
+          rerunFitted();
+        }
+        return summary;
+      });
+    });
+  });
+
+  /** Asks before throwing away unsaved edits. True to go ahead. */
+  const confirmDiscard = async (): Promise<boolean> =>
+    !dirty ||
+    ask(`${file.name} has unsaved changes. Discard them?`, {
+      title: "Unsaved changes",
+      kind: "warning",
+      okLabel: "Discard",
+      cancelLabel: "Cancel",
+    });
+
+  const load = (text: string, next: ProgramFile): void => {
+    file = next;
+    dirty = false;
+    showFileName();
     editor.setText(text);
     rerunFitted();
   };
-  openButton.addEventListener("click", () => {
-    fileInput.click();
-  });
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-    fileInput.value = "";
-    void readProgramFile(file).then((result) => {
-      if (!result.ok) {
-        setStatus(`Could not read ${result.name}: ${result.error}`);
-        return;
-      }
-      load(result.text, result.name);
-      if (result.notUtf8) {
-        setStatus(`${result.name} is not UTF-8 text: some characters are shown as \u{FFFD}.`);
-      }
+
+  const openProgram = async (): Promise<void> => {
+    if (!(await confirmDiscard())) return;
+    const path = await openDialog({ multiple: false, directory: false, filters: FILTERS });
+    if (typeof path !== "string") return;
+    const result = await openPath(path, loadFile);
+    if (!result.ok) {
+      setStatus(`Could not read ${result.path}: ${result.error}`);
+      return;
+    }
+    load(result.text, {
+      path,
+      name: baseName(path),
+      ending: detectLineEnding(result.text),
+      notUtf8: result.notUtf8,
     });
+    if (result.notUtf8) {
+      setStatus(`${baseName(path)} is not UTF-8 text: some characters are shown as \u{FFFD}.`);
+    }
+  };
+
+  /** Saves to the file's path, or asks for one (always, with `asNew`). */
+  const saveProgram = async (asNew: boolean): Promise<void> => {
+    let path = file.path;
+    if (asNew || path === null) {
+      path = await saveDialog({ defaultPath: file.path ?? (file.name === SAMPLE_NAME ? SAMPLE_FILE : file.name), filters: FILTERS });
+      if (path === null) return;
+    }
+    if (
+      file.notUtf8 &&
+      !(await ask(
+        `${file.name} was not UTF-8 text. Characters shown as \u{FFFD} will be saved as \u{FFFD}, changing those bytes. Save anyway?`,
+        { title: "Not UTF-8", kind: "warning", okLabel: "Save", cancelLabel: "Cancel" },
+      ))
+    ) {
+      return;
+    }
+    try {
+      await saveFile(path, fileBytes(editor.text(), file.ending));
+    } catch (e) {
+      setStatus(`Could not save ${path}: ${String(e)}`);
+      return;
+    }
+    file = { ...file, path, name: baseName(path), notUtf8: false };
+    dirty = false;
+    showFileName();
+    setStatus(`Saved ${path}`);
+  };
+
+  openButton.addEventListener("click", () => {
+    void openProgram();
+  });
+  saveButton.addEventListener("click", () => {
+    void saveProgram(false);
+  });
+  saveAsButton.addEventListener("click", () => {
+    void saveProgram(true);
   });
   sampleButton.addEventListener("click", () => {
-    load(sample, "basic_mill.nc (sample)");
+    void confirmDiscard().then((go) => {
+      if (go) load(sample, { path: null, name: SAMPLE_NAME, ending: "\n", notUtf8: false });
+    });
+  });
+  // Ask before closing the window with unsaved changes.
+  void getCurrentWindow().onCloseRequested(async (e) => {
+    if (!(await confirmDiscard())) e.preventDefault();
   });
 
   await applySettings();

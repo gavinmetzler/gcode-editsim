@@ -12,6 +12,9 @@
 //! The window shows the UI from `ui/` (built into `ui/dist`, embedded at
 //! compile time: build the UI before building this crate).
 //!
+//! File paths come from the native dialogs (`tauri-plugin-dialog`), so the
+//! UI knows the real path of the open file and can save over it.
+//!
 //! Small settings (the machine, the dialect, options) are JSON. The
 //! machine and dialect are chosen once with `select_machine` and
 //! `set_run_options` and kept in [`AppState`], so each `interpret` call
@@ -307,6 +310,9 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
 /// app's configuration folder.
 pub fn run() -> Result<(), tauri::Error> {
     with_commands(tauri::Builder::default())
+        // Native open, save and message dialogs (the UI picks paths with
+        // them; files are still read and written by this app's commands).
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let dir = app.path().app_config_dir()?.join("machines");
             app.manage(AppState::new(dir));

@@ -76,7 +76,7 @@ access).
 
 **Status (2026-10-31):** M2.0–M2.7 merged, plus work added along the way:
 the Android spike (M2.3), a Flatpak package for Linux, and CI jobs that
-run only when their files change. M2.8 is next.
+run only when their files change. M2.8a and M2.8b complete M2.
 
 ### M2.0: IR events (core)
 *Closes review finding I4. Must land before the buffer layout is fixed.*
@@ -285,7 +285,7 @@ Two PRs (owner, 2026-10-31).
 - **`docs/WISHLIST.md`:** started, with a settings dialog whose first
   option is automatic updates versus refresh on demand.
 
-**M2.8b: saving, machine folder, wrap-up**
+**M2.8b: saving, machine folder, wrap-up** *(done)*
 - **Saving:** Save and Save As through a native file dialog (the open
   file's real path is needed to save over it).
 - **Machine files:** the toolbar already lists the shipped example and
@@ -295,6 +295,26 @@ Two PRs (owner, 2026-10-31).
 - Update the docs: README "Trying it out" for the app, ARCHITECTURE.md
   changes, and `DEVELOPMENT_STATUS.md`.
 - Run a few of the **owner's real programs** end to end.
+- **As built:**
+  - **Open…, Save, Save As…** (Ctrl+O, Ctrl+S, Ctrl+Shift+S) use the
+    native dialogs (`tauri-plugin-dialog` 2.8.4; new dependency, see the
+    PR). The UI gets a real path; the app's `load_file` and `save_file`
+    do the reading and writing. The window may use only the open, save
+    and message dialogs and the close-request event.
+  - Saving keeps the file's line endings (`ui/src/files.ts`). A file that
+    was not UTF-8 asks before saving, since its unreadable bytes would
+    change. A • after the name marks unsaved changes; opening another
+    file, the sample, or closing the window asks first.
+  - **Machines…** shows the user's machine folder (inside the Flatpak,
+    the sandbox's config folder) and reloads the list, keeping the chosen
+    machine if it is still there.
+  - The toolbar wraps on narrow windows, keeping the view buttons
+    together on the right.
+  - Checked inside the Flatpak with the desktop portals: Open and Save As
+    through the host's file chooser, Save over the file, CRLF kept
+    (`packaging/flatpak/README.md`, "Tested").
+  - **Not done:** the owner's real programs end to end (they stay
+    private; that is M3.0's corpus).
 
 ## 4. Risks and how to handle them
 

@@ -18,19 +18,20 @@ ARCHITECTURE.md §13.
 ## 1. Where things stand
 
 **M1 (core skeleton) is complete, with known limitations** (section 6).
-**M2 (render buffer and minimal desktop UI): M2.0–M2.7 are merged; M2.8
-is in two PRs: M2.8a (refresh on demand after edits, dashed rapids,
-the wishlist) and M2.8b (saving, the machine folder, wrap-up).** Then M3,
-a dependable backplotter (`docs/plans/M3_PLAN.md`).
+**M2 (render buffer and minimal desktop UI) is complete** (M2.8b, the
+last step, adds opening and saving through the native dialogs and the
+machine folder). **Next: M3, a dependable backplotter**
+(`docs/plans/M3_PLAN.md`); M3.1 and M3.2 are already done.
 
 The app is usable today as an editor beside a synced 3D backplot of Fanuc
-milling programs, with diagnostics and statistics.
+milling programs, with diagnostics and statistics, that opens and saves
+files.
 
 | Area | Status |
 |---|---|
-| Tests | 473 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 58 in the UI (`cd ui && npm test`) |
+| Tests | 476 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 85 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
-| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); served by the app shell (embedded `ui/dist`). No saving yet |
+| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
@@ -231,6 +232,11 @@ Changing any of these is a deliberate, documented change.
 - Statistics are worked out in the UI from the render buffer, only when
   the user asks (a dialog, owner's request: on demand, all in one view); the units
   the program used are not in the buffer, so they are not shown.
+- Files are opened and saved through `tauri-plugin-dialog` (M2.8b): the
+  UI gets a real path from the native dialog and the app's own
+  `load_file`/`save_file` commands do the reading and writing. Saving
+  keeps the file's line endings; a file that was not UTF-8 asks before
+  saving, since its unreadable bytes would change.
 - Flatpak: single file, offline build, `WEBKIT_DISABLE_DMABUF_RENDERER=1`
   (fixes a Wayland protocol error on NVIDIA, confirmed by the owner).
 
@@ -285,8 +291,7 @@ was asked to try a few real programs with the `summary` example.
   - G30 positions
   - coordinate rotation, scaling, mirroring and polar input
   - rotary axes on the mill
-- The app cannot save yet (M2.8b); positions are shown in machine
-  coordinates (M3.5).
+- Positions are shown in machine coordinates (M3.5).
 - One real dialect (Fanuc) and one real machine type (3-axis mill). The
   Osai 10 Series dialect and the lathe are stubs; what they found is in
   ARCHITECTURE.md §7.2 and §9.
@@ -325,8 +330,11 @@ was asked to try a few real programs with the `summary` example.
   top view and unstyled CodeMirror (blocked by the content security
   policy) were all found by looking. Headless Chromium with the app's IPC
   mocked by a real render buffer works in the container.
-- **Flatpak in a container** needs a D-Bus session, the portals and
-  `XDG_RUNTIME_DIR` started by hand; CI needs `elfutils` and
+- **Flatpak in a container** needs a D-Bus session (and a system bus),
+  the portals and `XDG_RUNTIME_DIR` started by hand. `XDG_RUNTIME_DIR`
+  must be `/run/user/<uid>`: the document portal returns paths under it,
+  and Flatpak mounts the sandbox's copy there, so any other folder makes
+  every portal path "No such file or directory" inside the sandbox; CI needs `elfutils` and
   `librsvg2-common`, and `--disable-rofiles-fuse`.
 - **Disk space is limited** in the cloud container: the shell's `target/`,
   the Android SDK and Gradle caches fill it quickly.

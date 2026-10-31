@@ -69,3 +69,19 @@ export async function interpret(program: Uint8Array, fileName: string): Promise<
   }
   return result;
 }
+
+/** Reads the file at `path` and returns its raw bytes. */
+export async function loadFile(path: string): Promise<ArrayBuffer> {
+  const result = await invoke<ArrayBuffer>("load_file", { path });
+  if (!(result instanceof ArrayBuffer)) {
+    throw new Error("load_file did not return raw bytes");
+  }
+  return result;
+}
+
+/** Writes `contents` to `path` (replacing the file in one step). */
+export function saveFile(path: string, contents: Uint8Array): Promise<void> {
+  return invoke<undefined>("save_file", contents, {
+    headers: { "x-path": encodeURIComponent(path) },
+  });
+}
