@@ -47,3 +47,8 @@ button, select { font: inherit; }
 .stats-dialog .note, .stats-dialog .empty { color: #9aa0a6; }
 .stats-dialog .buttons { display: flex; justify-content: flex-end; }
 .stats-dialog .buttons button { min-width: 80px; }
+.readout { position: absolute; top: 8px; left: 8px; min-width: 190px; padding: 6px 10px; background: rgb(29 33 40 / 88%); border: 1px solid #3a404a; border-radius: 6px; font-size: 12px; pointer-events: none; }
+.readout .title { color: #ffd23f; margin-bottom: 3px; }
+.readout .row { display: flex; justify-content: space-between; gap: 14px; }
+.readout .row span:first-child { color: #9aa0a6; }
+.readout .row span:last-child { font-variant-numeric: tabular-nums; }

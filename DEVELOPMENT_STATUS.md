@@ -29,7 +29,7 @@ milling programs, with diagnostics and statistics.
 |---|---|
 | Tests | 473 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 58 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
-| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter, re-run on edit) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); served by the app shell (embedded `ui/dist`). No saving yet |
+| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter, re-run on edit) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); served by the app shell (embedded `ui/dist`). No saving yet |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |

@@ -138,7 +138,7 @@ These are the project's intended direction. Most are not implemented yet; see th
 
 - Interactive 3D toolpath display, with editor line and toolpath segment selection kept in sync *(built)*.
 - Diagnostics panel and statistics dialog *(built)*: path lengths, bounds, feed rates and per-tool figures; a cycle-time estimate comes in M3.
-- Backplot tools (M3): a tool marker, hover info on the nearest point (position, tool, feed), measuring between two points, orbiting around a point on the toolpath.
+- Backplot tools: a tool marker with hover info on the nearest point (position, tool, feed) *(built)*; measuring between two points and orbiting around a point on the toolpath (M3).
 - Code transformations (M4): translate, scale and rotate a selected range of lines, applied as an undoable edit.
 - Tool movement playback and simulation controls.
 - Travel-limit checking.
@@ -231,7 +231,7 @@ cd ui && npm ci && npm run build && cd ..   # the app embeds the built UI
 cd app/shell && cargo run
 ```
 
-The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. Edits re-run the program as you type (saving comes in M2.8). Under the toolpath, the **Diagnostics** panel lists every problem (click one to go to its line). **Statistics…** in the toolbar works out path lengths, bounds and per-tool figures on demand and shows them in a dialog.
+The app opens with a sample program in the editor beside its toolpath. Use **Open…** to load your own and choose the machine and dialect in the toolbar. Click a line to highlight its moves, or click the toolpath to jump to its line. A yellow arrow marks the tool: it sits where the tool is after the cursor's line, and follows the pointer over the toolpath (snapping to the ends of moves), with its position, tool and feed shown in the corner. Edits re-run the program as you type (saving comes in M2.8). Under the toolpath, the **Diagnostics** panel lists every problem (click one to go to its line). **Statistics…** in the toolbar works out path lengths, bounds and per-tool figures on demand and shows them in a dialog.
 
 With [Rust](https://rustup.rs) installed, you can also run a program through the engine and see the result as JSON:
 

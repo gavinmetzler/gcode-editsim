@@ -1,5 +1,6 @@
 // The 3D toolpath view (three.js). Draws what buildToolpath produced, with
-// orbit/pan/zoom, standard views, fit to the toolpath, and picking.
+// orbit/pan/zoom, standard views, fit to the toolpath, picking, hovering
+// and the tool marker.
 //
 // Vertex positions are relative to the buffer's origin (ARCHITECTURE.md
 // section 8.2); the origin is applied on the object's transform, which
@@ -10,22 +11,30 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  ConeGeometry,
+  CylinderGeometry,
   Group,
   LineBasicMaterial,
   LineDashedMaterial,
   LineSegments,
+  Mesh,
+  MeshBasicMaterial,
   OrthographicCamera,
   Points,
   PointsMaterial,
   Raycaster,
   Scene,
   Vector2,
+  Vector3,
   WebGLRenderer,
+  type Intersection,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import type { ToolPoint } from "./readout";
+import { snapEnd } from "./snap";
 import type { Toolpath } from "./toolpath";
-import { VIEWS, fitOrtho, orthoWorldPerPixel, type ViewName } from "./views";
+import { VIEWS, fitOrtho, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
 /** How close (in screen pixels) a click must be to pick a line or marker. */
 const PICK_PIXELS = 6;
@@ -34,6 +43,33 @@ const PICK_PIXELS = 6;
 export interface Pick {
   /** Segment index in the render buffer. */
   readonly segment: number;
+}
+
+/** The tool marker's size on screen, in pixels: a thick shaft with an
+ *  arrowhead whose tip is the point. Deliberately not a tool shape, so it is
+ *  not mistaken for a simulated tool. */
+const MARKER = { height: 64, shaft: 5, headLength: 18, headWidth: 16 } as const;
+
+/** A unit-scale marker (1 = one screen pixel once scaled), tip at the
+ *  origin, pointing down -Z. The shaft is vertical: along the mill's tool
+ *  axis, Z, which the views also keep up. */
+function buildMarker(): { group: Group; resources: { dispose(): void }[] } {
+  const material = new MeshBasicMaterial({ color: 0xffd23f, depthTest: false });
+  const head = new ConeGeometry(MARKER.headWidth / 2, MARKER.headLength, 24);
+  head.rotateX(-Math.PI / 2); // tip from +Y to -Z
+  head.translate(0, 0, MARKER.headLength / 2);
+  const shaftLength = MARKER.height - MARKER.headLength;
+  const shaft = new CylinderGeometry(MARKER.shaft / 2, MARKER.shaft / 2, shaftLength, 12);
+  shaft.rotateX(Math.PI / 2);
+  shaft.translate(0, 0, MARKER.headLength + shaftLength / 2);
+  const group = new Group();
+  for (const g of [head, shaft]) {
+    const mesh = new Mesh(g, material);
+    mesh.renderOrder = 20;
+    group.add(mesh);
+  }
+  group.visible = false;
+  return { group, resources: [material, head, shaft] };
 }
 
 /** A toolpath viewport inside `container`. */
@@ -60,9 +96,15 @@ export class Viewport {
   private readonly resizeObserver: ResizeObserver;
   private frame = 0;
   private pointerDown: { x: number; y: number } | null = null;
+  private readonly marker = buildMarker();
+  private hoverFrame = 0;
 
   /** Called with what a click picked, or null for empty space. */
   onPick: (pick: Pick | null) => void = () => undefined;
+
+  /** Called as the pointer moves over the toolpath (snapped to an end point
+   *  when near one), and with null when it is over nothing. */
+  onHover: (point: ToolPoint | null) => void = () => undefined;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new WebGLRenderer({ antialias: true });
@@ -74,7 +116,7 @@ export class Viewport {
     this.controls.addEventListener("change", () => {
       this.requestRender();
     });
-    this.scene.add(this.group);
+    this.scene.add(this.group, this.marker.group);
 
     const canvas = this.renderer.domElement;
     canvas.addEventListener("pointerdown", (e) => {
@@ -87,6 +129,19 @@ export class Viewport {
       if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) {
         this.onPick(this.pick(e.clientX, e.clientY));
       }
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      // While a button is down the view is orbiting or panning.
+      if (e.buttons !== 0) return;
+      const { clientX, clientY } = e;
+      cancelAnimationFrame(this.hoverFrame);
+      this.hoverFrame = requestAnimationFrame(() => {
+        this.onHover(this.pointAt(clientX, clientY));
+      });
+    });
+    canvas.addEventListener("pointerleave", () => {
+      cancelAnimationFrame(this.hoverFrame);
+      this.onHover(null);
     });
     this.resizeObserver = new ResizeObserver(() => {
       this.resize();
@@ -228,6 +283,47 @@ export class Viewport {
 
   /** What is under the screen point (client coordinates), if anything. */
   pick(clientX: number, clientY: number): Pick | null {
+    const hit = this.hitAt(clientX, clientY);
+    return hit ? { segment: hit.segment } : null;
+  }
+
+  /**
+   * The toolpath point under the screen point (client coordinates): the
+   * nearer end of the segment there if it is within a few pixels, else the
+   * point on the segment's path, or an event's position. Null over empty
+   * space.
+   */
+  pointAt(clientX: number, clientY: number): ToolPoint | null {
+    const toolpath = this.toolpath;
+    const hit = this.hitAt(clientX, clientY);
+    if (!toolpath || !hit) return null;
+    if (hit.event) return { point: this.absolute(hit.vertex), segment: hit.segment, place: "event" };
+    const range = toolpath.segmentVertices(hit.segment);
+    if (!range || range.count === 0) return null;
+    const start = this.absolute(range.first);
+    const end = this.absolute(range.first + range.count - 1);
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const which = snapEnd([clientX, clientY], this.toScreen(start, rect), this.toScreen(end, rect));
+    if (which) return { point: which === "start" ? start : end, segment: hit.segment, place: which };
+    const p = hit.point;
+    return { point: [p.x, p.y, p.z], segment: hit.segment, place: "path" };
+  }
+
+  /** Shows the tool marker with its tip at `point` (machine coordinates),
+   *  or hides it for null. */
+  setMarker(point: Vec3 | null): void {
+    const m = this.marker.group;
+    m.visible = point !== null && point.every((c) => Number.isFinite(c));
+    if (point && m.visible) m.position.set(point[0], point[1], point[2]);
+    this.requestRender();
+  }
+
+  /** The nearest toolpath object under the screen point. `vertex` is a
+   *  vertex of the hit segment; for events it is the event's own. */
+  private hitAt(
+    clientX: number,
+    clientY: number,
+  ): { segment: number; vertex: number; event: boolean; point: Vector3 } | null {
     const toolpath = this.toolpath;
     if (!toolpath) return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
@@ -240,23 +336,43 @@ export class Viewport {
     this.raycaster.params.Line.threshold = tolerance;
     this.raycaster.params.Points.threshold = tolerance;
     const targets = [this.markers, this.feed, this.rapid].filter((o) => o !== null);
-    const hit = this.raycaster.intersectObjects(targets, false)[0];
+    const hit: Intersection | undefined = this.raycaster.intersectObjects(targets, false)[0];
     if (!hit || hit.index === undefined) return null;
     if (hit.object === this.markers) {
       const segment = toolpath.eventSegment[hit.index];
-      return segment === undefined ? null : { segment };
+      const range = segment === undefined ? null : toolpath.segmentVertices(segment);
+      return segment === undefined || !range
+        ? null
+        : { segment, vertex: range.first, event: true, point: hit.point };
     }
     // For indexed lines, `index` is the position in the index list.
     const lines = hit.object === this.feed ? toolpath.feedIndex : toolpath.rapidIndex;
     const vertex = lines[hit.index];
     const segment = vertex === undefined ? undefined : toolpath.vertexSegment[vertex];
-    return segment === undefined ? null : { segment };
+    return vertex === undefined || segment === undefined ? null : { segment, vertex, event: false, point: hit.point };
+  }
+
+  /** Vertex `v` in machine coordinates. */
+  private absolute(v: number): Vec3 {
+    const toolpath = this.toolpath;
+    if (!toolpath) return [NaN, NaN, NaN];
+    const [ox, oy, oz] = toolpath.origin;
+    const p = toolpath.positions;
+    return [(p[v * 3] ?? NaN) + ox, (p[v * 3 + 1] ?? NaN) + oy, (p[v * 3 + 2] ?? NaN) + oz];
+  }
+
+  /** A point in machine coordinates on screen, in client pixels. */
+  private toScreen(p: Vec3, rect: DOMRect): [number, number] {
+    const v = new Vector3(p[0], p[1], p[2]).project(this.camera);
+    return [rect.left + ((v.x + 1) / 2) * rect.width, rect.top + ((1 - v.y) / 2) * rect.height];
   }
 
   /** Releases the GPU resources. */
   dispose(): void {
     this.clear();
     this.resizeObserver.disconnect();
+    cancelAnimationFrame(this.hoverFrame);
+    for (const r of this.marker.resources) r.dispose();
     this.controls.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -299,6 +415,9 @@ export class Viewport {
     if (this.frame !== 0) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = 0;
+      // The marker keeps its size on screen at any zoom.
+      const height = Math.max(1, this.container.clientHeight);
+      this.marker.group.scale.setScalar(orthoWorldPerPixel(this.halfHeight, this.camera.zoom, height));
       this.renderer.render(this.scene, this.camera);
     });
   }

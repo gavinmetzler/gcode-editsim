@@ -468,7 +468,7 @@ Plain TypeScript (no UI framework), built with Vite into `ui/dist`, which the sh
 | Module | What it does |
 |---|---|
 | `src/buffer/decode.ts` | Checks and decodes the render buffer (§8.4) |
-| `src/viewport/` | `toolpath.ts` turns the buffer into index lists, colours, event markers and a vertex → segment map; `views.ts` holds the standard views and orthographic fitting; `viewport.ts` is the three.js view (orthographic camera, Z up, orbit/pan/zoom, picking with a pixel tolerance, highlight) |
+| `src/viewport/` | `toolpath.ts` turns the buffer into index lists, colours, event markers and a vertex → segment map; `views.ts` holds the standard views and orthographic fitting; `viewport.ts` is the three.js view (orthographic camera, Z up, orbit/pan/zoom, picking with a pixel tolerance, highlight, hovering and the tool marker); `snap.ts` snaps the pointer to segment ends; `readout.ts` says where the marker is (position, tool, feed, line) |
 | `src/editor/` | CodeMirror 6: highlighting by token type, diagnostics in the gutter, and `lines.ts` (line ↔ segment lookup, re-run 300 ms after the last edit, dropping stale results) |
 | `src/panels/` | The diagnostics panel, and the toolpath statistics (lengths, bounds, per-tool figures, counts), worked out from the render buffer only when the user opens the statistics dialog, since they take time on a very large program |
 | `src/ipc/backend.ts` | Typed calls to the shell's commands (§8.4a) |

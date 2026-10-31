@@ -24,6 +24,7 @@ import {
 import { readProgramFile } from "./open-file";
 import { DiagnosticsPanel } from "./panels/panel";
 import { showStatsDialog } from "./panels/stats-dialog";
+import { preferArrivingMove, readoutRows, restingPoint, type ToolPoint } from "./viewport/readout";
 import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
@@ -85,6 +86,9 @@ async function main(app: HTMLElement): Promise<void> {
   fileLabel.textContent = fileName;
   const editor = new GcodeEditor(editorBox, sample);
   const viewport = new Viewport(viewportBox);
+  const readout = el("div", { className: "readout" });
+  readout.hidden = true;
+  viewportBox.append(readout);
   const panel = new DiagnosticsPanel(panelBox);
   panel.onLine = (line) => {
     editor.revealLine(line);
@@ -108,12 +112,43 @@ async function main(app: HTMLElement): Promise<void> {
   /** Fit the view after the next run (a new program, machine or dialect). */
   let fitNext = true;
 
-  const showLine = (line: number): void => {
+  /** The editor cursor's line, and where the tool is after it has run. */
+  let cursorLine = 1;
+  let resting: ToolPoint | null = null;
+  /** The toolpath point under the pointer, if any. */
+  let hovered: ToolPoint | null = null;
+
+  /** Moves the tool marker and the readout to the hovered point, or else
+   *  to where the tool is after the cursor's line. Hovering never moves
+   *  the editor's cursor; a click does. */
+  const showMarker = (): void => {
+    const rb = current;
+    const p = hovered ?? resting;
+    viewport.setMarker(p?.point ?? null);
+    if (!rb || !p) {
+      readout.hidden = true;
+      return;
+    }
+    const title = hovered ? "Under the pointer" : `After line ${String(cursorLine)}`;
+    readout.replaceChildren(
+      el("div", { className: "title", textContent: title }),
+      ...readoutRows(rb, p).map((r) =>
+        el("div", { className: "row" }, el("span", { textContent: r.label }), el("span", { textContent: r.value })),
+      ),
+    );
+    readout.hidden = false;
+  };
+
+  const showLine = (line: number, quiet = false): void => {
+    cursorLine = line;
     if (!current) return;
     const rb = current;
     const { start, end } = segmentRange(rb.header.segmentCount, (i) => rb.segmentLine(i), line);
     const segments = Array.from({ length: end - start }, (_, k) => start + k);
     viewport.highlight(segments);
+    resting = restingPoint(rb, end - 1);
+    showMarker();
+    if (quiet) return;
     setStatus(
       segments.length === 0
         ? `Line ${String(line)}: no toolpath`
@@ -130,6 +165,8 @@ async function main(app: HTMLElement): Promise<void> {
       fitNext = false;
       editor.setMarks(lineMarks(rb.diagnostics, editor.lineCount()));
       panel.show(rb);
+      hovered = null;
+      showLine(cursorLine, true);
       const d = rb.header.diagCount;
       setStatus(
         `${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to find its line.`,
@@ -140,6 +177,9 @@ async function main(app: HTMLElement): Promise<void> {
       panel.clear(`Could not run the program: ${String(e)}`);
       current = null;
       statsButton.disabled = true;
+      hovered = null;
+      resting = null;
+      showMarker();
     },
     EDIT_DELAY_MS,
   );
@@ -147,7 +187,13 @@ async function main(app: HTMLElement): Promise<void> {
   editor.onChange = () => {
     runner.schedule();
   };
-  editor.onCursorLine = showLine;
+  editor.onCursorLine = (line) => {
+    showLine(line);
+  };
+  viewport.onHover = (p) => {
+    hovered = p && current ? preferArrivingMove(current, p) : null;
+    showMarker();
+  };
   statsButton.addEventListener("click", () => {
     if (current) showStatsDialog(current, fileName);
   });
