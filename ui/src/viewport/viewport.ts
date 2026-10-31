@@ -450,6 +450,8 @@ export class Viewport {
       if (this.snapped) {
         const [sx, sy] = screen(this.snapped);
         parts.push(el("circle", { cx: sx, cy: sy, r: 8, fill: "none", stroke: "#ffffff", "stroke-width": 2 }));
+        // A dot at the centre marks exactly which node is snapped to.
+        parts.push(el("circle", { cx: sx, cy: sy, r: 2, fill: MARKER_COLOR }));
       }
       this.overlay.replaceChildren(...parts);
       return;

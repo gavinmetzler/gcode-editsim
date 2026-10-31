@@ -485,6 +485,7 @@ Plain TypeScript (no UI framework), built with Vite into `ui/dist`, which the sh
 | `src/editor/` | CodeMirror 6: highlighting by token type, diagnostics in the gutter, and `lines.ts` (line ↔ segment lookup; `latestOnly` drops results of runs overtaken by a newer one) |
 | `src/freshness.ts` | Whether what is shown matches the text: edits mark it out of date (red border, **Refresh (F5)**, line sync off) until the user refreshes. Loading a file or changing the machine or dialect runs at once |
 | `src/panels/` | The diagnostics panel, and the toolpath statistics (lengths, bounds, per-tool figures, counts), worked out from the render buffer only when the user opens the statistics dialog, since they take time on a very large program |
+| `src/layout/` | `panes.ts` (pure): a pane's share of the window when a splitter is dragged, kept above a minimum size, and which pane is maximised; `layout.ts` wires the splitters and maximising to the page (double-click the view or the diagnostics list; a button on the editor, where double-click selects a word) |
 | `src/files.ts` | Decoding files, keeping their line endings, and opening by path without failing silently |
 | `src/machines-dialog.ts` | Shows the user's machine folder and reloads the machine list |
 | `src/ipc/backend.ts` | Typed calls to the shell's commands (§8.4a) |

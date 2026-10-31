@@ -11,10 +11,10 @@ header .views { display: flex; gap: 8px; margin-left: auto; }
 header .file { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28ch; }
 header .file { color: #9aa0a6; }
 main { flex: 1; min-height: 0; display: flex; }
-.editor { flex: 0 0 38%; min-width: 0; border-right: 1px solid #2b3038; }
+.editor { flex: 0 0 38%; min-width: 0; position: relative; }
 .right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .viewport { flex: 1; min-height: 0; position: relative; overflow: hidden; }
-.panel { flex: 0 0 32%; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid #2b3038; background: #181b21; }
+.panel { flex: 0 0 32%; min-height: 0; display: flex; flex-direction: column; background: #181b21; position: relative; }
 .panel-tabs { display: flex; gap: 4px; align-items: center; padding: 4px 8px; background: #1d2128; }
 .panel-tabs .spacer { flex: 1; }
 .panel-tabs .title { padding: 3px 0; }
@@ -78,3 +78,18 @@ header select { max-width: 22ch; }
 .legend li { display: flex; align-items: center; gap: 6px; line-height: 16px; }
 .legend .swatch { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--swatch); }
 .legend .swatch.dot { width: 7px; height: 7px; border: none; background: var(--swatch); margin: 0 5px; }
+.split { flex: 0 0 5px; background: #2b3038; touch-action: none; }
+.split:hover, .split.dragging { background: #4a5260; }
+.split-x { cursor: col-resize; }
+.split-y { cursor: row-resize; }
+main[data-maximised] .split { display: none; }
+main[data-maximised="editor"] > .right,
+main[data-maximised="viewport"] > .editor, main[data-maximised="viewport"] .panel,
+main[data-maximised="panel"] > .editor, main[data-maximised="panel"] .viewport { display: none; }
+main[data-maximised="editor"] > .editor, main[data-maximised="panel"] .panel { flex: 1 1 auto !important; }
+.exit-full, .editor-max { position: absolute; z-index: 5; font-size: 12px; padding: 3px 10px; background: #2b3038; color: #e6e6e6; border: 1px solid #4a5260; border-radius: 4px; cursor: pointer; }
+.exit-full { right: 8px; bottom: 8px; }
+.exit-full:hover, .editor-max:hover { background: #3a404a; }
+.editor-max { top: 6px; right: 18px; padding: 1px 6px; opacity: 0.7; }
+.editor-max:hover, .editor-max.on { opacity: 1; }
+.diagnostics table { user-select: none; }

@@ -73,6 +73,12 @@ export function lineMarks(diagnostics: readonly Diagnostic[], lineCount: number)
     .map((d) => ({ line: d.srcLine, severity: severity(d.severity), message: d.message }));
 }
 
+/** The marks whose severity is in `shown`: the gutter follows the
+ *  diagnostics panel's filters. */
+export function shownMarks(marks: readonly LineMark[], shown: ReadonlySet<LineMark["severity"]>): LineMark[] {
+  return marks.filter((m) => shown.has(m.severity));
+}
+
 /**
  * Runs `task` after `delayMs` of quiet, and hands on only the newest result:
  * a run that finishes after a newer one started is dropped, so a slow old
