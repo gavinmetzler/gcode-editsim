@@ -125,7 +125,7 @@ These are the project's intended direction. Most are not implemented yet; see th
   - F, S and T words
   - common M codes: stops, program end, spindle, tool change, coolant
 - **Done in M3.0:** machine-specific M codes are noted once and skipped rather than reported as errors (a machine file can list them in `ignore_codes`); tool length compensation is noted, not simulated; G92 is ignored with a warning for now.
-- **Next (M3):** coordinate shifts (G92 properly, G52, G10), canned drilling cycles, subprograms and simple macro variables.
+- **Next (M3):** subprograms and simple macro variables. Coordinate shifts and canned cycles are on hold, left to the community: they are reported and drawn without their effect, never hiding moves.
 - **Then (M6):** cutter radius compensation.
 - **Not planned:** tool length (height) and wear compensation. The backplot shows the path as programmed and notes these codes.
 - **Later:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.
@@ -185,10 +185,10 @@ What works today, headlessly: a Fanuc milling program plus a machine definition 
 
 See [Trying it out](#trying-it-out).
 
-**Never drawing a misleading toolpath** is the rule the review hardened. (M3 relaxes the first point below: common coordinate shifts get implemented, and moves after a still-unsupported one are drawn marked approximate instead of hidden.)
+**Never drawing a misleading toolpath without saying so** is the rule. The M1 review made unsupported codes hide later moves; since M3 (owner decision) moves are **never hidden**: a backplot drawn without an unsupported code's effect, with a warning, is more useful than none.
 
-- **Hidden moves.** Unsupported codes that change where *later* moves go (G52, G68, scaling, mirroring, polar input, subprograms, canned cycles, unknown G codes) hide the moves they affect. This is explained once, where the code appears. Nothing is drawn in the wrong place.
-- **Unknown position.** After the machine has gone somewhere that isn't simulated, nothing is drawn until the position is known again.
+- **Codes that change later moves** (G92, G52, G10, rotation, scaling, mirroring, polar input, macro and subprogram calls, unknown G codes) are reported once where they appear; their values are data, not moves, and later moves are drawn as programmed. Canned cycles draw their hole positions.
+- **Unknown position.** After the machine has gone somewhere the machine file doesn't describe (G30), nothing is drawn until the position is known again.
 - **Assumed defaults.** Modes a program relies on without setting them (units, G90/G91, plane, motion mode) are warned about. On a real control they depend on parameters or on the state at power-off.
 
 **Known limitations**, tracked for later milestones:
@@ -212,7 +212,7 @@ See [Trying it out](#trying-it-out).
 
 ### Later Milestones
 
-- **M3 – A dependable backplotter:** real programs without false alarms (ignorable codes noted, not errors), coordinate shifts (G92, G52, G10, Osai origins), program coordinates, canned cycles, subprograms, per-tool statistics with a simple time estimate, large programs. Backplot tools: a tool marker, hover info, measuring, orbiting around a point on the toolpath.
+- **M3 – A dependable backplotter:** real programs without false alarms (ignorable codes noted, not errors; moves never hidden), subprograms, per-tool statistics with a simple time estimate, large programs. Backplot tools: a tool marker, hover info, measuring, orbiting around a point on the toolpath.
 - **M4 – Code transformations:** translate, scale and rotate a selected part of the program.
 - **M5 – Mobile:** the same app on Android; iOS later.
 - **M6 – Machine state and accuracy:** tool table, cutter radius compensation, cycle-time estimation with acceleration, the dog-leg rapid path, limits checking.

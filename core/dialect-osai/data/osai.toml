@@ -19,13 +19,14 @@
 #   no_effect      changes only feed, cornering or acceleration, or cancels
 #                  something never active here
 #   not_simulated  accepted with a warning; the path is shown without it
-#   blocker        not supported, and changes where later blocks move: an
-#                  error, and no motion is shown until the cancel_blocker
-#                  code of its group (or the end of the program)
-#   cancel_blocker ends the blocker of its group
+#   ignored        changes where later blocks move but is not simulated (axis
+#                  presetting): a warning, its words are data, and later moves
+#                  are drawn without its effect. Moves are never hidden.
+#   canned_cycle   G81-G89, not simulated: each hole is drawn as a rapid to its
+#                  position in the working plane
 #
-# G codes not listed are unknown: an error, and no motion is shown from
-# there to the end of the program. This includes G16 (plane by axis
+# G codes not listed are unknown: an error, the block does not move, and
+# later moves are drawn as programmed. This includes G16 (plane by axis
 # names), G20/G21 (GTL profiles), G33 (threading), G60-G67 (HSM profiles)
 # and G72-G74 (probing).
 
@@ -117,21 +118,21 @@ description = "Point-to-point"
 code = "G92"
 group = 4
 modal = false
-handler = "blocker"
+handler = "ignored"
 description = "Axis presetting without mirror"
 
 [[g]]
 code = "G98"
 group = 4
 modal = false
-handler = "blocker"
+handler = "ignored"
 description = "Axis presetting with mirror"
 
 [[g]]
 code = "G99"
 group = 4
 modal = true
-handler = "cancel_blocker"
+handler = "no_effect"
 description = "Delete G92"
 
 # ---- group e: cutter diameter compensation (power-up G40) ----------------
@@ -179,56 +180,56 @@ description = "Programming in millimetres"
 code = "G80"
 group = 7
 modal = true
-handler = "cancel_blocker"
+handler = "no_effect"
 description = "Disable canned cycles"
 
 [[g]]
 code = "G81"
 group = 7
 modal = true
-handler = "blocker"
+handler = "canned_cycle"
 description = "Drilling cycle"
 
 [[g]]
 code = "G82"
 group = 7
 modal = true
-handler = "blocker"
+handler = "canned_cycle"
 description = "Spot-facing cycle"
 
 [[g]]
 code = "G83"
 group = 7
 modal = true
-handler = "blocker"
+handler = "canned_cycle"
 description = "Deep hole drilling cycle"
 
 [[g]]
 code = "G84"
 group = 7
 modal = true
-handler = "blocker"
+handler = "canned_cycle"
 description = "Tapping cycle"
 
 [[g]]
 code = "G85"
 group = 7
 modal = true
-handler = "blocker"
+handler = "canned_cycle"
 description = "Reaming cycle"
 
 [[g]]
 code = "G86"
 group = 7
 modal = true
-handler = "blocker"
+handler = "canned_cycle"
 description = "Boring cycle"
 
 [[g]]
 code = "G89"
 group = 7
 modal = true
-handler = "blocker"
+handler = "canned_cycle"
 description = "Boring cycle with dwell"
 
 # ---- group h: distance mode (power-up G90) -------------------------------

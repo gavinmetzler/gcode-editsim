@@ -67,14 +67,14 @@ to run on a machine.
 | G70, G71 | Inches, millimetres | p. 2-79 *(verified)* |
 | G20, G21 | GTL profiles, not units: unknown code | p. 1-11 *(verified)* |
 | G79 | Coordinates refer to the home position for one block (machine coordinates here). Supported with G00 only; with a feed move, an error and the position becomes unknown | p. 2-80, 2-81 *(verified; the G00-only limit is the stub's)* |
-| G80 / G81-G89 | Canned cycles not simulated: motion hidden until G80 | p. 1-12. That only G80 ends them is *(unverified)* |
+| G80 / G81-G89 | Canned cycles not simulated (on hold): each hole is drawn as a rapid in the working plane, until G80; one warning per cycle code | p. 1-12. That only G80 ends them is *(unverified)* |
 | G90, G91 | Absolute, incremental | p. 2-80 *(verified)* |
-| G92, G98 / G99 | Presetting not simulated: motion hidden until G99. G99 must be alone in the block | p. 2-82, 1-10 *(verified)* |
+| G92, G98 / G99 | Presetting not simulated (on hold): a warning, the values are data, and later moves are drawn without the preset. G99 must be alone in the block | p. 2-82, 1-10 *(verified)* |
 | G04 | Dwell at the end of the block. Its time comes from `DWT`, which is not read: the dwell is shown without its time (warning) | p. 2-83 *(verified)* |
 | G09 | Deceleration only: no effect | p. 2-83 *(verified)* |
 | G93, G95 / G94 | Inverse-time and per-revolution feed not simulated (warning) / per minute | p. 1-7, 1-12 |
 | G96 / G97 | Constant surface speed not simulated: S is not taken as rpm (warning) / rpm | p. 1-8 |
-| Others (G33, G60-G67, G72-G74, ...) | Unknown: an error, and motion is hidden to the end of the program | |
+| Others (G33, G60-G67, G72-G74, ...) | Unknown: an error, the block is not moved, and later moves are drawn as programmed | |
 
 Two codes of one group in a block are an error and the block is skipped
 (compatibility table p. 1-10). The rest of that table is not checked yet.
@@ -115,9 +115,9 @@ Two codes of one group in a block are an error and the block is skipped
 | Command | What we do |
 |---|---|
 | `(UAO,n)` | Origin n (0-10) for all axes; 0 is the home position (p. 2-95). Origin n is work offset n in the machine file. |
-| `(UAO,n,axes...)` | Origin n for the named axes only (p. 2-95). **Not simulated yet (M3.5); soft-ignored** at the owner's request (2026-10-31): a warning, the current origin stays in use, and moves keep being drawn, so moves on the named axes may be offset. An origin number outside 0-10 is still an error that hides motion until a `(UAO,n)` for all axes |
+| `(UAO,n,axes...)` | Origin n for the named axes only (p. 2-95). **Not simulated; ignored** at the owner's request (2026-10-31; coordinate shifts are on hold): a warning, the current origin stays in use, and moves keep being drawn, so moves on the named axes may be offset. So is an origin number outside 0-10 |
 | `(DIS,...)`, `(UGS ...)`, `(CGS)`, `(DGS)` | Messages and the graphics window: no effect on the path |
-| Anything else (`ROT`, `SCF`, `MIR`, `UTO`, `UIO`, `CLS`, `GTO`, `RPT`, ...) | An error, and motion is hidden to the end of the program |
+| Anything else (`ROT`, `SCF`, `MIR`, `UTO`, `UIO`, `CLS`, `GTO`, `RPT`, ...) | Not simulated: a warning, and later moves are drawn without its effect (moves are never hidden, owner decision 2026-10-31) |
 
 ## M codes (chapter 6, "Standard M functions")
 

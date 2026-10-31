@@ -88,13 +88,13 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 2. Hover info *(done)*
 3. Measure between two points *(done)*
 4. Orbit around the snapped point *(done)*
-5. Program coordinates and coordinate shifts (G92, G52, G10, Osai origins); approximate drawing instead of hidden moves (likely render buffer v2)
-6. Canned cycles
+5. Program coordinates and coordinate shifts *(on hold, left to the community)*
+6. Canned cycles *(on hold, left to the community)*
 7. Subprograms and simple macro variables
 8. Statistics, extended (per tool, simple time estimate)
 9. Large programs
 10. Wrap-up
 
-Desktop only. The lathe and Osai crates stay stubs; full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.
+Desktop only. The lathe and Osai crates stay stubs; full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.
 
 **Then:** M4 code transformations, M5 mobile, M6 machine state and accuracy, M7 material removal (`ARCHITECTURE.md` §13).

@@ -34,8 +34,8 @@ const SPINDLE_MODE_GROUP: u16 = 13;
 const SET_UNITS: &str = "osai.set.units";
 const SET_PLANE: &str = "osai.set.plane";
 
-/// Key of the motion blocker for origins this stub cannot follow.
-const ORIGIN_BLOCKER: &str = "UAO";
+/// The canned cycle group (power-up G80).
+const CANNED_CYCLE_GROUP: u16 = 7;
 
 /// A G or M code found in the block.
 struct Code {
@@ -58,8 +58,9 @@ enum Motion {
     Normal,
     /// The code uses the axis words itself, so there is no ordinary move.
     Consumed,
-    /// The machine would move but the move cannot be simulated.
-    Hidden(String),
+    /// A canned cycle: the block's position in the working plane is a hole,
+    /// drawn as a rapid.
+    CycleHoles,
 }
 
 /// The source reference narrowed to a span within the line.
@@ -116,7 +117,7 @@ pub(crate) fn interpret(
     {
         let src = at(src, comment.span);
         match three_letter::parse(&comment.text) {
-            Some(command) => three_letter_command(&command, ctx, src, state, out, diag),
+            Some(command) => three_letter_command(&command, src, state, out, diag),
             None => diag.push(
                 Diagnostic::warning(
                     DiagCode::UnsupportedWord,
@@ -192,22 +193,22 @@ pub(crate) fn interpret(
         return;
     }
 
-    // Unknown codes. What an unknown G code does is unknown, so from here
-    // on no motion is shown.
+    // Unknown codes. What an unknown G code does is unknown: this block is
+    // not moved (its words may be data), and later moves are drawn as
+    // programmed, never hidden.
     let mut motion_effect = Motion::Normal;
     for (letter, number, span) in &unknown {
         let what = format!("{letter}{}", number.value);
         if *letter == 'G' {
-            state.block_motion(&what, src.line);
             diag.error(
                 DiagCode::UnsupportedGCode,
                 format!(
-                    "{what} is not supported; its effect on later blocks is unknown, so moves \
-                     from here to the end of the program are not shown"
+                    "{what} is not supported and is ignored: this block is not moved, and \
+                     later moves are drawn as programmed, so they may differ from the machine"
                 ),
                 at(src, *span),
             );
-            motion_effect = Motion::Hidden(format!("unknown code {what} on line {}", src.line));
+            motion_effect = Motion::Consumed;
         } else {
             diag.error(
                 DiagCode::UnsupportedMCode,
@@ -240,8 +241,8 @@ pub(crate) fn interpret(
         }
         let effect = apply_gcode(osai, code, ctx, state, out, diag);
         motion_effect = match (motion_effect, effect) {
-            (Motion::Hidden(r), _) | (_, Motion::Hidden(r)) => Motion::Hidden(r),
             (Motion::Consumed, _) | (_, Motion::Consumed) => Motion::Consumed,
+            (Motion::CycleHoles, _) | (_, Motion::CycleHoles) => Motion::CycleHoles,
             _ => Motion::Normal,
         };
     }
@@ -313,7 +314,6 @@ fn unreadable(
 
 fn three_letter_command(
     command: &ThreeLetter,
-    ctx: &BlockContext<'_>,
     src: SourceRef,
     state: &mut ModalState,
     out: &mut Vec<Command>,
@@ -354,56 +354,51 @@ fn three_letter_command(
             let id = WorkOffsetId(n);
             state.work_offset = id;
             out.push(Command::SetWorkOffset(id));
-            if let Some(line) = state.unblock_motion(ORIGIN_BLOCKER) {
-                diag.info(
-                    DiagCode::NotYetSimulated,
-                    format!(
-                        "(UAO,{n}) sets one origin for every axis again (origins were mixed \
-                         from line {line}); moves are shown again once the position is known"
-                    ),
-                    src,
-                );
-            }
             return;
         }
-        if state.block_motion(ORIGIN_BLOCKER, src.line) {
-            diag.push(
-                Diagnostic::error(
-                    DiagCode::NotYetSimulated,
-                    format!(
-                        "(UAO,{}) is not supported (only (UAO,n) with n from 0 to 10 for all \
-                         axes); moves are not shown until a (UAO,n) for all axes",
-                        command.args.join(",")
-                    ),
-                    src,
-                )
-                .dialect_specific(),
-            );
-        }
+        // Not an origin this stub can read: ignored, and moves are never
+        // hidden (owner decision, 2026-10-31).
+        diag.push(
+            Diagnostic::warning(
+                DiagCode::NotYetSimulated,
+                format!(
+                    "(UAO,{}) is not simulated and is ignored (only (UAO,n) with n from 0 \
+                         to 10 is): the current origin stays in use, so later moves may be \
+                         drawn offset",
+                    command.args.join(",")
+                ),
+                src,
+            )
+            .dialect_specific(),
+        );
         out.push(Command::Unsupported {
             what: format!("({name})"),
         });
         return;
     }
     // Rotation, scaling, mirroring, other origins, subroutines, jumps and
-    // everything else not supported may change where later blocks move.
-    if state.block_motion(&format!("({name})"), src.line) {
-        diag.push(
-            Diagnostic::error(
-                DiagCode::NotYetSimulated,
-                format!(
-                    "({name}) is not supported; it may change where later blocks move, so \
-                     moves from here to the end of the program are not shown"
-                ),
-                src,
-            )
-            .dialect_specific(),
-        );
-    }
+    // everything else not supported may change where later blocks move. It
+    // is ignored with a warning: moves are never hidden (owner decision,
+    // 2026-10-31).
+    let written = if command.args.is_empty() {
+        format!("({name})")
+    } else {
+        format!("({name},{})", command.args.join(","))
+    };
+    diag.push(
+        Diagnostic::warning(
+            DiagCode::NotYetSimulated,
+            format!(
+                "{written} is not simulated and is ignored: later moves are drawn without its \
+                 effect, so they may differ from the machine"
+            ),
+            src,
+        )
+        .dialect_specific(),
+    );
     out.push(Command::Unsupported {
         what: format!("({name})"),
     });
-    out.push(all_unknown(ctx, format!("({name}) on line {}", src.line)));
 }
 
 /// Checks F, S and T values. Returns `false` (after reporting) if the
@@ -460,7 +455,7 @@ fn codes_compatible(
             }
         }
         let alone = matches!(a.handler, Handler::Plane(..))
-            || (a.handler == Handler::CancelBlocker && group_of(a.key) == Some(4));
+            || (a.handler == Handler::NoEffect && group_of(a.key) == Some(4));
         if alone && (gcodes.len() > 1 || !values.is_empty()) {
             diag.push(
                 Diagnostic::error(
@@ -510,24 +505,6 @@ fn note_power_up(
     );
 }
 
-/// The key under which a blocker code is recorded: its modal group (so the
-/// group's cancel code can end it) or, for one-shot codes, the code.
-fn blocker_key(osai: &Osai, code: CodeKey) -> String {
-    match osai.table.get(code).and_then(|d| d.group) {
-        Some(group) => format!("group {group}"),
-        None => code.to_string(),
-    }
-}
-
-/// The code that ends a blocker in `group`, if the table has one.
-fn cancel_code(osai: &Osai, group: Option<u16>) -> Option<CodeKey> {
-    let group = group?;
-    osai.table
-        .iter()
-        .find(|d| d.group == Some(group) && osai.handler(d.code) == Some(Handler::CancelBlocker))
-        .map(|d| d.code)
-}
-
 /// Applies one G code (other than units) and says how it affects the
 /// block's motion.
 fn apply_gcode(
@@ -539,7 +516,6 @@ fn apply_gcode(
     diag: &mut Diagnostics,
 ) -> Motion {
     let src = at(ctx.src, code.span);
-    let group = osai.table.get(code.key).and_then(|d| d.group);
     match code.handler {
         Handler::Rapid | Handler::Linear | Handler::ArcCw | Handler::ArcCcw => {
             set_active(osai, state, code.key);
@@ -596,42 +572,48 @@ fn apply_gcode(
                 src,
             );
         }
-        Handler::Blocker => {
+        Handler::Ignored => {
             set_active(osai, state, code.key);
-            let until = match cancel_code(osai, group) {
-                Some(cancel) => cancel.to_string(),
-                None => "the end of the program".to_owned(),
-            };
-            if state.block_motion(&blocker_key(osai, code.key), ctx.src.line) {
-                diag.error(
+            diag.push(
+                Diagnostic::warning(
                     DiagCode::UnsupportedGCode,
                     format!(
-                        "{} is not supported yet. It changes where later moves go, so moves are \
-                         not shown from here until {until}",
+                        "{} is not simulated and is ignored: its values are not a move, and \
+                         later moves are drawn without its effect, so they may differ from the \
+                         machine",
                         description(osai, code.key)
                     ),
                     src,
+                )
+                .dialect_specific(),
+            );
+            out.push(Command::Unsupported {
+                what: code.key.to_string(),
+            });
+            // Axis words with these codes are data (a preset).
+            return Motion::Consumed;
+        }
+        Handler::CannedCycle => {
+            set_active(osai, state, code.key);
+            if state.first_report(&format!("osai.cycle.{}", code.key)) {
+                diag.push(
+                    Diagnostic::warning(
+                        DiagCode::UnsupportedGCode,
+                        format!(
+                            "{} is not simulated: its hole positions are drawn as rapids in the \
+                             working plane; depths, R levels and retracts are not drawn. Not \
+                             reported again.",
+                            description(osai, code.key)
+                        ),
+                        src,
+                    )
+                    .dialect_specific(),
                 );
             }
             out.push(Command::Unsupported {
                 what: code.key.to_string(),
             });
-            // Axis words with these codes are data (a preset, cycle depths).
-            return Motion::Consumed;
-        }
-        Handler::CancelBlocker => {
-            set_active(osai, state, code.key);
-            if let Some(line) = state.unblock_motion(&blocker_key(osai, code.key)) {
-                diag.info(
-                    DiagCode::NotYetSimulated,
-                    format!(
-                        "{} ends the mode started on line {line}; moves are shown again once \
-                         the position is known",
-                        code.key
-                    ),
-                    src,
-                );
-            }
+            return Motion::CycleHoles;
         }
         // Handled with the block's motion; units were applied earlier; M
         // handlers never appear as G codes.
@@ -803,17 +785,41 @@ fn axis_target(
     target
 }
 
-/// Why motion cannot be shown right now, if it cannot.
-fn hidden_reason(osai: &Osai, state: &ModalState) -> Option<String> {
-    let (key, line) = state.motion_blocker()?;
-    // Modal blockers are keyed by group; name the code that started it.
-    let name = key
-        .strip_prefix("group ")
-        .and_then(|g| g.parse::<u16>().ok())
-        .and_then(|g| state.active_code(g))
-        .filter(|&k| osai.handler(k) == Some(Handler::Blocker))
-        .map_or_else(|| key.to_owned(), |k| k.to_string());
-    Some(format!("{name} from line {line}"))
+/// The canned cycle in effect, if any (until G80).
+fn cycle_active(osai: &Osai, state: &ModalState) -> bool {
+    state
+        .active_code(CANNED_CYCLE_GROUP)
+        .is_some_and(|k| osai.handler(k) == Some(Handler::CannedCycle))
+}
+
+/// A canned cycle's hole: a rapid to the position the block gives in the
+/// working plane. The depth and the cycle's own words are not drawn.
+fn cycle_hole(
+    values: &[Value],
+    ctx: &BlockContext<'_>,
+    state: &mut ModalState,
+    out: &mut Vec<Command>,
+    diag: &mut Diagnostics,
+) {
+    let Some(plane) = state.plane else {
+        return; // No working plane: nothing to draw.
+    };
+    note_power_up(
+        state,
+        SET_PLANE,
+        "G17 (plane of axes 1 and 2)",
+        ctx.src,
+        diag,
+    );
+    let incremental = state.distance == DistanceMode::Incremental;
+    let in_plane = |a: usize| a == usize::from(plane.first) || a == usize::from(plane.second);
+    let target: Vec<AxisWord> = axis_target(values, incremental, ctx, state, diag)
+        .into_iter()
+        .filter(|w| in_plane(w.axis))
+        .collect();
+    if !target.is_empty() {
+        out.push(Command::Rapid { target });
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -844,19 +850,14 @@ fn motion(
     // between moves), which the parser reads as R.
     if let (Some(r), false) = (r, is_arc) {
         diag.push(
-            Diagnostic::error(
+            Diagnostic::warning(
                 DiagCode::UnsupportedWord,
-                "R outside an arc is not supported (a lower-case r rounds the corner to the next \
-                 move, which is not simulated); moves are not shown until the position is known",
+                "R outside an arc is not simulated (a lower-case r rounds the corner to the next \
+                 move): the corner is drawn sharp",
                 at(src, r.span),
             )
             .dialect_specific(),
         );
-        out.push(all_unknown(
-            ctx,
-            format!("the corner radius on line {}", src.line),
-        ));
-        return;
     }
 
     // An arc with no axes is a full circle (p. 2-4: "If axes are not
@@ -867,15 +868,11 @@ fn motion(
     }
     match effect {
         Motion::Consumed => return,
-        Motion::Hidden(reason) => {
-            out.push(all_unknown(ctx, reason));
-            return;
+        Motion::CycleHoles => return cycle_hole(values, ctx, state, out, diag),
+        Motion::Normal if cycle_active(osai, state) => {
+            return cycle_hole(values, ctx, state, out, diag);
         }
         Motion::Normal => {}
-    }
-    if let Some(reason) = hidden_reason(osai, state) {
-        out.push(all_unknown(ctx, reason));
-        return;
     }
 
     if let Some(code) = g79 {

@@ -214,7 +214,7 @@
       "line": 5,
       "severity": "Warning",
       "code": "UnsupportedGCode",
-      "message": "G92 (Workpiece coordinate system setting) is not simulated yet and is ignored: later moves are drawn without its shift, so they may be offset from where the machine goes"
+      "message": "G92 (Workpiece coordinate system setting) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
     },
     {
       "line": 6,

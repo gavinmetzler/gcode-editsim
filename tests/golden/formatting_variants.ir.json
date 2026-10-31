@@ -93,7 +93,7 @@
       "line": 8,
       "severity": "Error",
       "code": "UnsupportedGCode",
-      "message": "G54.1 is not supported; its effect on later blocks is unknown, so moves from here to the end of the program are not shown"
+      "message": "G54.1 is not supported and is ignored: this block is not moved, and later moves are drawn as programmed, so they may differ from the machine"
     },
     {
       "line": 8,

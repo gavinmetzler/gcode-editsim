@@ -145,15 +145,14 @@ ISO-code programs may use `:` instead of `O` for the program number.
 *(unverified: seen in the owner's programs; not checked against a Fanuc
 manual)*
 
-## G92: ignored for now
+## G92: ignored
 
 G92 (workpiece coordinate system setting) shifts every work coordinate
 system so that the current position gets the programmed values. That
 depends on where the machine is when G92 runs, which a backplot does not
-know. Until M3.5 implements it (relative to the machine file's reference
-position), **G92 is ignored with a warning**: its X/Y/Z are data, not a
-move, and later moves are drawn without the shift (owner decision,
-2026-10-31). Real router programs start with `G54G92X…Y…Z0` and then
+know. **G92 is ignored with a warning**: its X/Y/Z are data, not a move,
+and later moves are drawn without the shift (owner decision, 2026-10-31;
+coordinate shifts are on hold, see `docs/WISHLIST.md`). Real router programs start with `G54G92X…Y…Z0` and then
 select G55/G56, so the drawing uses those offsets from the machine file.
 
 ## Tool length compensation: never simulated
@@ -161,24 +160,28 @@ select G55/G56, so the drawing uses those offsets from the machine file.
 G43, G44 and their H words are ignored by design: the path is shown as
 programmed. One note (info) per program says so. G49 is quiet.
 
-## Unsupported modes that affect later blocks
+## Codes that change later moves: ignored, never hidden
 
-These codes change where *later* moves go, and are not simulated yet:
+These codes change where *later* moves go and are not simulated: G92,
 G52, G10, G65, G68, G51, G51.1, G16, M98, M99 and any unknown G code.
-Each reports one error. No moves are shown after it until:
+**Moves are never hidden** (owner decision, 2026-10-31: a backplot drawn
+without their effect is more useful than none). Each gives one
+diagnostic where it appears (a warning; an error for an unknown G code),
+its words are data rather than a move, and later moves are drawn as
+programmed, so they may differ from the machine. The cancel codes G15,
+G50, G50.1 and G69 are quiet.
 
-| Code | Shown again after |
-|---|---|
-| G68 | G69 |
-| G51 | G50 |
-| G51.1 | G50.1 |
-| G16 | G15 |
-| G52 | G52 with all axes 0 |
-| G10, G65, M98, M99, unknown G codes | never (the end of the program) |
+Coordinate shifts (G92, G52, G10, rotation, scaling, mirroring, polar
+input) are **on hold**: left to the community (`docs/WISHLIST.md`).
+Subprograms (M98/M99) come in M3.7.
 
-After the mode ends, the position is unknown until every axis has been
-given an absolute position, because the machine moved while its moves
-were hidden.
+## Canned cycles: hole positions only
+
+Canned cycles (G73, G74, G76, G81–G89) are **on hold** (owner decision,
+2026-10-31). Until someone adds them, each hole is drawn as a rapid to its
+position in the working plane; depths, R levels, pecks and retracts are
+not drawn. One warning per cycle code. The cycle stays in effect for
+later blocks until G80 or G00–G03.
 
 G05.1, G08, G09 and G61–G64 change feed, acceleration or cornering, not
 the programmed path. They are accepted without a diagnostic.
@@ -192,13 +195,12 @@ Each of these produces a diagnostic, never silence:
 |---|---|---|---|
 | G41/G42 (cutter compensation) | warning (`NotYetSimulated`) | yes | Shown without the compensation |
 | G43/G44 (tool length compensation) | info, once per program | yes | Never simulated, by design |
-| G92 | warning | no (its words are data) | Ignored until M3.5; later moves drawn without its shift |
+| G92, G10, G52, G65, G68, G51, G51.1, G16 | warning | no (its words are data) | Ignored; later moves drawn without its effect (see above) |
 | G04 | error | no | X/P is a dwell time, not a move |
-| G10, G52, G65, G68, G51, G51.1, G16 | error | no, and later moves are hidden | See "Unsupported modes that affect later blocks" |
-| Canned cycles G73, G74, G76, G81–G89 | error | no | Later blocks are not moved until G80 or G00–G03, and the position is then unknown |
+| Canned cycles G73, G74, G76, G81–G89 | warning, once per code | holes only | Each hole drawn as a rapid in the working plane |
 | G95 (feed per revolution) | error | yes | The path is still drawn |
-| M98/M99 (subprograms) | error | later moves are hidden until the end of the program | |
-| Unknown G code | error | no, and later moves are hidden | Its effect is unknown |
+| M98/M99 (subprograms) | warning | — | Ignored until M3.7; later moves drawn |
+| Unknown G code | error | no (its words are data) | Its effect is unknown; later moves drawn as programmed |
 | Unknown M code | info, once per code | yes | Taken to be machine-specific; see "M codes" |
 | Macro variables and expressions (`#100`, `[...]`) | error | no | The block is skipped |
 | Macro assignments (`#100 = 5`) | warning | n/a | Has no effect |

@@ -190,6 +190,91 @@
       "work_offset": 1
     },
     {
+      "line": 22,
+      "kind": "Rapid",
+      "end": {
+        "X": -330.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 23,
+      "kind": "Rapid",
+      "end": {
+        "X": -320.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 24,
+      "kind": "Rapid",
+      "end": {
+        "X": -320.0,
+        "Y": -205.0,
+        "Z": -350.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 25,
+      "kind": "Rapid",
+      "end": {
+        "X": -310.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 28,
+      "kind": "Linear",
+      "end": {
+        "X": -300.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "feed": 300.0,
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 30,
+      "kind": "Rapid",
+      "end": {
+        "X": -290.0,
+        "Y": -205.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
+      "line": 31,
+      "kind": "Rapid",
+      "end": {
+        "X": -290.0,
+        "Y": -195.0,
+        "Z": -395.0
+      },
+      "rpm": 2000.0,
+      "tool": 2,
+      "work_offset": 1
+    },
+    {
       "line": 32,
       "kind": "Rapid",
       "end": {
@@ -233,33 +318,15 @@
     },
     {
       "line": 22,
-      "severity": "Error",
-      "code": "UnsupportedGCode",
-      "message": "G81 (Drilling cycle) is not supported yet; moves are not shown until G80 or G00-G03 cancels the cycle"
-    },
-    {
-      "line": 24,
       "severity": "Warning",
-      "code": "NotYetSimulated",
-      "message": "the position of X, Y, Z is unknown after canned cycle G81, so moves are not shown until every axis has been given an absolute position"
+      "code": "UnsupportedGCode",
+      "message": "G81 (Drilling cycle) is not simulated: its hole positions are drawn as rapids in the working plane; depths, R levels, pecks and retracts are not drawn. Not reported again."
     },
     {
       "line": 27,
-      "severity": "Error",
-      "code": "UnsupportedGCode",
-      "message": "G68 (Coordinate system rotation) is not supported yet. It changes where later moves go, so moves are not shown from here until G69"
-    },
-    {
-      "line": 29,
-      "severity": "Info",
-      "code": "NotYetSimulated",
-      "message": "G69 ends the mode started on line 27; moves are shown again once the position is known"
-    },
-    {
-      "line": 30,
       "severity": "Warning",
-      "code": "NotYetSimulated",
-      "message": "the position of X, Y, Z is unknown after G68 mode from line 27, so moves are not shown until every axis has been given an absolute position"
+      "code": "UnsupportedGCode",
+      "message": "G68 (Coordinate system rotation) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
     }
   ],
   "tools_used": [

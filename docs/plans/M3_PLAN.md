@@ -47,9 +47,10 @@ owner decided (2026-10-31) to mature it before code transformations
    these properly rather than ignore them, because ignoring a shift draws
    the following moves in the wrong place (or stacks repeated parts on
    top of each other).
-3. **Approximate rather than hidden.** A coordinate change that is still
-   not implemented no longer hides the moves after it (the M1 motion
-   blocker, ARCHITECTURE.md §7.3a). The moves are drawn, marked
+3. **Never hidden** (revised 2026-10-31; originally "approximate rather
+   than hidden"). A coordinate change that is not implemented no longer
+   hides the moves after it (the M1 motion blocker, ARCHITECTURE.md
+   §7.3a). The moves are drawn, marked
    approximate (dimmed), with one warning where the code appears. To be
    designed in M3.5; ARCHITECTURE.md §7.3a changes in the same PR.
 4. **Program coordinates by default.** Hover, measure and statistics show
@@ -206,25 +207,27 @@ because they help with every test of the later steps.
   middle and right buttons, and touch work as before. A click on a node
   still picks. In measure mode a press on a node measures instead.
 
-### M3.5: Program coordinates and coordinate shifts (core)
+### M3.5: Program coordinates and coordinate shifts — *on hold*
 
-- Implement G92 properly (ignored with a warning since M3.0), relative to
-  the machine file's reference position (and G92.1 if the control has it), G52 and G10
-  L2/L20 on Fanuc; origins and `UAO` on Osai. Each behaviour is sourced or
-  marked *(unverified)* in the dialect notes.
-- The UI needs the active work offset per segment to show program
-  coordinates. This likely means **render buffer layout v2** (a small
-  offsets table and an index per segment), with a version bump, a new
-  shared fixture and regenerated TypeScript constants (CLAUDE.md rule 4).
-- Replace motion blockers by approximate drawing for what is still
-  unsupported (rotation G68, scaling G51, mirroring, polar input), with a
-  new segment flag. Update ARCHITECTURE.md §7.3a.
+**On hold, left to the community (owner decision, 2026-10-31).** Real
+programs use work offsets and origins for reasons only the machine and
+its workflow explain (on the owner's gang router, G54/G55/G56 select
+separate spindles), so shifting the drawing would not help and could
+mislead; Cimco and NCPlot ignore them too. What a contributor would need
+is in `docs/WISHLIST.md` ("Coordinate shifts and program coordinates").
 
-### M3.6: Canned cycles (core)
+Instead, **moves are never hidden**: G92, G52, G10, rotation, scaling,
+mirroring, polar input, Osai presetting and origins, macro and subprogram
+calls, and unknown G codes each give one diagnostic, their words are
+data, and later moves are drawn as programmed (ARCHITECTURE.md §7.3a).
+The motion-blocker mechanism is gone.
 
-- G81–G89, G73, G76, with G98/G99 return levels and G80 cancel. Each
-  cycle expands into ordinary rapid and feed segments that point back at
-  the cycle's line, so line ↔ segment sync keeps working.
+### M3.6: Canned cycles — *on hold*
+
+**On hold, left to the community (owner decision, 2026-10-31):** CAM
+output rarely needs them. Until then each hole is drawn as a rapid to its
+position in the working plane, with one warning per cycle code; depths,
+R levels, pecks and retracts are not drawn.
 
 ### M3.7: Subprograms and simple macro variables (core)
 
@@ -259,7 +262,7 @@ because they help with every test of the later steps.
 
 | Risk | Mitigation |
 |---|---|
-| "Ignoring" a code hides a real problem | Only codes on a reviewed list, each with an info note; anything that moves the tool or shifts coordinates is implemented or drawn approximate, never ignored |
+| "Ignoring" a code hides a real problem | Every ignored code gives a diagnostic where it appears; its words are data, never a move (owner rule) |
 | Approximate drawing is mistaken for the real path | Dimmed and flagged; one warning at the code; never described as verified (CLAUDE.md) |
 | Real programs cannot be shared publicly | Private corpus run locally; only agreed excerpts become goldens |
 | Layout v2 breaks the boundary | The existing version check, shared fixture and generated constants (§8.4) |

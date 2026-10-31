@@ -24,25 +24,22 @@ pub(crate) enum Handler {
     /// Tool length compensation (G43, G44): never simulated, by design; the
     /// path is shown as programmed, with one note per program.
     LengthCompensation,
-    /// G92: a coordinate shift not simulated yet, ignored with a warning
-    /// (owner's request) instead of hiding later moves. Its axis words are
-    /// data.
-    IgnoredShift,
     /// Reported as an error.
     Unsupported,
-    /// Not supported, and changes how later blocks move: hides motion until
-    /// the matching [`Handler::CancelBlocker`] (or the end of the program).
-    Blocker,
-    /// Ends the blocker of its modal group.
-    CancelBlocker,
+    /// Changes how later blocks move but is not simulated (coordinate
+    /// shifts, rotation, scaling, mirroring, polar input, macro and
+    /// subprogram calls): a warning, its words are data, and later moves
+    /// are drawn without its effect. Moves are never hidden.
+    Ignored,
+    /// A canned cycle (G73-G89): each hole is drawn as a rapid to its
+    /// position in the working plane.
+    CannedCycle,
     /// G28: rapid via an intermediate point to the reference position.
     ReferenceReturn,
     /// G30: as G28 but to another reference position, which is not modelled.
     ReferenceReturnOther,
     /// G53: rapid in machine coordinates.
     MachineRapid,
-    /// G52: local coordinate system; a blocker unless every axis is zero.
-    LocalOffset,
     Stop,
     OptionalStop,
     ProgramEnd,
@@ -74,14 +71,12 @@ impl Handler {
             "no_effect" => Self::NoEffect,
             "not_simulated" => Self::NotSimulated,
             "length_compensation" => Self::LengthCompensation,
-            "ignored_shift" => Self::IgnoredShift,
             "unsupported" => Self::Unsupported,
-            "blocker" => Self::Blocker,
-            "cancel_blocker" => Self::CancelBlocker,
+            "ignored" => Self::Ignored,
+            "canned_cycle" => Self::CannedCycle,
             "reference_return" => Self::ReferenceReturn,
             "reference_return_other" => Self::ReferenceReturnOther,
             "machine_rapid" => Self::MachineRapid,
-            "local_offset" => Self::LocalOffset,
             "stop" => Self::Stop,
             "optional_stop" => Self::OptionalStop,
             "program_end" => Self::ProgramEnd,
