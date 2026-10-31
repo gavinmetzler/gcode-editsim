@@ -154,6 +154,18 @@ because they help with every test of the later steps.
   from the machine file; that comes with program coordinates (M3.5).
 - **Not done:** a stronger highlight for the selected line; the marker
   may make it unnecessary. To be decided after the owner tries it.
+- **Changed after review (owner, 2026-10-31): endpoints only, and no lag.**
+  Hover and clicks snap only to move end points (the end of every move,
+  and a start where no move ends), within 15 pixels; farther away the
+  marker goes back to its resting place, and a click does nothing. Events
+  (tool changes, stops) no longer snap: they sit on move end points. The
+  end points are projected to the screen once per camera change and the
+  nearest is found by a simple search (`ui/src/viewport/snap.ts`),
+  instead of testing every drawn line piece. The marker is now a flat SVG
+  overlay (`marker.ts`), so hovering never redraws the toolpath; looking
+  along Z (the Top view) it is a ring. Measured on a 19,700-move program
+  in headless Chromium: about 83 ms per pointer move before (spikes to
+  147 ms), no measurable cost after.
 
 ### M3.3: Measure between two points
 

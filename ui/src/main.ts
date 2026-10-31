@@ -177,6 +177,8 @@ async function main(app: HTMLElement): Promise<void> {
   /** Moves the tool marker and the readout to the hovered point, or else
    *  to where the tool is after the cursor's line. Hovering never moves
    *  the editor's cursor; a click does. */
+  /** What the readout shows now, so an unchanged point is not redrawn. */
+  let shownReadout = "";
   const showMarker = (): void => {
     const rb = current;
     const p = hovered ?? resting;
@@ -191,6 +193,9 @@ async function main(app: HTMLElement): Promise<void> {
         ? "Clicked point"
         : `After line ${String(cursorLine)}`;
     const title = where + (freshness.stale ? " (out of date)" : "");
+    const key = `${title}|${String(p.segment)}|${p.place}|${p.point.join(",")}`;
+    if (key === shownReadout && !readout.hidden) return;
+    shownReadout = key;
     readout.replaceChildren(
       el("div", { className: "title", textContent: title }),
       // Program coordinates come with M3.5.

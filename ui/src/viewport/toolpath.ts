@@ -8,6 +8,7 @@
 
 import type { RenderBuffer } from "../buffer/decode";
 import { SEG_FLAG, SEG_KIND } from "../generated/render_buffer";
+import { moveEndpoints, type Endpoints } from "./snap";
 
 /** A colour as 0-1 components. */
 export type Rgb = readonly [number, number, number];
@@ -83,6 +84,8 @@ export interface Toolpath {
   readonly origin: readonly [number, number, number];
   /** The vertices of segment `index`, or null if there is no such segment. */
   segmentVertices(index: number): { readonly first: number; readonly count: number } | null;
+  /** The moves' end points, which hovering and clicking snap to. */
+  readonly endpoints: Endpoints;
   /** Bounds of the motion vertices relative to `origin`, or null if none. */
   readonly bounds: { readonly min: Rgb; readonly max: Rgb } | null;
 }
@@ -163,6 +166,7 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     eventSegment: Uint32Array.from(events),
     vertexSegment,
     origin: rb.header.origin,
+    endpoints: moveEndpoints(rb),
     segmentVertices: (index: number) => {
       if (!Number.isInteger(index) || index < 0 || index >= segmentCount) return null;
       const s = rb.segment(index);

@@ -11,60 +11,29 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  ConeGeometry,
-  CylinderGeometry,
   Group,
   LineBasicMaterial,
   LineDashedMaterial,
   LineSegments,
-  Mesh,
-  MeshBasicMaterial,
+  Matrix4,
   OrthographicCamera,
   Points,
   PointsMaterial,
-  Raycaster,
   Scene,
-  Vector2,
-  Vector3,
   WebGLRenderer,
-  type Intersection,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { ToolPoint } from "./readout";
-import { snapEnd } from "./snap";
+import { MARKER, markerShape } from "./marker";
+import { nearestScreenPoint } from "./snap";
 import { expandIndexed, type Toolpath } from "./toolpath";
 import { VIEWS, fitOrtho, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
-/** How close (in screen pixels) a click must be to pick a line or marker. */
-const PICK_PIXELS = 6;
 
-/** The tool marker's size on screen, in pixels: a thick shaft with an
- *  arrowhead whose tip is the point. Deliberately not a tool shape, so it is
- *  not mistaken for a simulated tool. */
-const MARKER = { height: 64, shaft: 5, headLength: 18, headWidth: 16 } as const;
-
-/** A unit-scale marker (1 = one screen pixel once scaled), tip at the
- *  origin, pointing down -Z. The shaft is vertical: along the mill's tool
- *  axis, Z, which the views also keep up. */
-function buildMarker(): { group: Group; resources: { dispose(): void }[] } {
-  const material = new MeshBasicMaterial({ color: 0xffd23f, depthTest: false });
-  const head = new ConeGeometry(MARKER.headWidth / 2, MARKER.headLength, 24);
-  head.rotateX(-Math.PI / 2); // tip from +Y to -Z
-  head.translate(0, 0, MARKER.headLength / 2);
-  const shaftLength = MARKER.height - MARKER.headLength;
-  const shaft = new CylinderGeometry(MARKER.shaft / 2, MARKER.shaft / 2, shaftLength, 12);
-  shaft.rotateX(Math.PI / 2);
-  shaft.translate(0, 0, MARKER.headLength + shaftLength / 2);
-  const group = new Group();
-  for (const g of [head, shaft]) {
-    const mesh = new Mesh(g, material);
-    mesh.renderOrder = 20;
-    group.add(mesh);
-  }
-  group.visible = false;
-  return { group, resources: [material, head, shaft] };
-}
+const SVG = "http://www.w3.org/2000/svg";
+/** The marker's colour. */
+const MARKER_COLOR = "#ffd23f";
 
 /** A toolpath viewport inside `container`. */
 export class Viewport {
@@ -77,7 +46,8 @@ export class Viewport {
   private halfHeight = 10;
   private readonly controls: OrbitControls;
   private readonly group = new Group();
-  private readonly raycaster = new Raycaster();
+  /** The move end points on screen; recomputed after the camera moves. */
+  private screen: Float32Array | null = null;
   private toolpath: Toolpath | null = null;
   private feed: LineSegments | null = null;
   private rapid: LineSegments | null = null;
@@ -90,7 +60,10 @@ export class Viewport {
   private readonly resizeObserver: ResizeObserver;
   private frame = 0;
   private pointerDown: { x: number; y: number } | null = null;
-  private readonly marker = buildMarker();
+  /** The flat overlay the tool marker is drawn on (see marker.ts). */
+  private readonly overlay = document.createElementNS(SVG, "svg");
+  /** Where the marker's tip is (machine coordinates), or null. */
+  private markerPoint: Vec3 | null = null;
   private hoverFrame = 0;
 
   /** Called with the toolpath point a click picked (snapped as for
@@ -109,9 +82,12 @@ export class Viewport {
     this.camera.up.set(0, 0, 1);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.addEventListener("change", () => {
+      this.screen = null;
       this.requestRender();
     });
-    this.scene.add(this.group, this.marker.group);
+    this.scene.add(this.group);
+    this.overlay.setAttribute("class", "marker-overlay");
+    container.appendChild(this.overlay);
 
     const canvas = this.renderer.domElement;
     canvas.addEventListener("pointerdown", (e) => {
@@ -285,84 +261,110 @@ export class Viewport {
   }
 
   /**
-   * The toolpath point under the screen point (client coordinates): the
-   * nearer end of the segment there if it is within a few pixels, else the
-   * point on the segment's path, or an event's position. Null over empty
-   * space.
+   * The move end point nearest the screen point (client coordinates), if one
+   * is within a few pixels; null otherwise. Only move end points snap (not
+   * points along a move, nor events), which keeps hovering quick on large
+   * programs: the end points are projected to the screen once per camera
+   * change, then each pointer position is a simple search.
    */
   pointAt(clientX: number, clientY: number): ToolPoint | null {
     const toolpath = this.toolpath;
-    const hit = this.hitAt(clientX, clientY);
-    if (!toolpath || !hit) return null;
-    if (hit.event) return { point: this.absolute(hit.vertex), segment: hit.segment, place: "event" };
-    const range = toolpath.segmentVertices(hit.segment);
-    if (!range || range.count === 0) return null;
-    const start = this.absolute(range.first);
-    const end = this.absolute(range.first + range.count - 1);
+    if (!toolpath) return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
-    const which = snapEnd([clientX, clientY], this.toScreen(start, rect), this.toScreen(end, rect));
-    if (which) return { point: which === "start" ? start : end, segment: hit.segment, place: which };
-    const p = hit.point;
-    return { point: [p.x, p.y, p.z], segment: hit.segment, place: "path" };
+    this.screen ??= this.projectEndpoints(rect.width, rect.height);
+    const i = nearestScreenPoint(this.screen, clientX - rect.left, clientY - rect.top);
+    const segment = toolpath.endpoints.segment[i];
+    if (i < 0 || segment === undefined) return null;
+    const [ox, oy, oz] = toolpath.origin;
+    const p = toolpath.endpoints.positions;
+    return {
+      point: [(p[i * 3] ?? NaN) + ox, (p[i * 3 + 1] ?? NaN) + oy, (p[i * 3 + 2] ?? NaN) + oz],
+      segment,
+      place: toolpath.endpoints.isStart[i] === 1 ? "start" : "end",
+    };
   }
 
   /** Shows the tool marker with its tip at `point` (machine coordinates),
    *  or hides it for null. */
   setMarker(point: Vec3 | null): void {
-    const m = this.marker.group;
-    m.visible = point !== null && point.every((c) => Number.isFinite(c));
-    if (point && m.visible) m.position.set(point[0], point[1], point[2]);
-    this.requestRender();
+    const next = point && point.every((c) => Number.isFinite(c)) ? point : null;
+    const same =
+      next === this.markerPoint ||
+      (next !== null && this.markerPoint !== null && next.every((c, k) => c === this.markerPoint?.[k]));
+    if (same) return;
+    this.markerPoint = next;
+    // Only the overlay changes: the toolpath is not redrawn.
+    this.drawMarker();
   }
 
-  /** The nearest toolpath object under the screen point. `vertex` is a
-   *  vertex of the hit segment; for events it is the event's own. */
-  private hitAt(
-    clientX: number,
-    clientY: number,
-  ): { segment: number; vertex: number; event: boolean; point: Vector3 } | null {
-    const toolpath = this.toolpath;
-    if (!toolpath) return null;
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const ndc = new Vector2(
-      ((clientX - rect.left) / rect.width) * 2 - 1,
-      -((clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    this.raycaster.setFromCamera(ndc, this.camera);
-    const tolerance = orthoWorldPerPixel(this.halfHeight, this.camera.zoom, rect.height) * PICK_PIXELS;
-    this.raycaster.params.Line.threshold = tolerance;
-    this.raycaster.params.Points.threshold = tolerance;
-    const targets = [this.markers, this.feed, this.rapid].filter((o) => o !== null);
-    const hit: Intersection | undefined = this.raycaster.intersectObjects(targets, false)[0];
-    if (!hit || hit.index === undefined) return null;
-    if (hit.object === this.markers) {
-      const segment = toolpath.eventSegment[hit.index];
-      const range = segment === undefined ? null : toolpath.segmentVertices(segment);
-      return segment === undefined || !range
-        ? null
-        : { segment, vertex: range.first, event: true, point: hit.point };
+  /** Draws the marker on the overlay for the current camera. */
+  private drawMarker(): void {
+    const p = this.markerPoint;
+    if (!p) {
+      this.overlay.replaceChildren();
+      return;
     }
-    // `index` is the position in the index list: for the indexed feed lines
-    // directly, and for the expanded rapids because vertex k is index[k].
-    const lines = hit.object === this.feed ? toolpath.feedIndex : toolpath.rapidIndex;
-    const vertex = lines[hit.index];
-    const segment = vertex === undefined ? undefined : toolpath.vertexSegment[vertex];
-    return vertex === undefined || segment === undefined ? null : { segment, vertex, event: false, point: hit.point };
+    this.camera.updateMatrixWorld();
+    const m = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse).elements;
+    const width = Math.max(1, this.container.clientWidth);
+    const height = Math.max(1, this.container.clientHeight);
+    const e = (k: number): number => m[k] ?? 0;
+    const sx = (x: number, y: number, z: number): number =>
+      ((e(0) * x + e(4) * y + e(8) * z + e(12) + 1) / 2) * width;
+    const sy = (x: number, y: number, z: number): number =>
+      ((1 - (e(1) * x + e(5) * y + e(9) * z + e(13))) / 2) * height;
+    const [x, y, z] = p;
+    const tx = sx(x, y, z);
+    const ty = sy(x, y, z);
+    // One mm along +Z, on screen. Linear (orthographic), so read off the
+    // matrix rather than projecting a second point far from the origin.
+    const zx = (e(8) / 2) * width;
+    const zy = (-e(9) / 2) * height;
+    const pxPerMm = 1 / orthoWorldPerPixel(this.halfHeight, this.camera.zoom, height);
+    const shape = markerShape(tx, ty, zx, zy, pxPerMm);
+    const el = (tag: string, attrs: Record<string, string | number>): SVGElement => {
+      const node = document.createElementNS(SVG, tag);
+      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+      return node;
+    };
+    if (shape.kind === "ring") {
+      this.overlay.replaceChildren(
+        el("circle", { cx: shape.x, cy: shape.y, r: shape.r, fill: "none", stroke: MARKER_COLOR, "stroke-width": 3 }),
+        el("circle", { cx: shape.x, cy: shape.y, r: 2, fill: MARKER_COLOR }),
+      );
+      return;
+    }
+    const [x1, y1, x2, y2] = shape.shaft;
+    this.overlay.replaceChildren(
+      el("line", { x1, y1, x2, y2, stroke: MARKER_COLOR, "stroke-width": MARKER.shaft, "stroke-linecap": "round" }),
+      el("polygon", { points: shape.head.join(" "), fill: MARKER_COLOR }),
+    );
   }
 
-  /** Vertex `v` in machine coordinates. */
-  private absolute(v: number): Vec3 {
+  /** The end points on screen, as x, y pairs in pixels relative to the
+   *  canvas (`width` by `height`), NaN for points not on screen. Computed
+   *  in double precision from the camera's matrices. */
+  private projectEndpoints(width: number, height: number): Float32Array {
     const toolpath = this.toolpath;
-    if (!toolpath) return [NaN, NaN, NaN];
+    if (!toolpath) return new Float32Array();
+    this.camera.updateMatrixWorld();
+    const m = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse).elements;
     const [ox, oy, oz] = toolpath.origin;
-    const p = toolpath.positions;
-    return [(p[v * 3] ?? NaN) + ox, (p[v * 3 + 1] ?? NaN) + oy, (p[v * 3 + 2] ?? NaN) + oz];
-  }
-
-  /** A point in machine coordinates on screen, in client pixels. */
-  private toScreen(p: Vec3, rect: DOMRect): [number, number] {
-    const v = new Vector3(p[0], p[1], p[2]).project(this.camera);
-    return [rect.left + ((v.x + 1) / 2) * rect.width, rect.top + ((1 - v.y) / 2) * rect.height];
+    const p = toolpath.endpoints.positions;
+    const n = p.length / 3;
+    const out = new Float32Array(n * 2);
+    const e = (k: number): number => m[k] ?? 0;
+    for (let i = 0; i < n; i += 1) {
+      const x = (p[i * 3] ?? NaN) + ox;
+      const y = (p[i * 3 + 1] ?? NaN) + oy;
+      const z = (p[i * 3 + 2] ?? NaN) + oz;
+      // Orthographic: w is 1, so clip coordinates are normalised already.
+      const nx = e(0) * x + e(4) * y + e(8) * z + e(12);
+      const ny = e(1) * x + e(5) * y + e(9) * z + e(13);
+      out[i * 2] = ((nx + 1) / 2) * width;
+      out[i * 2 + 1] = ((1 - ny) / 2) * height;
+    }
+    return out;
   }
 
   /** Releases the GPU resources. */
@@ -370,7 +372,6 @@ export class Viewport {
     this.clear();
     this.resizeObserver.disconnect();
     cancelAnimationFrame(this.hoverFrame);
-    for (const r of this.marker.resources) r.dispose();
     this.controls.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -387,6 +388,7 @@ export class Viewport {
     this.rapid = null;
     this.markers = null;
     this.toolpath = null;
+    this.screen = null;
   }
 
   private resize(): void {
@@ -399,6 +401,7 @@ export class Viewport {
 
   /** Sets the camera's frustum from `halfHeight` and the canvas shape. */
   private updateFrustum(): void {
+    this.screen = null;
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
     const halfWidth = (this.halfHeight * width) / height;
@@ -413,10 +416,9 @@ export class Viewport {
     if (this.frame !== 0) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = 0;
-      // The marker keeps its size on screen at any zoom.
-      const height = Math.max(1, this.container.clientHeight);
-      this.marker.group.scale.setScalar(orthoWorldPerPixel(this.halfHeight, this.camera.zoom, height));
       this.renderer.render(this.scene, this.camera);
+      // The camera may have moved: put the marker where the point now is.
+      this.drawMarker();
     });
   }
 }
