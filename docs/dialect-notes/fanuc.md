@@ -33,6 +33,22 @@ to run on a machine.
 - **Assumption:** IS-B is the input increment system. This is by far the
   most common one. IS-C (0.0001 mm) is not modelled.
 
+## Writing numbers back (code transformations, M4.4)
+
+- **What we do:** a rewritten value is rounded to the least input
+  increment (IS-B: 0.001 mm or degree, 0.0001 inch) and written in the
+  style of the number it replaces. With a decimal point it keeps at least
+  the decimals it had (a value written with more decimals than the
+  increment keeps them all). Without a decimal point it stays without:
+  in least increments under DPI = 0, so `X10` becomes e.g. `X12500` for
+  12.5 mm; under calculator input in whole units, with a point added
+  when the value is not whole, since writing `X12` for 12.5 mm would be
+  wrong.
+- **Source:** the reading rules are the DPI rules above *(verified)*. What
+  a control does with *more* decimals than its increment (round, cut off,
+  or alarm) is *(unverified)*; rewriting never produces such a value
+  unless the original already had one, and keeps its decimals then.
+
 ## Several G codes from the same modal group in one block
 
 - **What we do:** the last one written wins, and the earlier ones are

@@ -17,4 +17,5 @@ ir = { path = "../ir" }
 thiserror = "2.0.17"
 
 [dev-dependencies]
+dialect-osai = { path = "../dialect-osai" }
 proptest = "1.9"

@@ -16,6 +16,7 @@
 use dialect_api::{
     length_to_internal, literal, report_syntax_errors, ArcCenter, ArcDir, AxisOffset, AxisWord,
     BlockContext, CodeKey, Command, CoolantState, DistanceMode, FeedMode, ModalState, SpindleState,
+    ValueKind,
 };
 use gcode_syntax::{Block, Number, Span};
 use ir::{ArcPlane, DiagCode, Diagnostic, Diagnostics, LengthUnit, SourceRef, WorkOffsetId};
@@ -742,11 +743,12 @@ fn convert(
     }
     let n = v.number;
     let scaled = !n.decimal_point && fanuc.options.decimal_input == DecimalInput::LeastIncrement;
-    let increment = match (rotary, state.units) {
-        (true, _) | (false, LengthUnit::Metric) => 0.001,
-        (false, LengthUnit::Inch) => 0.0001,
+    let kind = if rotary {
+        ValueKind::Angle
+    } else {
+        ValueKind::Length
     };
-    let value = if scaled { n.value * increment } else { n.value };
+    let value = crate::numbers::in_program_units(fanuc.options, &n, kind, state.units);
     if scaled && n.value != 0.0 && state.first_report(DECIMAL_POINT_NOTE) {
         let unit = match (rotary, state.units) {
             (true, _) => "deg",
@@ -767,11 +769,7 @@ fn convert(
             .dialect_specific(),
         );
     }
-    if rotary {
-        value
-    } else {
-        length_to_internal(value, state.units)
-    }
+    crate::numbers::to_internal(value, kind, state.units)
 }
 
 /// The block's axis words as a target, in the current distance mode.

@@ -24,10 +24,12 @@
 
 mod ast;
 mod error;
+mod literal;
 mod parser;
 
 pub use ast::{Assignment, BinOp, Block, Comment, CommentKind, Expr, Number, Program, Span, Word};
 pub use error::{SyntaxError, SyntaxErrorKind};
+pub use literal::NumberStyle;
 pub use parser::{parse, parse_str, MAX_DEPTH};
 
 #[cfg(test)]

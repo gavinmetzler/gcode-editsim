@@ -242,7 +242,7 @@ DEVELOPMENT_STATUS.md point to it.
 - Out of date (after an edit): no highlight, as for clicks today.
 - Comes first because the transformations act on this same selection.
 
-### M4.4: Exact rewriting (core)
+### M4.4: Exact rewriting (core) *(done)*
 - A new core crate `transform` (depends on `gcode-syntax`, `dialect-api`,
   `ir`, `machine-api` and `interpreter`, not on concrete dialects), and
   its place in `tools/depcheck/rules.toml` and ARCHITECTURE.md §5.

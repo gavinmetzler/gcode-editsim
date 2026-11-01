@@ -90,7 +90,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 2. Remember the window layout *(done)*
 2a. Remember the colour key and the diagnostics filters *(done; added by the owner)*
 3. Editor selection shown bright yellow in the 3D view *(done)*
-4. Exact rewriting (core)
+4. Exact rewriting (core) *(done)*
 5. Positions in program coordinates (core)
 6. Translate
 7. Rotate

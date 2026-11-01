@@ -1,7 +1,7 @@
 //! The dialect trait.
 
-use gcode_syntax::Block;
-use ir::{Diagnostics, SourceRef};
+use gcode_syntax::{Block, Number, NumberStyle};
+use ir::{Diagnostics, LengthUnit, SourceRef};
 
 use crate::axes::AxisSet;
 use crate::command::Command;
@@ -17,6 +17,16 @@ pub struct BlockContext<'a> {
     pub axes: &'a AxisSet,
     /// Source location of the block, for diagnostics.
     pub src: SourceRef,
+}
+
+/// What a number in a word measures, for reading and writing it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ValueKind {
+    /// A length (a linear axis, an arc offset, a radius): mm inside, the
+    /// program's units in the text.
+    Length,
+    /// An angle (a rotary axis): degrees, whatever the program's units.
+    Angle,
 }
 
 /// Turns parsed blocks into [`Command`]s according to one controller's
@@ -52,6 +62,33 @@ pub trait Dialect {
     /// `None`: a dialect without subprograms never starts one.
     fn program_number(&self, block: &Block) -> Option<u32> {
         let _ = block;
+        None
+    }
+
+    /// The value of a number literal as this controller reads it, in
+    /// internal units (mm or degrees), with the program in `units`. Used to
+    /// check rewritten text (M4.4). The default is `None`: a dialect that
+    /// does not support rewriting.
+    fn read_value(&self, number: &Number, kind: ValueKind, units: LengthUnit) -> Option<f64> {
+        let _ = (number, kind, units);
+        None
+    }
+
+    /// `value` (internal units: mm or degrees) written as this controller
+    /// reads it in `units`, in the style of the literal it replaces (or of
+    /// one the dialect chooses, for an added word). Reading the result back
+    /// with [`Dialect::read_value`] must give `value` within half of the
+    /// controller's least input increment. `None` if the value cannot be
+    /// written (not finite), and by default: a dialect that does not
+    /// support rewriting.
+    fn format_value(
+        &self,
+        value: f64,
+        kind: ValueKind,
+        units: LengthUnit,
+        style: &NumberStyle,
+    ) -> Option<String> {
+        let _ = (value, kind, units, style);
         None
     }
 }
