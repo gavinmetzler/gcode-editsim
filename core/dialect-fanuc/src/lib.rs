@@ -162,6 +162,13 @@ impl Dialect for Fanuc {
         (n >= 0.0 && n.fract() == 0.0 && n <= f64::from(u32::MAX)).then_some(n as u32)
     }
 
+    /// G10, G16, G51, G51.1, G52, G65, G68 and G92 (codes ignored with a
+    /// warning), canned cycles (G73-G89, and every block while one is
+    /// active), G53, G28 and G30.
+    fn transform_refusal(&self, block: &Block, state: &ModalState) -> Option<String> {
+        block::transform_refusal(self, block, state)
+    }
+
     /// Fanuc's decimal-point rule (DPI) and units, as the interpreter
     /// applies them.
     fn read_value(&self, number: &Number, kind: ValueKind, units: LengthUnit) -> Option<f64> {

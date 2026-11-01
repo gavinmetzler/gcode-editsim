@@ -626,7 +626,10 @@ dependencies = [
  "dialect-fanuc",
  "dialect-osai",
  "gcode-syntax",
+ "interpreter",
  "ir",
+ "machine-api",
+ "machine-mill",
  "proptest",
  "thiserror",
 ]

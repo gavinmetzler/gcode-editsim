@@ -16,6 +16,10 @@
 
 #![forbid(unsafe_code)]
 
+mod transformation;
+
+pub use transformation::{transform, Note, TransformError, Transformation, Transformed};
+
 use dialect_api::{Dialect, ValueKind};
 use gcode_syntax::{Expr, NumberStyle, Span, Word};
 use ir::LengthUnit;

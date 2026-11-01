@@ -1142,3 +1142,32 @@ fn report_unused_words(
         }
     }
 }
+
+/// Why a code transformation cannot rewrite `block` (`state` is the state
+/// after it): a code whose effect its axis words do not carry.
+pub(crate) fn transform_refusal(
+    fanuc: &Fanuc,
+    block: &Block,
+    state: &ModalState,
+) -> Option<String> {
+    for w in block.words.iter().filter(|w| w.letter == 'G') {
+        let Some(number) = literal(&w.value) else {
+            continue;
+        };
+        let Some(key) = CodeKey::from_value('G', number.value) else {
+            continue;
+        };
+        let why = match fanuc.handler(key) {
+            Some(Handler::Ignored) => "shifts, turns or scales later moves, or calls a macro",
+            Some(Handler::CannedCycle) => "is a canned cycle",
+            Some(Handler::MachineRapid) => "moves in machine coordinates",
+            Some(Handler::ReferenceReturn | Handler::ReferenceReturnOther) => {
+                "returns to a reference position through a point"
+            }
+            _ => continue,
+        };
+        return Some(format!("{key} {why}"));
+    }
+    cycle_active(fanuc, state)
+        .then(|| "a canned cycle is active, so the block is one of its holes".to_owned())
+}

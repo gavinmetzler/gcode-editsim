@@ -49,6 +49,16 @@ to run on a machine.
   or alarm) is *(unverified)*; rewriting never produces such a value
   unless the original already had one, and keeps its decimals then.
 
+## Blocks a transformation refuses (M4.6)
+
+- **What we do:** a selection containing any of these is refused as a
+  whole, naming the line: G10, G16, G51, G51.1, G52, G65, G68 and G92 (the
+  codes ignored with a warning, whose effect a rewrite of the axis words
+  cannot carry); canned cycles (G73-G89, and every block while one is
+  active, until G80 or G00-G03); G53 (machine coordinates); G28 and G30
+  (through an intermediate point). This is our design choice (owner
+  decision, M4_PLAN §6.4), not controller behaviour.
+
 ## Several G codes from the same modal group in one block
 
 - **What we do:** the last one written wins, and the earlier ones are

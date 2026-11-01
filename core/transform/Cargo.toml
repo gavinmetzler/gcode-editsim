@@ -13,10 +13,13 @@ workspace = true
 [dependencies]
 dialect-api = { path = "../dialect-api" }
 gcode-syntax = { path = "../gcode-syntax" }
+interpreter = { path = "../interpreter" }
 ir = { path = "../ir" }
+machine-api = { path = "../machine-api" }
 thiserror = "2.0.17"
 
 [dev-dependencies]
 dialect-fanuc = { path = "../dialect-fanuc" }
 dialect-osai = { path = "../dialect-osai" }
+machine-mill = { path = "../machine-mill" }
 proptest = "1.9"

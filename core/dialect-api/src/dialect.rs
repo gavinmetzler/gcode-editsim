@@ -65,6 +65,17 @@ pub trait Dialect {
         None
     }
 
+    /// Why a code transformation (M4.6) cannot rewrite `block`, if it
+    /// cannot: codes whose effect is not carried by its axis words, such
+    /// as coordinate shifts, canned cycles, machine-coordinate moves and
+    /// reference returns. `state` is the modal state after the block. The
+    /// message names the code. The default is `None` (a dialect that does
+    /// not rewrite numbers is refused anyway).
+    fn transform_refusal(&self, block: &Block, state: &ModalState) -> Option<String> {
+        let _ = (block, state);
+        None
+    }
+
     /// The value of a number literal as this controller reads it, in
     /// internal units (mm or degrees), with the program in `units`. Used to
     /// check rewritten text (M4.4). The default is `None`: a dialect that
