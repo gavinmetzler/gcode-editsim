@@ -1,7 +1,11 @@
 # M3 plan: a dependable backplotter
 
-**Status:** direction agreed with the owner (2026-10-31); details of each
-step are settled in its PR. Starts after M2.8.
+**Status: complete (2026-11-01).** M3.5 and M3.6 are on hold, left to the
+community; everything else is done. The wrap-up (M3.10) ran the owner's
+private corpus again: all six programs (four Fanuc, two Osai) draw with no
+errors, and every warning or note names a real gap (G92, cutter
+compensation, Osai `(UAO,n,Z)`, assumed power-on modes, machine-specific M
+codes, tool length compensation).
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (especially §7.3a,
 §8 and §13) and `DEVELOPMENT_STATUS.md`.
 
@@ -276,7 +280,7 @@ a limit at both ends named the axis twice in its warning.
 - Fix what is slow; if needed, chunked buffers (§8.5), which the header
   already reserves a flag for.
 
-### M3.10: Wrap-up
+### M3.10: Wrap-up — *done*
 
 - Run the whole corpus again; README, ARCHITECTURE.md and
   `DEVELOPMENT_STATUS.md` updated; a new Flatpak for the owner to try.
