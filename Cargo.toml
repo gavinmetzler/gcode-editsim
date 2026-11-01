@@ -13,6 +13,7 @@ members = [
     "core/machine-mill",
     "core/machine-lathe",
     "core/interpreter",
+    "core/transform",
     "core/sim",
     "core/testkit",
     "tools/depcheck",

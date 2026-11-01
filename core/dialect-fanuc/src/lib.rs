@@ -17,13 +17,15 @@
 
 mod block;
 mod handler;
+mod numbers;
 
 use std::collections::BTreeMap;
 
 use dialect_api::{
     AxisSet, BlockContext, CodeKey, CodeTable, CodeTableError, Command, Dialect, ModalState,
+    ValueKind,
 };
-use gcode_syntax::Block;
+use gcode_syntax::{Block, Number, NumberStyle};
 use ir::{Diagnostics, LengthUnit, WorkOffsetId};
 use thiserror::Error;
 
@@ -158,5 +160,25 @@ impl Dialect for Fanuc {
         let word = block.words.first().filter(|w| w.letter == 'O')?;
         let n = dialect_api::literal(&word.value)?.value;
         (n >= 0.0 && n.fract() == 0.0 && n <= f64::from(u32::MAX)).then_some(n as u32)
+    }
+
+    /// Fanuc's decimal-point rule (DPI) and units, as the interpreter
+    /// applies them.
+    fn read_value(&self, number: &Number, kind: ValueKind, units: LengthUnit) -> Option<f64> {
+        let value = numbers::in_program_units(self.options, number, kind, units);
+        Some(numbers::to_internal(value, kind, units))
+    }
+
+    /// Rounded to the least input increment (0.001 mm or degree, 0.0001
+    /// inch); a literal without a decimal point stays without one, in least
+    /// increments (DPI = 0) or whole units (calculator input).
+    fn format_value(
+        &self,
+        value: f64,
+        kind: ValueKind,
+        units: LengthUnit,
+        style: &NumberStyle,
+    ) -> Option<String> {
+        numbers::format(self.options, value, kind, units, style)
     }
 }

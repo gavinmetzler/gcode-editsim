@@ -67,6 +67,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 │  ├─ machine-mill/            # first real machine (3-axis)
 │  ├─ machine-lathe/           # 2-axis lathe stub (M2), to exercise the machine traits
 │  ├─ interpreter/             # glue: dialect + machine + state → IR
+│  ├─ transform/               # rewrites selected lines exactly: text edits by byte span (M4)
 │  ├─ sim/                     # material removal, per machine family (placeholder until M7)
 │  └─ testkit/                 # golden-file helpers (compact summary, compare, UPDATE_GOLDEN)
 ├─ app/
@@ -96,6 +97,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `machine-api` | `ir` |
 | `machine-mill`, `machine-lathe` (and future machines) | `machine-api`, `ir` |
 | `interpreter` | `dialect-api`, `machine-api`, `gcode-syntax`, `ir` |
+| `transform` | `dialect-api`, `machine-api`, `gcode-syntax`, `interpreter`, `ir` |
 | `sim` | `machine-api`, `ir` |
 | `testkit` | `ir` |
 | `gen-ts` (`tools/gen-ts`) | `ir` |
@@ -106,7 +108,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 The principles behind the table:
 
 - The dialect side and the machine side never depend on each other.
-- `interpreter` and `sim` use only the `*-api` crates, never a concrete dialect or machine, so those stay swappable.
+- `interpreter`, `transform` and `sim` use only the `*-api` crates, never a concrete dialect or machine, so those stay swappable.
 - Test-only (dev) dependencies may use any `core/` crate, because tests wire concrete dialects and machines together, but never anything outside `core/`.
 - `app` and `ui` may depend on `core`; `core` never depends on them. `app-backend` is the one place that wires concrete dialects and machines together for the app: it picks the machine type from the machine file's `family` and the dialect from its id. It may use the file system; `core` may not. The Tauri shell (`app/shell`) is a separate Cargo workspace that depends only on `app-backend` and Tauri, so it is not in this table.
 
@@ -355,6 +357,11 @@ pub trait Dialect {
     /// `:1000`), so the interpreter can follow calls within the file. The
     /// default is `None`: a dialect without subprograms (Osai stub).
     fn program_number(&self, block: &Block) -> Option<u32> { None }
+
+    /// Reading and writing numbers as the controller does (M4.4), for
+    /// rewriting lines. Both default to `None`: no rewriting.
+    fn read_value(&self, number: &Number, kind: ValueKind, units: LengthUnit) -> Option<f64> { None }
+    fn format_value(&self, value: f64, kind: ValueKind, units: LengthUnit, style: &NumberStyle) -> Option<String> { None }
 }
 ```
 
@@ -370,6 +377,8 @@ pub trait Dialect {
 - **Tolerances belong to the control.** Osai's full-circle threshold (FCT, 0.001 mm by default) differs from the interpreter's fixed 1e-6 mm; its radius tolerance (CET, 0.01 mm) matches. Both may need to come from the dialect or the machine.
 - **Coolant kinds.** `CoolantState` has flood and mist; Osai's M7 "auxiliary coolant" is shown as mist.
 - **Shared block skeleton.** Both dialects collect words, check groups and report unused words in nearly the same way. That code could move to `dialect-api` helpers, as a separate refactoring once the second real dialect exists.
+
+**Rewriting numbers (M4.4).** A transformation changes values, so the text must be written back as the controller will read it. The parser keeps each word's span, and `gcode_syntax::NumberStyle` reads how its number was written (sign, a gap after the sign, leading zeros, decimal point, decimals); writing a value in that style is lexical and lives there too. What a number *means* is the dialect's: `read_value` turns a literal into mm or degrees, and `format_value` writes a value back so that reading it gives the value within half of the least input increment. For Fanuc both go through the same functions the interpreter uses (`dialect-fanuc/src/numbers.rs`): a literal with a decimal point keeps one, with at least the decimals it had and more as needed up to the increment (3 in mm and degrees, 4 in inches); one without keeps none, counted in least increments (DPI = 0) or whole units (calculator input, which needs a point after all when the value is not whole). The `transform` crate applies the result as text edits by byte span (`apply_edits`), touching nothing else, and `rewrite_word` makes no edit at all when the new text reads back as the value already there, so rewriting a word with its own value never changes it. A dialect that does not implement the two methods (the Osai stub) cannot be rewritten.
 
 ### 7.3 Canned cycles
 

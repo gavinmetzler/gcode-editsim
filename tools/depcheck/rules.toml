@@ -23,6 +23,10 @@ machine-api = ["ir"]
 machine-mill = ["ir", "machine-api"]
 machine-lathe = ["ir", "machine-api"]
 interpreter = ["dialect-api", "gcode-syntax", "ir", "machine-api"]
+# Rewrites selected lines (M4). Like the interpreter, it uses only the
+# *-api crates, never a concrete dialect or machine; it may run the
+# interpreter to learn each block's position (M4.5).
+transform = ["dialect-api", "gcode-syntax", "interpreter", "ir", "machine-api"]
 sim = ["ir", "machine-api"]
 testkit = ["ir"]
 depcheck = []
