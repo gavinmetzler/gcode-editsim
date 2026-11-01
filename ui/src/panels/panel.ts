@@ -59,6 +59,14 @@ export class DiagnosticsPanel {
     return new Set(SEVERITIES.map((s) => s.name).filter((n) => this.filters.get(n)?.checked !== false));
   }
 
+  /** Ticks the filter boxes of `shown` and unticks the rest, as if the
+   *  user had (redraws, and calls `onFilter`). */
+  setShown(shown: ReadonlySet<SeverityName>): void {
+    for (const [name, box] of this.filters) box.checked = shown.has(name);
+    this.drawDiagnostics();
+    this.onFilter(this.shownSeverities());
+  }
+
   /** Shows the diagnostics of `rb`. */
   show(rb: RenderBuffer): void {
     this.rows = diagnosticRows(rb.diagnostics);

@@ -218,6 +218,17 @@ DEVELOPMENT_STATUS.md point to it.
   `app/shell/src/lib.rs` and `app/shell/tauri.conf.json`, and the
   settings file from M4.1.
 
+### M4.2a: Remember the colour key and the diagnostics filters *(done)*
+*Added by the owner, 2026-11-01, after M4.2 merged.*
+- Whether the colour key in the view is folded, and which of the
+  Errors / Warnings / Notes boxes in the diagnostics panel are ticked,
+  are saved when the user clicks them and restored at start-up, in the
+  same settings file (`legend_folded`, `hidden_diagnostics` in the
+  layout). The editor's margin follows the restored filters, as it does
+  when they are clicked.
+- **Reset layout** sets them back to the defaults too (the key open,
+  every box ticked).
+
 ### M4.3: The editor selection in the 3D view (UI)
 - Selecting lines in the editor colours all their segments **bright
   yellow** in the view (every run of a subprogram line, from the line

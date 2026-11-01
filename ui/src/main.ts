@@ -20,7 +20,7 @@ import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from
 import { Freshness } from "./freshness";
 import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark } from "./editor/lines";
 import { addSplitter, dblclickToggles, Maximiser } from "./layout/layout";
-import { layoutToSave, paneName, restoredShare, type PaneLayout } from "./layout/panes";
+import { layoutToSave, paneName, restoredShare, shownSeverities, type PaneLayout } from "./layout/panes";
 import {
   inApp,
   interpret,
@@ -174,10 +174,10 @@ async function main(app: HTMLElement): Promise<void> {
     }),
   );
   const legend = el("div", { className: "legend" }, legendToggle, legendList);
-  legendToggle.addEventListener("click", () => {
-    legendList.hidden = !legendList.hidden;
-    legendToggle.textContent = legendList.hidden ? "Colours ▸" : "Colours ▾";
-  });
+  const showLegendFolded = (folded: boolean): void => {
+    legendList.hidden = folded;
+    legendToggle.textContent = folded ? "Colours ▸" : "Colours ▾";
+  };
   viewportBox.append(readout, staleBar, legend);
   const panel = new DiagnosticsPanel(panelBox);
 
@@ -198,8 +198,20 @@ async function main(app: HTMLElement): Promise<void> {
   const saveLayout = (): void => {
     if (!saveLayoutChanges) return;
     // Losing a layout change is not worth interrupting the user for.
-    rememberLayout(layoutToSave(editorShare, panelShare, maximiser.maximised)).catch(() => undefined);
+    rememberLayout(
+      layoutToSave({
+        editor: editorShare,
+        panel: panelShare,
+        maximised: maximiser.maximised,
+        legendFolded: legendList.hidden === true,
+        shown: panel.shownSeverities(),
+      }),
+    ).catch(() => undefined);
   };
+  legendToggle.addEventListener("click", () => {
+    showLegendFolded(legendList.hidden !== true);
+    saveLayout();
+  });
   addSplitter(mainBox, rightBox, "x", showEditorShare, saveLayout);
   addSplitter(
     rightBox,
@@ -233,6 +245,8 @@ async function main(app: HTMLElement): Promise<void> {
     showEditorShare(restoredShare(layout?.editor, mainBox.getBoundingClientRect().width));
     showPanelShare(restoredShare(layout?.panel, rightBox.getBoundingClientRect().height));
     maximiser.set(paneName(layout?.maximised));
+    showLegendFolded(layout?.legend_folded === true);
+    panel.setShown(shownSeverities(layout?.hidden_diagnostics));
   };
   resetLayoutButton.addEventListener("click", () => {
     saveLayoutChanges = false;
@@ -256,7 +270,10 @@ async function main(app: HTMLElement): Promise<void> {
   const showMarks = (): void => {
     editor.setMarks(shownMarks(allMarks, panel.shownSeverities()));
   };
-  panel.onFilter = showMarks;
+  panel.onFilter = () => {
+    showMarks();
+    saveLayout();
+  };
   const freshness = new Freshness();
   panel.onLine = (line) => {
     // Line numbers may have moved since the run: no sync while out of date.

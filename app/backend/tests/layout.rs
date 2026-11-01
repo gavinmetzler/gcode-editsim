@@ -41,6 +41,8 @@ fn the_layout_round_trips_through_the_settings_json() {
         editor: Some(0.35),
         panel: Some(0.25),
         maximised: Some("viewport".to_owned()),
+        legend_folded: Some(true),
+        hidden_diagnostics: Some(vec!["info".to_owned(), "warning".to_owned()]),
     });
     s.window = Some(geometry(1400.0, 900.0, Some((100, 50)), true));
     let loaded = Settings::from_json(s.to_json().as_bytes());
@@ -49,7 +51,13 @@ fn the_layout_round_trips_through_the_settings_json() {
     let value: serde_json::Value = serde_json::from_str(&s.to_json()).expect("json");
     assert_eq!(
         value["layout"],
-        serde_json::json!({ "editor": 0.35, "panel": 0.25, "maximised": "viewport" })
+        serde_json::json!({
+            "editor": 0.35,
+            "panel": 0.25,
+            "maximised": "viewport",
+            "legend_folded": true,
+            "hidden_diagnostics": ["info", "warning"],
+        })
     );
     assert_eq!(
         value["window"],
@@ -211,14 +219,50 @@ fn a_layout_from_the_ui_is_checked() {
         editor: Some(0.3),
         panel: None,
         maximised: Some("panel".to_owned()),
+        ..PaneLayout::default()
     };
     assert_eq!(good.clone().checked(), Ok(good));
     for share in [0.0, 1.0, -0.1, 2.0, f64::NAN, f64::INFINITY] {
         let bad = PaneLayout {
             editor: None,
             panel: Some(share),
-            maximised: None,
+            ..PaneLayout::default()
         };
         assert!(bad.checked().is_err(), "{share}");
     }
+}
+
+#[test]
+fn a_bad_legend_or_filter_setting_is_dropped_and_the_rest_kept() {
+    for (bad, kept) in [
+        (
+            r#"{"layout": {"legend_folded": "yes", "editor": 0.4}}"#,
+            "legend",
+        ),
+        (
+            r#"{"layout": {"hidden_diagnostics": "info", "editor": 0.4}}"#,
+            "filters",
+        ),
+        (
+            r#"{"layout": {"hidden_diagnostics": [1, 2], "editor": 0.4}}"#,
+            "filters",
+        ),
+    ] {
+        let loaded = Settings::from_json(bad.as_bytes());
+        let layout = loaded.settings.layout.expect("layout kept");
+        assert_eq!(layout.editor, Some(0.4), "{kept}");
+        assert_eq!(layout.legend_folded, None, "{kept}");
+        assert_eq!(layout.hidden_diagnostics, None, "{kept}");
+        assert!(loaded.problem.is_some(), "{kept}");
+    }
+}
+
+#[test]
+fn nothing_hidden_and_an_open_legend_are_remembered_too() {
+    let loaded =
+        Settings::from_json(br#"{"layout": {"legend_folded": false, "hidden_diagnostics": []}}"#);
+    assert_eq!(loaded.problem, None);
+    let layout = loaded.settings.layout.expect("layout");
+    assert_eq!(layout.legend_folded, Some(false));
+    assert_eq!(layout.hidden_diagnostics, Some(vec![]));
 }

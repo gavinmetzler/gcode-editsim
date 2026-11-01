@@ -2,6 +2,8 @@
 // they are tested without a DOM. layout/splitters.ts wires them to the
 // page.
 
+import type { SeverityName } from "../panels/diagnostics";
+
 /** The panes the user can resize and maximise. */
 export type PaneName = "editor" | "viewport" | "panel";
 
@@ -37,6 +39,10 @@ export interface PaneLayout {
   readonly panel?: number;
   /** The maximised pane. */
   readonly maximised?: string;
+  /** The colour key is folded (M4.2a). */
+  readonly legend_folded?: boolean;
+  /** The diagnostics severities whose filter is unticked (M4.2a). */
+  readonly hidden_diagnostics?: readonly string[];
 }
 
 /**
@@ -55,11 +61,33 @@ export function paneName(name: string | null | undefined): PaneName | null {
   return name === "editor" || name === "viewport" || name === "panel" ? name : null;
 }
 
+/** Every diagnostics severity, in the order saved. */
+const SEVERITY_NAMES: readonly SeverityName[] = ["error", "warning", "info"];
+
+/** The severities to show, from the remembered unticked ones (unknown
+ *  names are ignored). */
+export function shownSeverities(hidden: readonly string[] | undefined): Set<SeverityName> {
+  const off = new Set(hidden ?? []);
+  return new Set(SEVERITY_NAMES.filter((n) => !off.has(n)));
+}
+
+/** What the UI shows now, as far as it is remembered. */
+export interface LayoutState {
+  readonly editor: number | null;
+  readonly panel: number | null;
+  readonly maximised: PaneName | null;
+  readonly legendFolded: boolean;
+  readonly shown: ReadonlySet<SeverityName>;
+}
+
 /** The layout to remember, leaving out what is at its default. */
-export function layoutToSave(editor: number | null, panel: number | null, maximised: PaneName | null): PaneLayout {
+export function layoutToSave(state: LayoutState): PaneLayout {
+  const hidden = SEVERITY_NAMES.filter((n) => !state.shown.has(n));
   return {
-    ...(editor === null ? {} : { editor }),
-    ...(panel === null ? {} : { panel }),
-    ...(maximised === null ? {} : { maximised }),
+    ...(state.editor === null ? {} : { editor: state.editor }),
+    ...(state.panel === null ? {} : { panel: state.panel }),
+    ...(state.maximised === null ? {} : { maximised: state.maximised }),
+    ...(state.legendFolded ? { legend_folded: true } : {}),
+    ...(hidden.length === 0 ? {} : { hidden_diagnostics: hidden }),
   };
 }
