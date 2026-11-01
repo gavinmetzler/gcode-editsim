@@ -72,7 +72,7 @@ to run on a machine.
 | G92, G98 / G99 | Presetting not simulated (on hold): a warning, the values are data, and later moves are drawn without the preset. G99 must be alone in the block | p. 2-82, 1-10 *(verified)* |
 | G04 | Dwell at the end of the block. Its time comes from `DWT`, which is not read: the dwell is shown without its time (warning) | p. 2-83 *(verified)* |
 | G09 | Deceleration only: no effect | p. 2-83 *(verified)* |
-| G93, G95 / G94 | Inverse-time and per-revolution feed not simulated (warning) / per minute | p. 1-7, 1-12 |
+| G93 / G94 / G95 | Inverse-time feed not simulated (warning) / per minute / per revolution: F × S gives mm/min while the spindle turns; with it stopped the move has no time in the estimate (warning, M3.8) | p. 1-7, 1-12 |
 | G96 / G97 | Constant surface speed not simulated: S is not taken as rpm (warning) / rpm | p. 1-8 |
 | Others (G33, G60-G67, G72-G74, ...) | Unknown: an error, the block is not moved, and later moves are drawn as programmed | |
 

@@ -46,10 +46,3 @@ fn safety_line_cancel_codes_are_quiet() {
     let r = run("G17 G21 G40 G49 G80 G90 G94\n");
     assert!(r.diags.is_empty(), "{:?}", r.diags);
 }
-
-#[test]
-fn feed_per_revolution_is_reported_but_path_is_kept() {
-    let r = run("G95 G1 X1. F.1\n");
-    assert_eq!(r.codes(), vec![DiagCode::UnsupportedGCode]);
-    assert_eq!(r.moves().len(), 1);
-}

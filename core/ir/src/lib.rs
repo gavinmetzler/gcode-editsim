@@ -19,7 +19,8 @@ mod segment;
 
 pub use diag::{DiagCode, Diagnostic, Diagnostics, Severity};
 pub use geom::{
-    bounding_box, tessellate, ArcGeom, ArcPlane, BoundingBox, Pos, MAX_ARC_POINTS, MAX_AXES,
+    bounding_box, path_length, tessellate, ArcGeom, ArcPlane, BoundingBox, Pos, MAX_ARC_POINTS,
+    MAX_AXES,
 };
 pub use render::{encode_render_buffer, EncodeError, DEFAULT_TOLERANCE};
 pub use segment::{

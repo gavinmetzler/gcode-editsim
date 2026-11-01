@@ -285,7 +285,7 @@ description = "Feed rate per minute"
 code = "G95"
 group = 12
 modal = true
-handler = "not_simulated"
+handler = "feed_per_revolution"
 description = "Feed rate per revolution"
 
 # ---- group m: spindle speed mode (power-up G97 on mills) -----------------

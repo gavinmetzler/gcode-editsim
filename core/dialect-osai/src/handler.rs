@@ -19,6 +19,8 @@ pub(crate) enum Handler {
     /// G04: dwell at the end of the block.
     Dwell,
     FeedPerMinute,
+    /// Feed per spindle revolution (G95).
+    FeedPerRevolution,
     /// Changes only feed, cornering or acceleration, or cancels something
     /// that is never active here.
     NoEffect,
@@ -63,6 +65,7 @@ impl Handler {
             "machine_coords" => Self::MachineCoords,
             "dwell" => Self::Dwell,
             "feed_per_minute" => Self::FeedPerMinute,
+            "feed_per_revolution" => Self::FeedPerRevolution,
             "no_effect" => Self::NoEffect,
             "not_simulated" => Self::NotSimulated,
             "ignored" => Self::Ignored,

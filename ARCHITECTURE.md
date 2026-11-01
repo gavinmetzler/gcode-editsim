@@ -247,6 +247,7 @@ pub struct Segment {
     pub src: SourceRef,
     pub cycle_step: CycleStep,          // None | Approach | FeedIn | Dwell | PeckClear | Retract
     pub flags: SegFlags,                // bitflags: COMP_ACTIVE, OUT_OF_LIMITS, POSITION_UNKNOWN, ...
+    pub time: Option<f64>,              // estimated seconds, no acceleration (M3.8); None if unknown
 }
 
 pub struct ArcGeom {
@@ -277,6 +278,7 @@ pub struct Program {
 Design notes:
 
 - **Events are segments.** Everything that is not motion (dwell, tool change, stops, spindle, coolant, program end, `Sync`) is a zero-length segment with `start == end`, rather than a separate event list. That keeps one list in program order, so the line lookup below finds a line's events as well as its moves, and a later playback can walk a single list. Each event is its own kind, because the render buffer stores only the kind byte. `SegKind` and `SegFlags` values are fixed once the render buffer exists.
+- **Estimated time per segment (M3.8).** The interpreter sets `time`: a feed move's length over the linear axes (`ir::path_length`, along the arc for arcs) divided by its feed, capped at the machine's `max_feed`; under feed per revolution the feed is F × spindle rpm; a rapid takes as long as its slowest axis at that axis's rapid rate; a dwell its seconds; a tool change the machine's `tool_change_time`; other events none. No acceleration (that is M6). `None` when it cannot be worked out (no rapid rate for a moving axis, no feed rate, only rotary axes feeding, a dwell of unknown length). `ProgramMeta::estimated_time` is the sum of the known times. The UI adds them up per tool for the statistics dialog.
 - **Arcs stay arcs in the IR.** They are exact, compact, and let stats and sim choose their own tolerance. Tessellation is a function in `ir` (`tessellate(&Segment, tol) -> impl Iterator<Item = Pos>`), used by the render-buffer builder and by sim. It gives the exact start and end, points on the arc with chord error ≤ `tol`, at least one point every 90°, and at most `MAX_ARC_POINTS` (100 000) per arc; an unusable tolerance gets the maximum.
 - Segments are emitted **in the order the program runs**. For a straight-line program that is line order, so a line's segments are one contiguous range (`ir::segments_for_line`, binary search). Subprograms (M3.7) break this: a subprogram line produces segments at every call. The UI therefore builds a **line index** (`buildLineIndex` in `ui/src/editor/lines.ts`: segment indices sorted by line, then run order), which gives every run of a line, and where the tool is after it (the end of its first run).
 - **Arc plane is a pair of axis indices**, not a fixed `XY | ZX | YZ` enum, so the IR names no axes (the machine maps G17/G18/G19 or any other plane selection to indices). The swept angle is the shortest turn in the arc's direction from `start` to `end`, plus `turns` full revolutions; coincident end points mean a full circle. Axes outside the plane move linearly from `start` to `end`, which describes a helix without a separate `helical_delta` field (that field would duplicate `end - start` and could disagree with it).
@@ -392,14 +394,14 @@ No JSON for bulk data. The core produces a `RenderBuffer`, a single contiguous l
 
 GPUs use `f32`. Large coordinates far from origin lose precision. So the buffer carries an `origin: [f64; 3]` and all vertex positions are stored as `f32` **relative to that origin**; the three.js scene applies the offset on the object transform. The origin is the **centre of the bounding box of all vertices** (non-finite ones ignored; zero if there are none), which keeps the largest relative value, and so the `f32` error, as small as possible.
 
-### 8.3 Layout (version 1)
+### 8.3 Layout (version 2)
 
 All offsets are bytes from the start of the buffer, all integers little-endian, all sections 4-byte aligned.
 
 ```
 Header (64 bytes)
   0   u32   magic            = 0x47435052 ("GCPR" as a number; the bytes are 52 50 43 47, "RPCG")
-  4   u16   version          = 1
+  4   u16   version          = 2
   6   u16   flags            bit 0: partial, more chunks follow (reserved, §8.5)
   8   u32   vertex_count
   12  u32   segment_count
@@ -416,7 +418,7 @@ Vertices section — struct-of-arrays, ready for GPU upload
   u8  x vertex_count         per-vertex kind (SegKind) for colouring
   (padded to 4 bytes)
 
-Segment table — one entry per Segment (24 bytes)
+Segment table — one entry per Segment (28 bytes)
   u32 first_vertex
   u32 vertex_count           arcs are tessellated into several vertices
   u32 src_line
@@ -424,7 +426,8 @@ Segment table — one entry per Segment (24 bytes)
   u16 tool                   tools above 65535 are stored as 65535
   u8  kind                   SegKind
   u8  flags                  SegFlags (low byte)
-  f32 feed
+  f32 feed                   mm/min (feed per revolution already multiplied by the spindle speed)
+  f32 time                   estimated seconds (Segment::time); NaN if unknown. Added in version 2 (M3.8)
 
 Diagnostic table — one entry per Diagnostic (20 bytes)
   u32 src_line
@@ -439,9 +442,9 @@ Diagnostic table — one entry per Diagnostic (20 bytes)
 
 **Vertices per segment.** A straight move has 2 vertices (start, end), an arc has its tessellated points (chord error ≤ the caller's tolerance), and an event (dwell, tool change, stop, spindle, coolant, program end) has 1, its position. Each segment's vertices are its own: the end of one move and the start of the next are stored twice, so a segment is drawn and picked on its own. The caller supplies the arc tolerance and the mapping from machine axes to x/y/z (the machine's forward kinematics), so `ir` stays free of axis names.
 
-**Channels.** Segments of all channels are written in channel order. Version 1 has no per-segment channel number, so a multi-channel program needs a new version (planned with multi-channel work).
+**Channels.** Segments of all channels are written in channel order. Version 2 has no per-segment channel number, so a multi-channel program needs a new version (planned with multi-channel work).
 
-The layout is implemented in `ir::render` (`encode_render_buffer`; offsets in `ir::render::layout`). The shared fixture is `tests/golden/render_buffer_v1.bin`, built from a small hand-made program in `core/ir/tests/render_buffer.rs`, whose expected values are worked out by hand there.
+The layout is implemented in `ir::render` (`encode_render_buffer`; offsets in `ir::render::layout`). The shared fixture is `tests/golden/render_buffer_v2.bin`, built from a small hand-made program in `core/ir/tests/render_buffer.rs`, whose expected values are worked out by hand there.
 
 A reverse lookup (editor line → segment range) is a binary search over the segment table, since segments are in program order. The UI does this itself without a round trip.
 
@@ -484,7 +487,7 @@ Plain TypeScript (no UI framework), built with Vite into `ui/dist`, which the sh
 | `src/viewport/` (more) | `LEGEND` in `toolpath.ts` says what each colour means; the view shows it folded into a corner. `middle-click.ts` stops the middle button (zoom) from pasting the Linux primary selection |
 | `src/editor/` | CodeMirror 6: highlighting by token type, diagnostics in the gutter, and `lines.ts` (line ↔ segment lookup; `latestOnly` drops results of runs overtaken by a newer one) |
 | `src/freshness.ts` | Whether what is shown matches the text: edits mark it out of date (red border, **Refresh (F5)**, line sync off) until the user refreshes. Loading a file or changing the machine or dialect runs at once |
-| `src/panels/` | The diagnostics panel, and the toolpath statistics (lengths, bounds, per-tool figures, counts), worked out from the render buffer only when the user opens the statistics dialog, since they take time on a very large program |
+| `src/panels/` | The diagnostics panel, and the toolpath statistics (lengths, bounds, per-tool figures, counts, and the time estimate added up from the core's per-segment times), worked out from the render buffer only when the user opens the statistics dialog, since they take time on a very large program |
 | `src/layout/` | `panes.ts` (pure): a pane's share of the window when a splitter is dragged, kept above a minimum size, and which pane is maximised; `layout.ts` wires the splitters and maximising to the page (double-click the view or the diagnostics list; a button on the editor, where double-click selects a word) |
 | `src/files.ts` | Decoding files, keeping their line endings, and opening by path without failing silently |
 | `src/machines-dialog.ts` | Shows the user's machine folder and reloads the machine list |

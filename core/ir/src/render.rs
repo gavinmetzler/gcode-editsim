@@ -10,14 +10,14 @@
 //!
 //! The layout is defined once, in [`layout`]. Changing it means bumping
 //! [`layout::VERSION`] and updating the shared fixture
-//! `tests/golden/render_buffer_v1.bin` (and, from M2.4, the generated
+//! `tests/golden/render_buffer_v2.bin` (and, from M2.4, the generated
 //! TypeScript constants).
 
 use crate::diag::Diagnostic;
 use crate::geom::{tessellate, Pos};
 use crate::segment::{Program, Segment};
 
-/// Byte offsets and sizes of the render buffer, version 1.
+/// Byte offsets and sizes of the render buffer, version 2.
 ///
 /// All offsets are in bytes; header fields are from the start of the
 /// buffer, table fields from the start of their entry. All integers and
@@ -27,7 +27,8 @@ pub mod layout {
     /// the (little-endian) buffer the bytes are `52 50 43 47` ("RPCG").
     pub const MAGIC: u32 = 0x4743_5052;
     /// Layout version this module describes.
-    pub const VERSION: u16 = 1;
+    /// Version 2 (M3.8) added each segment's estimated time.
+    pub const VERSION: u16 = 2;
     /// Header `flags` bit: the buffer is one chunk of a larger result and
     /// more follow. Reserved for chunked results (§8.5); never set yet.
     pub const FLAG_PARTIAL: u16 = 1 << 0;
@@ -68,7 +69,7 @@ pub mod layout {
     pub const VERTEX_POSITION_SIZE: usize = 12;
 
     /// Segment table entry size.
-    pub const SEGMENT_SIZE: usize = 24;
+    pub const SEGMENT_SIZE: usize = 28;
     /// `u32` index of the segment's first vertex.
     pub const SEGMENT_FIRST_VERTEX: usize = 0;
     /// `u32` number of vertices (2 for a straight move, more for an arc, 1
@@ -87,6 +88,9 @@ pub mod layout {
     pub const SEGMENT_FLAGS: usize = 19;
     /// `f32` feed rate, mm/min.
     pub const SEGMENT_FEED: usize = 20;
+    /// `f32` estimated time, seconds ([`crate::Segment::time`]); NaN if
+    /// unknown.
+    pub const SEGMENT_TIME: usize = 24;
 
     /// Diagnostic table entry size.
     pub const DIAG_SIZE: usize = 20;
@@ -115,14 +119,14 @@ pub enum EncodeError {
     TooLarge(&'static str),
 }
 
-/// Encodes `program` as a render buffer, layout version 1.
+/// Encodes `program` as a render buffer, layout version 2.
 ///
 /// - `tolerance` is the arc chord error in mm (see [`tessellate`]).
 /// - `to_xyz` turns a machine position into the Cartesian point to draw,
 ///   e.g. the tool tip from the machine's forward kinematics. The IR does
 ///   not know which axis is which; the caller does.
 ///
-/// Segments of all channels are written in channel order. Version 1 has
+/// Segments of all channels are written in channel order. Version 2 has
 /// no per-segment channel number, so it can only describe single-channel
 /// programs unambiguously.
 pub fn encode_render_buffer<F>(
@@ -211,6 +215,8 @@ where
         out.push(seg.kind as u8);
         out.push(seg.flags.0.to_le_bytes()[0]);
         out.extend_from_slice(&(seg.feed as f32).to_le_bytes());
+        let time = seg.time.map_or(f32::NAN, |t| t as f32);
+        out.extend_from_slice(&time.to_le_bytes());
     }
 
     // Diagnostic table, then the string pool.

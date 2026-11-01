@@ -8,6 +8,7 @@ name = "Test machine"
 family = "mill"
 max_feed = 8000.0
 max_spindle_rpm = 10000.0
+tool_change_time = 6.5
 
 [[axis]]
 letter = "X"
@@ -45,6 +46,7 @@ fn loads_every_setting() {
     assert_eq!(def.family, "mill");
     assert_eq!(def.speeds.max_feed, Some(8000.0));
     assert_eq!(def.speeds.max_spindle_rpm, Some(10000.0));
+    assert_eq!(def.speeds.tool_change_time, Some(6.5));
     assert_eq!(def.axes.len(), 3);
 
     let x = &def.axes[0];
@@ -77,6 +79,7 @@ fn speeds_are_optional() {
     let def = MachineDef::from_toml_str(&minimal("")).unwrap();
     assert!(def.axes.is_empty());
     assert_eq!(def.speeds.max_feed, None);
+    assert_eq!(def.speeds.tool_change_time, None);
 }
 
 fn err(text: &str) -> MachineDefError {
@@ -256,6 +259,22 @@ fn ignore_codes_must_be_m_codes() {
                 Err(MachineDefError::InvalidIgnoreCode(_))
             ),
             "{bad:?}"
+        );
+    }
+}
+
+#[test]
+fn tool_change_time_may_be_zero_but_not_negative() {
+    let text =
+        |v: &str| format!("[machine]\nname = \"m\"\nfamily = \"mill\"\ntool_change_time = {v}");
+    let def = MachineDef::from_toml_str(&text("0.0")).unwrap();
+    assert_eq!(def.speeds.tool_change_time, Some(0.0));
+    for bad in ["-1.0", "inf", "nan"] {
+        let e = err(&text(bad));
+        assert_eq!(
+            e.to_string(),
+            "tool_change_time must be a number of seconds, zero or more",
+            "{bad}"
         );
     }
 }

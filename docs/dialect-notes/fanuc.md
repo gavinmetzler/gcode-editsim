@@ -155,6 +155,16 @@ and later moves are drawn without the shift (owner decision, 2026-10-31;
 coordinate shifts are on hold, see `docs/WISHLIST.md`). Real router programs start with `G54G92X…Y…Z0` and then
 select G55/G56, so the drawing uses those offsets from the machine file.
 
+## G95: feed per revolution
+
+Under G95, F is the feed per spindle revolution (mm, or inch under G20).
+The interpreter turns it into mm/min as F × S, the spindle speed, when the
+spindle is turning; G94 returns to feed per minute (the power-on mode).
+With the spindle stopped there is no feed rate: the move is still drawn,
+has no time in the estimate, and a warning is given once. This is the
+standard Fanuc behaviour (G94/G95, feed per minute and per revolution, in
+the Fanuc milling operator's manuals). M3.8.
+
 ## Tool length compensation: never simulated
 
 G43, G44 and their H words are ignored by design: the path is shown as
@@ -214,7 +224,6 @@ Each of these produces a diagnostic, never silence:
 | G92, G10, G52, G65, G68, G51, G51.1, G16 | warning | no (its words are data) | Ignored; later moves drawn without its effect (see above) |
 | G04 | error | no | X/P is a dwell time, not a move |
 | Canned cycles G73, G74, G76, G81–G89 | warning, once per code | holes only | Each hole drawn as a rapid in the working plane |
-| G95 (feed per revolution) | error | yes | The path is still drawn |
 | Unknown G code | error | no (its words are data) | Its effect is unknown; later moves drawn as programmed |
 | Unknown M code | info, once per code | yes | Taken to be machine-specific; see "M codes" |
 | Macro variables and expressions (`#100`, `[...]`) | error | no | The block is skipped |

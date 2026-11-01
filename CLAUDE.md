@@ -81,7 +81,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 to 3.4 and 3.7 are done):
+**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 to 3.4, 3.7 and 3.8 are done):
 
 0. Real-program corpus (private, run locally) and lenient handling of ignorable codes
 1. Tool marker *(done)*
@@ -91,7 +91,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 5. Program coordinates and coordinate shifts *(on hold, left to the community)*
 6. Canned cycles *(on hold, left to the community)*
 7. Subprograms *(done; macro variables on the wishlist)*
-8. Statistics, extended (per tool, simple time estimate)
+8. Statistics, extended (per tool, simple time estimate) *(done)*
 9. Large programs
 10. Wrap-up
 

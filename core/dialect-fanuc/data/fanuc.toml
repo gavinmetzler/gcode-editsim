@@ -363,7 +363,7 @@ description = "Feed per minute"
 code = "G95"
 group = 5
 modal = true
-handler = "unsupported"
+handler = "feed_per_revolution"
 description = "Feed per revolution"
 
 [[g]]

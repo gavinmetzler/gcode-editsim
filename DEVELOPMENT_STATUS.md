@@ -29,7 +29,7 @@ files.
 
 | Area | Status |
 |---|---|
-| Tests | 517 pass (`cargo test --workspace`); 10 in the app shell (`cd app/shell && cargo test`); 106 in the UI (`cd ui && npm test`) |
+| Tests | 538 pass (`cargo test --workspace`); 12 in the app shell (`cd app/shell && cargo test`); 108 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
@@ -147,11 +147,12 @@ Changing any of these is a deliberate, documented change.
   once collapsed G2 full circles.
 - Positions are **machine coordinates**: work offsets are applied by the
   interpreter.
-- **Render buffer v1** (M2.1): `ir::encode_render_buffer(program, tol,
+- **Render buffer** (v1 in M2.1, v2 in M3.8 adds each segment's
+  estimated time): `ir::encode_render_buffer(program, tol,
   to_xyz)`, layout exactly as ARCHITECTURE.md §8.3. Origin = centre of
   the vertices' bounding box. The caller passes the arc tolerance and the
   axis → x/y/z mapping (`machine.forward_kinematics(p).position`). Fixture
-  `tests/golden/render_buffer_v1.bin`. Single channel only in v1.
+  `tests/golden/render_buffer_v2.bin`. Single channel only.
 - **Events are zero-length segments** (M2.0): stops, spindle, coolant
   and program end each have their own `SegKind` (7–15), one segment per
   command, in program order. Events while the position is unknown get
@@ -269,10 +270,10 @@ self-review: the same agent wrote the code.
 | I2: G43 tool length not applied (Z and Z limits off by the tool length) | Not planned (owner decision 2026-10-31): ignored with an info note, M3.0 |
 | I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, M6 |
 | I4: IR lacks stop/pause, coolant, spindle direction, program end | **Fixed** (M2.0): event segments |
-| I6: max feed / max rpm / rapid rates loaded but unused | Open |
+| I6: max feed / max rpm / rapid rates loaded but unused | Partly fixed (M3.8): rapid rates and max feed are used by the time estimate; max rpm is still unused |
 | I7: about 19 Fanuc behaviours marked *(unverified)* | Open; needs the owner's control manual |
 | Minor: R arc with equal end points is a warning in the dialect but an error in the interpreter | Open |
-| Minor: G95 feed is stored as mm/min (wrong for cycle time) | Open, M3.8 |
+| Minor: G95 feed is stored as mm/min (wrong for cycle time) | **Fixed** (M3.8): G95 is feed per revolution, F × S |
 | Minor: no warning for a feed move with the spindle stopped | Open (feature) |
 | Minor: undefined work offset uses `InvalidValue`; "after program end" uses `NotYetSimulated`; limit summary points at line 0 | Open |
 

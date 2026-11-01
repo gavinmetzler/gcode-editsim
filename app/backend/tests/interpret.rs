@@ -78,7 +78,7 @@ fn buffer_holds_the_program() {
     )
     .expect("runs");
     assert_eq!(u32_at(&b, 0), ir::render::layout::MAGIC);
-    assert_eq!(u32_at(&b, 4) & 0xFFFF, 1, "version 1");
+    assert_eq!(u32_at(&b, 4) & 0xFFFF, 2, "version 2");
     // Rapid, linear, arc, program end.
     assert_eq!(u32_at(&b, 12), 4);
 }

@@ -249,7 +249,11 @@ R levels, pecks and retracts are not drawn.
   draws completely (7 calls of 19 runs). **Macro variables are left
   out:** the corpus does not use them (`docs/WISHLIST.md`).
 
-### M3.8: Statistics, extended
+### M3.8: Statistics, extended — *done*
+
+*Done (2026-11-01). Owner decisions: one PR; Fanuc G04 stays an error for
+now (a dwell needs its time); tool changes take an optional
+`tool_change_time` from the machine file.*
 
 - Per tool: feed length, rapid length, time.
 - A **simple time estimate**: length over feed rate, rapids at the

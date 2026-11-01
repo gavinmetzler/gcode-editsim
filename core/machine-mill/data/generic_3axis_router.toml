@@ -10,6 +10,7 @@
 [machine]
 name = "Generic 3-axis router (no travel limits)"
 family = "mill"
+# tool_change_time = 6.0 # seconds per tool change, for the time estimate
 max_feed = 30000.0
 max_spindle_rpm = 24000.0
 # M codes your programs use that do not move the machine (head selection,

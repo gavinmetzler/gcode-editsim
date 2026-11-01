@@ -8,12 +8,12 @@ import { DecodeError, decodeRenderBuffer } from "../src/buffer/decode";
 import { DIAG_CODE, HEADER, SEG_FLAG, SEG_KIND, SEVERITY } from "../src/generated/render_buffer";
 import { fixture } from "./fixture";
 
-describe("render_buffer_v1.bin", () => {
+describe("render_buffer_v2.bin", () => {
   const rb = decodeRenderBuffer(fixture());
 
   it("has the expected header", () => {
     expect(rb.header).toEqual({
-      version: 1,
+      version: 2,
       flags: 0,
       vertexCount: 9,
       segmentCount: 5,
@@ -23,8 +23,8 @@ describe("render_buffer_v1.bin", () => {
       origin: [1005, 2005, 24.5],
       verticesOffset: 64,
       segmentsOffset: 184,
-      diagsOffset: 304,
-      stringsOffset: 364,
+      diagsOffset: 324,
+      stringsOffset: 384,
     });
   });
 
@@ -69,14 +69,17 @@ describe("render_buffer_v1.bin", () => {
       kind: number,
       flags: number,
       feed: number,
-    ) => ({ firstVertex, vertexCount, srcLine, srcFile: 0, blockLow, tool: 1, kind, flags, feed });
+      time: number,
+    ) => ({ firstVertex, vertexCount, srcLine, srcFile: 0, blockLow, tool: 1, kind, flags, feed, time });
+    // Times are f32: 1.44 is stored as the nearest f32. The last is NaN
+    // (unknown), which toEqual matches.
     expect([0, 1, 2, 3, 4].map((i) => rb.segment(i))).toEqual([
-      entry(0, 2, 3, 2, SEG_KIND.Rapid, 0, 0),
-      entry(2, 1, 4, 3, SEG_KIND.SpindleCw, 0, 0),
-      entry(3, 2, 5, 4, SEG_KIND.Linear, SEG_FLAG.OUT_OF_LIMITS, 250),
-      entry(5, 3, 6, 5, SEG_KIND.ArcCcw, 0, 500),
+      entry(0, 2, 3, 2, SEG_KIND.Rapid, 0, 0, 0.125),
+      entry(2, 1, 4, 3, SEG_KIND.SpindleCw, 0, 0, 0),
+      entry(3, 2, 5, 4, SEG_KIND.Linear, SEG_FLAG.OUT_OF_LIMITS, 250, Math.fround(1.44)),
+      entry(5, 3, 6, 5, SEG_KIND.ArcCcw, 0, 500, 1.875),
       // Block 65 542: only the low 16 bits (6) are stored.
-      entry(8, 1, 7, 6, SEG_KIND.ProgramEnd, SEG_FLAG.POSITION_UNKNOWN, 0),
+      entry(8, 1, 7, 6, SEG_KIND.ProgramEnd, SEG_FLAG.POSITION_UNKNOWN, 0, NaN),
     ]);
     expect([0, 1, 2, 3, 4].map((i) => rb.segmentLine(i))).toEqual([3, 4, 5, 6, 7]);
   });
@@ -129,7 +132,7 @@ describe("bad buffers", () => {
 
   it("has the wrong magic or version", () => {
     rejects(patched(HEADER.MAGIC, 0x12345678), "not a render buffer");
-    rejects(patched(HEADER.VERSION, 2, 2), "version 2");
+    rejects(patched(HEADER.VERSION, 1, 2), "version 1");
   });
 
   it("has sections that are misaligned, overlapping or too long", () => {
@@ -140,12 +143,12 @@ describe("bad buffers", () => {
   });
 
   it("has a segment pointing past the vertices", () => {
-    rejects(patched(184 + 4 * 24 + 4, 99), "segment 4 refers to vertices past the end");
+    rejects(patched(184 + 4 * 28 + 4, 99), "segment 4 refers to vertices past the end");
   });
 
   it("has a diagnostic message out of range or not UTF-8", () => {
-    rejects(patched(304 + 16, 1000), "message runs past the end");
-    rejects(patched(364 + 35, 0xff, 1), "not UTF-8");
+    rejects(patched(324 + 16, 1000), "message runs past the end");
+    rejects(patched(384 + 35, 0xff, 1), "not UTF-8");
   });
 
   it("never fails other than with a DecodeError on damaged input", () => {

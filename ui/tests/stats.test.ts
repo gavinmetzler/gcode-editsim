@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { decodeRenderBuffer } from "../src/buffer/decode";
 import { SEG_FLAG, SEG_KIND } from "../src/generated/render_buffer";
-import { KIND_LABELS, computeStats, kindLabel, mm, statSections, toolName } from "../src/panels/stats";
+import { KIND_LABELS, computeStats, duration, kindLabel, mm, statSections, toolName } from "../src/panels/stats";
 import { fixture } from "./fixture";
 import { source } from "./source";
 
@@ -22,6 +22,8 @@ const program = source(
     [K.Linear, 7, 0, SEG_FLAG.POSITION_UNKNOWN, [36, 40, 0], [36, 40, -2]], // 2 feed, zero feed rate
     [K.ProgramEnd, 7, 0, 0, [36, 40, -2]],
   ],
+  // Times in seconds; the zero-feed move has none (NaN).
+  [0.5, 8, 0.3, 1.2, 2.4, NaN, 0],
 );
 
 describe("computeStats", () => {
@@ -43,6 +45,15 @@ describe("computeStats", () => {
     expect(stats.tools[1]?.rapidLength).toBeCloseTo(50, 9);
     expect(stats.tools[1]?.feedLength).toBeCloseTo(20, 9);
     expect(stats.tools[2]?.feedLength).toBeCloseTo(2, 9);
+  });
+
+  it("adds up the estimated times by kind and by tool, counting the unknown ones", () => {
+    expect(stats.time.rapid).toBeCloseTo(0.8, 9);
+    expect(stats.time.feed).toBeCloseTo(3.6, 9);
+    expect(stats.time.other).toBeCloseTo(8, 9);
+    expect(stats.time.total).toBeCloseTo(12.4, 9);
+    expect(stats.time.unknown).toBe(1);
+    expect(stats.tools.map((t) => t.time)).toEqual([0.5, expect.closeTo(11.9, 9), 0]);
   });
 
   it("takes the feed range from feed moves, leaving out zero feeds", () => {
@@ -85,25 +96,42 @@ describe("computeStats", () => {
     expect(s.bounds?.max.map((c) => Math.round(c * 1000) / 1000)).toEqual([1010, 2010, 50]);
     expect(s.outOfLimits).toBe(1);
     expect(s.positionUnknown).toBe(1);
+    // 0.125 + 0 + 1.44 + 1.875 s (as f32); the program end has no time.
+    expect(s.time.total).toBeCloseTo(3.44, 5);
+    expect(s.time.unknown).toBe(1);
   });
 });
 
 describe("statSections", () => {
   it("lists path, bounds, tools and segment counts", () => {
     const sections = statSections(computeStats(program));
-    expect(sections.map((s) => s.title)).toEqual(["Path", "Bounds (machine coordinates)", "Tools", "Segments"]);
-    const path = sections[0]?.rows ?? [];
+    expect(sections.map((s) => s.title)).toEqual([
+      "Time (estimate)",
+      "Path",
+      "Bounds (machine coordinates)",
+      "Tools",
+      "Segments",
+    ]);
+    expect(sections[0]?.rows).toEqual([
+      { label: "Total", value: "12.4 s" },
+      { label: "Feed moves", value: "3.6 s" },
+      { label: "Rapids", value: "0.8 s" },
+      { label: "Tool changes and dwells", value: "8.0 s" },
+      { label: "Not estimated", value: "1 segment" },
+    ]);
+    const path = sections[1]?.rows ?? [];
     expect(path).toContainEqual({ label: "Feed length", value: "22.000 mm" });
     expect(path).toContainEqual({ label: "Feed rate", value: "250.0 to 500.0 mm/min" });
     expect(path).toContainEqual({ label: "Out of travel limits", value: "1 segment" });
-    expect(sections[1]?.rows[0]).toEqual({ label: "Feed X", value: "130.000 to 136.000 (6.000 mm)" });
-    expect(sections[2]?.rows.map((r) => r.label)).toEqual(["No tool", "T3", "T7"]);
-    expect(sections[3]?.rows).toContainEqual({ label: "Arc CCW", value: "1" });
+    expect(sections[2]?.rows[0]).toEqual({ label: "Feed X", value: "130.000 to 136.000 (6.000 mm)" });
+    expect(sections[3]?.rows.map((r) => r.label)).toEqual(["No tool", "T3", "T7"]);
+    expect(sections[3]?.rows[1]?.value).toBe("feed 20.000 mm, rapid 50.000 mm, time 11.9 s");
+    expect(sections[4]?.rows).toContainEqual({ label: "Arc CCW", value: "1" });
   });
 
   it("leaves out empty sections", () => {
     const sections = statSections(computeStats(source([0, 0, 0], [])));
-    expect(sections.map((s) => s.title)).toEqual(["Path"]);
+    expect(sections.map((s) => s.title)).toEqual(["Time (estimate)", "Path"]);
   });
 });
 
@@ -120,5 +148,14 @@ describe("labels", () => {
     expect(toolName(12)).toBe("T12");
     expect(toolName(65535)).toBe("T65535 or above");
     expect(mm(1.23456)).toBe("1.235 mm");
+  });
+
+  it("formats durations", () => {
+    expect(duration(0)).toBe("0.0 s");
+    expect(duration(42.25)).toBe("42.3 s");
+    expect(duration(59.96)).toBe("1 min 00 s");
+    expect(duration(754.4)).toBe("12 min 34 s");
+    expect(duration(3725)).toBe("1 h 02 min 05 s");
+    expect(duration(Number.NaN)).toBe("unknown");
   });
 });
