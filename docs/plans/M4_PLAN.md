@@ -270,7 +270,7 @@ DEVELOPMENT_STATUS.md point to it.
   rewritten program; the rewritten selection's segments equal the
   original's transformed, within the rounding tolerance (property test).
 
-### M4.7: Rotate (core)
+### M4.7: Rotate (core) *(done)*
 - In G17, G18 and G19; added axis words; arcs and helices; incremental
   sections.
 
