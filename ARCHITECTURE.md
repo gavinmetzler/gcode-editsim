@@ -104,7 +104,7 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `gen-ts` (`tools/gen-ts`) | `ir` |
 | `corpus` (`tools/corpus`), `bench` (`tools/bench`) | `app-backend`, `interpreter`, `ir` |
 | `depcheck` (`tools/depcheck`) | nothing in the workspace |
-| `app-backend` (`app/backend`) | `interpreter`, `ir`, the `*-api` crates, and the concrete dialects and machines |
+| `app-backend` (`app/backend`) | `interpreter`, `transform`, `gcode-syntax`, `ir`, the `*-api` crates, and the concrete dialects and machines |
 
 The principles behind the table:
 
