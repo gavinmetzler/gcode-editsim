@@ -193,6 +193,10 @@ DEVELOPMENT_STATUS.md point to it.
 - Tests: the settings file round-trips, a missing or damaged file gives
   the defaults (never an error at start-up), a removed machine falls
   back.
+- **Where to start:** `app/shell/src/lib.rs` (`AppState`, `run()`'s
+  `setup`, `select_machine`, `set_run_options`), `app/backend/src/files.rs`
+  (the machine folder), and `ui/src/main.ts` (`fillMachines`,
+  `applySettings`: today the first usable machine is chosen).
 
 ### M4.2: Remember the window layout
 *Moved from the wishlist by the owner, 2026-11-01.*
@@ -209,6 +213,10 @@ DEVELOPMENT_STATUS.md point to it.
   dialog on the wishlist would be its later home).
 - Done with Tauri's own window API, not a new plugin, unless that proves
   unreliable (then `tauri-plugin-window-state`, justified in the PR).
+- **Where to start:** `ui/src/layout/` (`addSplitter`, `Maximiser`;
+  `panes.ts` holds the pure share and toggle logic), the window built in
+  `app/shell/src/lib.rs` and `app/shell/tauri.conf.json`, and the
+  settings file from M4.1.
 
 ### M4.3: The editor selection in the 3D view (UI)
 - Selecting lines in the editor colours all their segments **bright
