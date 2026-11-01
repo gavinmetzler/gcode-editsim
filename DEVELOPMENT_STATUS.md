@@ -25,8 +25,8 @@ explained; tool marker, hover, measuring and orbiting about a node;
 subprograms; statistics per tool with a simple time estimate; a million
 blocks opens in a second or two on the owner's desktop. Coordinate shifts
 and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left
-to the community. **Next: M4, code transformations**: write
-`docs/plans/M4_PLAN.md` and agree it with the owner first.
+to the community. **Next: M4, code transformations**
+(`docs/plans/M4_PLAN.md`, agreed 2026-11-01).
 
 The app is usable today as an editor beside a synced 3D backplot of Fanuc
 (and, as a stub, Osai 10 Series) milling programs, with diagnostics,
@@ -70,6 +70,10 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
   `claude/hopeful-euler-b7gaff`; M2 and M3: `claude/affectionate-goodall-mi4cum`). After a PR merges, restart the branch from
   `origin/main` (`git checkout -B <branch> origin/main`) and open a **new**
   PR. Never stack on merged history.
+- **One open PR at a time.** The designated branch carries one PR; work
+  for the next step waits until it merges (prepare it locally on another
+  local branch if useful, then cherry-pick onto the restarted branch).
+  Pushing early adds it to the open PR.
 - **Force-push is blocked by the environment.** Fix mistakes with a new
   commit, not by amending.
 - **PR descriptions** are in plain English and cover: what was built,
@@ -91,6 +95,10 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
   If a request is already planned for a later step, or not planned at
   all, say so and ask where it belongs before writing any code. Ideas
   that are not planned yet go in `docs/WISHLIST.md`.
+- **How the owner tests:** on Linux (KDE Plasma, Wayland, Dolphin), with
+  the Flatpak from the CI run on `main` after a merge, and reports back.
+  Ask them to check what the container cannot (Wayland, their GPU,
+  their real programs).
 - **Private material:** the Osai 10 Series manual is in the owner's
   private repository `gcode-editsim-manuals`. Cite it by title and page
   with short quotes only; never copy it into this repository. The same
@@ -131,7 +139,7 @@ in ARCHITECTURE.md §5).
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
-- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`: milestone plans.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (agreed, next): milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.
@@ -372,13 +380,60 @@ errors; every warning or note names a real gap. Run it with
 - **Disk space is limited** in the cloud container: the shell's `target/`,
   the Android SDK and Gradle caches fill it quickly.
 
+**Testing the UI and app in the container** (scratch scripts live in
+`/tmp` and are lost with the container; rebuild them from this recipe)
+- **A real render buffer:** a throwaway Cargo binary in `/tmp` with a
+  path dependency on `app/backend`, calling
+  `app_backend::interpret_to_buffer(program, name,
+  app_backend::files::shipped_machine("generic_3axis_mill"), "fanuc",
+  Default::default())` and writing the bytes to a file.
+- **Serve the UI:** `cd ui && npm ci && npm run build`, then start
+  `npx vite preview --port 4173 --strictPort` detached
+  (`setsid nohup … &`).
+- **Drive it with Playwright** (pre-installed: `require('playwright')`,
+  Chromium with `--use-gl=swiftshader --enable-unsafe-swiftshader`). In
+  `page.addInitScript`, set `globalThis.isTauri = true` and
+  `window.__TAURI_INTERNALS__ = { metadata: { currentWindow: { label:
+  'main' } }, transformCallback: () => 1, invoke: async (cmd) => … }`,
+  answering `list_dialects`, `list_machines`, `select_machine`,
+  `set_run_options`, `plugin:event|listen` (return 1),
+  `plugin:dialog|open`, `load_file` and `interpret` (return the buffer
+  as an `ArrayBuffer`). The page root is itself a `<main id="app">`, so
+  the pane layout is `main main`.
+- **Software rendering is slow here:** drawing a million segments takes
+  seconds per frame in the container but is smooth on the owner's
+  desktop. Judge JavaScript time with the CDP profiler, and rendering on
+  the owner's machine.
+- **The real app under Xvfb:** `Xvfb :98` plus `dbus-launch`, then
+  `app/shell/target/debug/gcode-editsim`; `xdotool search --classname`
+  reads the window class. A stale `/tmp/.X11-unix/X98` without a running
+  Xvfb gives "Can't open display": remove it and start Xvfb again.
+- **The owner's real programs:** clone `gavinmetzler/gcode-editsim-manuals`
+  (add it to the session first) next to this repository, then
+  `cargo run --release -p corpus -- --dialect fanuc|osai FILE...`.
+- **Large programs:** `cargo run --release -p bench -- --blocks N
+  [--write FILE]`. Timings in the container vary two- to three-fold
+  between runs: run it several times.
+
 **Tooling**
+- **Chain checks with `&&`, never `;`.** Twice a failing `cargo fmt` or
+  `clippy` was followed by a commit and push because the commands were
+  joined with `;`.
+- **`pkill -f <pattern>` can match and kill your own shell** (the
+  pattern is in its command line). Use `pgrep -x`, or kill by PID.
+- **Removing folders outside the repository is blocked** by a safety
+  check. Keep scratch output in `/tmp` (or a folder inside the repo
+  listed in `.git/info/exclude`).
 - **Fuzzing needs nightly:**
   `cargo +nightly-2026-10-29 fuzz run parser` from `core/gcode-syntax/`
   (cargo-fuzz 0.13.2). The fuzz crate is its own workspace.
 - **CI pins** ubuntu-24.04, checkout@v7, upload-artifact@v7, the Rust
   1.97.0 toolchain, the nightly and cargo-fuzz. Bump them deliberately, in
-  their own PR.
+  their own PR. The exception is `cargo-audit`, installed at its latest
+  release: an old one cannot read the current advisory database.
+- **CI can hang on the runners' package mirrors** (once over 30 minutes
+  on `apt-get`); the install step now times out after 10 minutes. Re-run
+  a job once when that happens.
 
 ---
 
@@ -453,7 +508,8 @@ Decided (2026-10-31 to 2026-11-01), M3.7 to M3.10:
   for M5.
 - **UI:** panes are resizable and maximisable (double-click the view or
   the diagnostics, a button on the editor); the editor margin follows the
-  diagnostics filters; remembering the layout is on the wishlist.
+  diagnostics filters; remembering the layout, with the machine and
+  dialect, moved from the wishlist to the start of M4 (owner, 2026-11-01).
 
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their

@@ -26,16 +26,6 @@ Other options that could live there (to be decided when it is planned):
 arc tolerance, block delete, the dialect's decimal-point setting, colours,
 and the default machine and dialect.
 
-## Remember the last machine and dialect
-
-*Raised by the owner, 2026-10-31.*
-
-The app starts on the first machine in the list (the generic VMC) every
-time, so a router program opened straight away is drawn mostly red
-(outside that machine's travel). Remember the machine and dialect chosen
-last, and start with them. Fits the settings dialog above, which would
-keep its options between sessions in the same way.
-
 ## Colour themes
 
 *Raised by the owner, 2026-10-31.*
@@ -95,15 +85,6 @@ as it follows subprogram calls. Today a block using a variable or an
 expression is reported and skipped.
 
 
-## Remember the window layout
-
-*Asked for by the owner, 2026-10-31.*
-
-Keep the pane sizes (dragged splitters) and which pane is maximised
-between sessions, along with the window's own size and position. The
-settings dialog above would be a natural home for a "reset layout"
-button.
-
 ## Open and save dialogs on the Rust side
 
 *Added by the owner after the M3 review, 2026-11-01.*
@@ -114,3 +95,13 @@ Inside the Flatpak the sandbox limits this to files the user picked; a
 build outside it trusts the window. Having the Rust side open the
 dialogs, and the commands accept only paths it handed out, would close
 that gap without relying on the sandbox (ARCHITECTURE.md §8.4a).
+
+## Mirroring
+
+*Left out of M4 by the owner, 2026-11-01.*
+
+Mirror a selected range of lines about the X or Y axis (or a line
+through a point), as a fourth code transformation beside translate,
+rotate and scale (`docs/plans/M4_PLAN.md`). Mirroring swaps G2 and G3
+and reverses the side of cutter compensation (G41/G42), so climb and
+conventional milling swap too; the message should say so.
