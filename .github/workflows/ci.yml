@@ -244,15 +244,15 @@ jobs:
     name: dependency audit
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    env:
-      # Pinned like the other tools; bump deliberately.
-      CARGO_AUDIT_VERSION: 0.21.2
     steps:
       - uses: actions/checkout@v7
       - name: Install pinned toolchain
         run: rustup toolchain install
+      # Not pinned, unlike the other tools: the advisory database it reads
+      # changes format over time (0.21.2 could not read CVSS 4.0 scores),
+      # so an old cargo-audit stops working. The latest release keeps up.
       - name: Install cargo-audit
-        run: cargo install cargo-audit --version "$CARGO_AUDIT_VERSION" --locked
+        run: cargo install cargo-audit --locked
       - name: Audit the core workspace
         run: cargo audit
       - name: Audit the app shell
