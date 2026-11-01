@@ -94,6 +94,33 @@ export function resetLayout(): Promise<void> {
   return invoke<undefined>("reset_layout");
 }
 
+/** One axis of a point in program coordinates. */
+export interface AxisValue {
+  readonly letter: string;
+  readonly value: number;
+}
+
+/** Transforms lines of `program` (raw bytes) as `params` says (the
+ *  request built by transform/request.ts); returns the binary edit list.
+ *  A transformation that cannot be done rejects with the reason. */
+export async function transformProgram(program: Uint8Array, params: unknown): Promise<ArrayBuffer> {
+  const result = await invoke<ArrayBuffer>("transform", program, {
+    headers: { "x-params": encodeURIComponent(JSON.stringify(params)) },
+  });
+  if (!(result instanceof ArrayBuffer)) {
+    throw new Error("transform did not return raw bytes");
+  }
+  return result;
+}
+
+/** A point picked in the view (machine coordinates) in the program
+ *  coordinates of `line` of `program`. */
+export function programPoint(program: Uint8Array, line: number, point: readonly number[]): Promise<AxisValue[]> {
+  return invoke<AxisValue[]>("program_point", program, {
+    headers: { "x-params": encodeURIComponent(JSON.stringify({ line, point })) },
+  });
+}
+
 /** Interprets `program` (raw bytes) and returns the render buffer. */
 export async function interpret(program: Uint8Array, fileName: string): Promise<ArrayBuffer> {
   const result = await invoke<ArrayBuffer>("interpret", program, {

@@ -508,3 +508,121 @@ fn the_legend_and_diagnostics_filters_are_remembered() {
     let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
     assert_eq!(r["layout"], layout);
 }
+
+fn encode(text: &str) -> String {
+    text.bytes()
+        .map(|b| {
+            if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) {
+                (b as char).to_string()
+            } else {
+                format!("%{b:02X}")
+            }
+        })
+        .collect()
+}
+
+const TRANSFORM_PROGRAM: &[u8] = b"G21 G90 G17 G54 G0 X0. Y0. Z5.\nG1 X10. Y0. F100.\nG1 X20.\n";
+
+#[test]
+fn transform_returns_the_edits_as_raw_bytes() {
+    let dir = TempDir::new("transform");
+    let w = window(dir.0.clone());
+    select_mill(&w);
+    let params =
+        encode(r#"{"first":2,"last":2,"transform":{"kind":"translate","offset":{"X":1}}}"#);
+    let bytes = raw(call(
+        &w,
+        "transform",
+        InvokeBody::Raw(TRANSFORM_PROGRAM.to_vec()),
+        &[("x-params", &params)],
+    ));
+    let list = app_backend::transform::decode_edits(&bytes).expect("an edit list");
+    assert_eq!(list.edits.len(), 1);
+    assert_eq!(list.edits[0].text, "11.");
+}
+
+#[test]
+fn a_refused_transform_is_an_error_naming_the_line() {
+    let dir = TempDir::new("transform-refused");
+    let w = window(dir.0.clone());
+    select_mill(&w);
+    let params = encode(
+        r#"{"first":2,"last":2,"transform":{"kind":"scale","plane":["X","Y"],"factor":-1,"centre":{}}}"#,
+    );
+    let err = call(
+        &w,
+        "transform",
+        InvokeBody::Raw(TRANSFORM_PROGRAM.to_vec()),
+        &[("x-params", &params)],
+    )
+    .expect_err("refused");
+    assert!(err.to_string().contains("line 2"), "{err}");
+}
+
+#[test]
+fn transform_needs_a_machine_a_raw_body_and_parameters() {
+    let dir = TempDir::new("transform-bad");
+    let w = window(dir.0.clone());
+    let params =
+        encode(r#"{"first":2,"last":2,"transform":{"kind":"translate","offset":{"X":1}}}"#);
+    let err = call(
+        &w,
+        "transform",
+        InvokeBody::Raw(TRANSFORM_PROGRAM.to_vec()),
+        &[("x-params", &params)],
+    )
+    .expect_err("no machine");
+    assert!(err.to_string().contains("select a machine"), "{err}");
+    select_mill(&w);
+    assert!(
+        call(
+            &w,
+            "transform",
+            InvokeBody::Raw(TRANSFORM_PROGRAM.to_vec()),
+            &[]
+        )
+        .is_err(),
+        "no parameters"
+    );
+    assert!(call(
+        &w,
+        "transform",
+        InvokeBody::Raw(TRANSFORM_PROGRAM.to_vec()),
+        &[("x-params", &encode("{not json"))]
+    )
+    .is_err());
+    assert!(call(
+        &w,
+        "transform",
+        InvokeBody::Json(serde_json::json!({ "program": "G0 X1." })),
+        &[("x-params", &params)]
+    )
+    .is_err());
+}
+
+#[test]
+fn a_picked_point_comes_back_in_program_coordinates() {
+    let dir = TempDir::new("point");
+    let w = window(dir.0.clone());
+    select_mill(&w);
+    let params = encode(r#"{"line":2,"point":[-370,-205,-395]}"#);
+    let reply = call(
+        &w,
+        "program_point",
+        InvokeBody::Raw(TRANSFORM_PROGRAM.to_vec()),
+        &[("x-params", &params)],
+    )
+    .expect("ok");
+    let InvokeResponseBody::Json(text) = reply else {
+        panic!("expected JSON");
+    };
+    let value: serde_json::Value = serde_json::from_str(&text).expect("json");
+    assert_eq!(
+        value,
+        serde_json::json!([
+            { "letter": "X", "value": 10.0 },
+            { "letter": "Y", "value": 0.0 },
+            { "letter": "Z", "value": 5.0 }
+        ])
+    );
+}

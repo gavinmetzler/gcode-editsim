@@ -531,6 +531,88 @@ async fn interpret(request: Request<'_>, state: State<'_, AppState>) -> Result<R
     Ok(Response::new(buffer))
 }
 
+/// The `x-params` header: percent-encoded JSON.
+fn params<T: serde::de::DeserializeOwned>(request: &Request<'_>, what: &str) -> Result<T, String> {
+    let text = header(request, "x-params")?.ok_or_else(|| format!("{what}: no x-params header"))?;
+    serde_json::from_str(&text).map_err(|e| format!("{what}: {e}"))
+}
+
+/// Transforms selected lines of the program in the raw request body
+/// (M4.9): the selection and the transformation are JSON in the
+/// `x-params` header (an `app_backend::transform::TransformRequest`). The
+/// reply is the binary edit list; a transformation that cannot be done is
+/// an error naming the line, and nothing is changed.
+#[tauri::command]
+async fn transform(request: Request<'_>, state: State<'_, AppState>) -> Result<Response, String> {
+    let program = raw_body(&request, "transform")?;
+    let what: app_backend::transform::TransformRequest = params(&request, "transform")?;
+    let settings = state.settings();
+    let machine = settings
+        .machine_toml
+        .ok_or_else(|| "select a machine first".to_owned())?;
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        app_backend::transform::transform_program(
+            &program,
+            &machine,
+            &settings.dialect,
+            settings.options,
+            &what,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(message)?;
+    Ok(Response::new(bytes))
+}
+
+/// Where to convert a picked point: its line and its position in the view.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PointRequest {
+    line: u32,
+    point: [f64; 3],
+}
+
+/// One axis of a point in program coordinates.
+#[derive(Debug, Serialize)]
+pub struct AxisValue {
+    letter: char,
+    value: f64,
+}
+
+/// A point picked in the view (machine coordinates, `x-params` JSON
+/// `{ "line": n, "point": [x, y, z] }`) in the program coordinates of that
+/// line, for the program in the raw request body.
+#[tauri::command]
+async fn program_point(
+    request: Request<'_>,
+    state: State<'_, AppState>,
+) -> Result<Vec<AxisValue>, String> {
+    let program = raw_body(&request, "program_point")?;
+    let what: PointRequest = params(&request, "program_point")?;
+    let settings = state.settings();
+    let machine = settings
+        .machine_toml
+        .ok_or_else(|| "select a machine first".to_owned())?;
+    let values = tauri::async_runtime::spawn_blocking(move || {
+        app_backend::transform::program_point(
+            &program,
+            &machine,
+            &settings.dialect,
+            settings.options,
+            what.line,
+            what.point,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(message)?;
+    Ok(values
+        .into_iter()
+        .map(|(letter, value)| AxisValue { letter, value })
+        .collect())
+}
+
 /// Reads a program file and returns its raw bytes.
 #[tauri::command]
 async fn load_file(path: String) -> Result<Response, String> {
@@ -567,6 +649,8 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
         remember_layout,
         reset_layout,
         interpret,
+        transform,
+        program_point,
         load_file,
         save_file,
     ])

@@ -105,3 +105,13 @@ through a point), as a fourth code transformation beside translate,
 rotate and scale (`docs/plans/M4_PLAN.md`). Mirroring swaps G2 and G3
 and reverses the side of cutter compensation (G41/G42), so climb and
 conventional milling swap too; the message should say so.
+
+## Transform dialog: inches, and the program's own plane
+
+*Raised by the agent, 2026-11-01 (M4.9).*
+
+The Transform dialog takes its values in mm, even for a program written in
+inches (G20); the rewritten words are still written in inches. It could
+show and take inches when the selection is in G20. The rotation plane
+starts at XY (G17); it could start at the plane in effect at the start of
+the selection, which needs one more question to the core.

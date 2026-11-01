@@ -29,6 +29,7 @@ import {
   listMachines,
   loadFile,
   machineFolder,
+  programPoint,
   rememberChoice,
   rememberLayout,
   rememberedSettings,
@@ -36,11 +37,15 @@ import {
   saveFile,
   selectMachine,
   setRunOptions,
+  transformProgram,
   type MachineEntry,
 } from "./ipc/backend";
 import { DiagnosticsPanel } from "./panels/panel";
 import { showMachinesDialog } from "./machines-dialog";
 import { startChoice } from "./remembered";
+import { showTransformDialog } from "./transform/dialog";
+import { decodeEdits, editorChanges } from "./transform/edits";
+import { buildRequest } from "./transform/request";
 import { showStatsDialog } from "./panels/stats-dialog";
 import { measurePanel, type Measurement } from "./viewport/measure";
 import {
@@ -98,6 +103,11 @@ async function main(app: HTMLElement): Promise<void> {
     title: "Default pane sizes and window size",
   });
   const statsButton = el("button", { type: "button", textContent: "Statistics…", disabled: true });
+  const transformButton = el("button", {
+    type: "button",
+    textContent: "Transform…",
+    title: "Translate, rotate or scale the selected lines (Ctrl+T)",
+  });
   const measureButton = el("button", {
     type: "button",
     textContent: "Measure",
@@ -125,6 +135,7 @@ async function main(app: HTMLElement): Promise<void> {
       sampleButton,
       fileLabel,
       statsButton,
+      transformButton,
       measureButton,
       resetLayoutButton,
       // The view buttons wrap to the next row together, kept to the right.
@@ -300,6 +311,9 @@ async function main(app: HTMLElement): Promise<void> {
   let lineIndex: LineIndex = buildLineIndex(0, () => 0);
   /** Fit the view after the next run (a new program, machine or dialect). */
   let fitNext = true;
+  /** While the Transform dialog waits for a centre, the next pick goes
+   *  here instead (M4.9). */
+  let pickForTransform: ((p: ToolPoint | null) => void) | null = null;
   /** A note for the status line after the next run (why the remembered
    *  machine or dialect was not used), shown once. */
   let notice: string | null = null;
@@ -384,7 +398,8 @@ async function main(app: HTMLElement): Promise<void> {
     // Every run of each line: a subprogram line is highlighted in each call.
     const segments = lineIndex.segmentsInLines(selection.first, selection.last);
     viewport.highlight(segments);
-    if (quiet) return;
+    // Keep the "click a node" hint while the Transform dialog waits.
+    if (quiet || pickForTransform) return;
     const lines =
       selection.first === selection.last
         ? `Line ${String(selection.first)}`
@@ -449,6 +464,8 @@ async function main(app: HTMLElement): Promise<void> {
     void runner.runNow();
   };
   editor.onChange = () => {
+    // Line numbers may move: notes from a transformation no longer apply.
+    panel.setNotes([]);
     if (!dirty) {
       dirty = true;
       showFileName();
@@ -473,6 +490,9 @@ async function main(app: HTMLElement): Promise<void> {
     } else if (key === "o") {
       e.preventDefault();
       void openProgram();
+    } else if (key === "t") {
+      e.preventDefault();
+      openTransform();
     }
   });
   editor.onCursorLine = (line) => {
@@ -527,7 +547,24 @@ async function main(app: HTMLElement): Promise<void> {
   statsButton.addEventListener("click", () => {
     if (current) showStatsDialog(current, freshness.stale ? `${file.name} (out of date: refresh first)` : file.name);
   });
+  // In the capture phase: the editor, which gets the focus back while the
+  // dialog steps aside, handles Escape itself.
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Escape" && pickForTransform) {
+        e.preventDefault();
+        e.stopPropagation();
+        pickForTransform(null);
+      }
+    },
+    { capture: true },
+  );
   viewport.onPick = (p) => {
+    if (pickForTransform) {
+      if (p) pickForTransform(p);
+      return;
+    }
     if (!current || !p || freshness.stale) return;
     // The marker rests where the user clicked (not at the end of the line)
     // until the cursor moves to another line.
@@ -637,6 +674,7 @@ async function main(app: HTMLElement): Promise<void> {
     });
 
   const load = (text: string, next: ProgramFile): void => {
+    panel.setNotes([]);
     file = next;
     dirty = false;
     showFileName();
@@ -710,6 +748,53 @@ async function main(app: HTMLElement): Promise<void> {
   void getCurrentWindow().onCloseRequested(async (e) => {
     if (!(await confirmDiscard())) e.preventDefault();
   });
+
+  /** Transform… (M4.9): the selected lines, rewritten by the core. */
+  const openTransform = (): void => {
+    const { first, last } = editor.selectedLines();
+    showTransformDialog(first, last, {
+      apply: async (form) => {
+        const built = buildRequest(first, last, form);
+        if (!built.ok) return built.error;
+        const program = new TextEncoder().encode(editor.text());
+        let list;
+        try {
+          list = decodeEdits(await transformProgram(program, built.request));
+        } catch (e) {
+          return String(e);
+        }
+        if (list.edits.length === 0) {
+          return "Nothing changes: the selected lines are already where this would put them.";
+        }
+        editor.applyLineChanges(editorChanges(list.edits, (n) => editor.lineText(n)));
+        panel.setNotes(list.notes);
+        const where = first === last ? `line ${String(first)}` : `lines ${String(first)}\u2013${String(last)}`;
+        notice = `Transformed ${where}: ${String(list.edits.length)} change${list.edits.length === 1 ? "" : "s"} (one Undo reverts it).`;
+        void runner.runNow();
+        return null;
+      },
+      pick: async () => {
+        if (!current || freshness.stale) {
+          throw new Error("refresh the view first (F5), then pick");
+        }
+        const rb = current;
+        setStatus("Click a node in the view for the centre (Esc to cancel).");
+        const picked = await new Promise<ToolPoint | null>((resolve) => {
+          pickForTransform = (p) => {
+            pickForTransform = null;
+            resolve(p);
+          };
+        });
+        setStatus("");
+        if (!picked) return null;
+        const line = rb.segment(picked.segment).srcLine;
+        const values = await programPoint(new TextEncoder().encode(editor.text()), line, picked.point);
+        const of = (letter: string): number => values.find((v) => v.letter === letter)?.value ?? 0;
+        return { X: of("X"), Y: of("Y"), Z: of("Z") };
+      },
+    });
+  };
+  transformButton.addEventListener("click", openTransform);
 
   await applySettings();
   await runner.runNow();

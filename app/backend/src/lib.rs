@@ -10,6 +10,8 @@
 //!   bytes (ARCHITECTURE.md §8), never JSON.
 //! - [`files`]: reading and saving programs and listing machine files.
 //!   Unlike `core/`, this crate may use the file system.
+//! - [`transform`]: code transformations (M4.9): small JSON in, a binary
+//!   edit list out.
 //! - [`settings`]: what the app remembers between sessions (the machine
 //!   and dialect chosen last), in a small JSON file.
 
@@ -17,6 +19,7 @@
 
 pub mod files;
 pub mod settings;
+pub mod transform;
 
 use dialect_api::Dialect;
 use dialect_fanuc::Fanuc;
@@ -55,6 +58,14 @@ pub enum BackendError {
         /// What went wrong.
         source: std::io::Error,
     },
+    /// A transformation cannot be done exactly; nothing was changed. The
+    /// message names the line.
+    #[error("cannot transform: {0}")]
+    TransformRefused(String),
+    /// A request from the window does not make sense (an axis the machine
+    /// lacks, say).
+    #[error("{0}")]
+    InvalidRequest(String),
     /// A file is larger than the app reads.
     #[error("{path}: larger than {limit} bytes")]
     FileTooLarge {

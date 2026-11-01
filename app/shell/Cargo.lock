@@ -54,6 +54,7 @@ dependencies = [
  "dialect-api",
  "dialect-fanuc",
  "dialect-osai",
+ "gcode-syntax",
  "interpreter",
  "ir",
  "machine-api",
@@ -62,6 +63,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "transform",
 ]
 
 [[package]]
@@ -3706,6 +3708,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "transform"
+version = "0.1.0"
+dependencies = [
+ "dialect-api",
+ "gcode-syntax",
+ "interpreter",
+ "ir",
+ "machine-api",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

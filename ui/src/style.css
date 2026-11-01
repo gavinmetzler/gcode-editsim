@@ -93,3 +93,13 @@ main[data-maximised="editor"] > .editor, main[data-maximised="panel"] .panel { f
 .editor-max { top: 6px; right: 18px; padding: 1px 6px; opacity: 0.7; }
 .editor-max:hover, .editor-max.on { opacity: 1; }
 .diagnostics table { user-select: none; }
+/* The Transform dialog (M4.9). */
+.transform-dialog { max-width: 600px; }
+.transform-dialog .kinds { display: flex; gap: 18px; margin: 10px 0 12px; }
+.transform-dialog .kinds label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.transform-dialog .row { display: flex; align-items: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.transform-dialog .row .label { width: 90px; color: #a8b3c4; }
+.transform-dialog .row input[type="text"] { width: 72px; }
+.transform-dialog .row button { margin-left: 8px; }
+.transform-dialog .hint { color: #8a94a3; font-size: 0.9em; }
+.transform-dialog .note { min-height: 1.2em; color: #f2c94c; }
