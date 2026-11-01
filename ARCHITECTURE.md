@@ -363,6 +363,11 @@ pub trait Dialect {
     /// rewriting lines. Both default to `None`: no rewriting.
     fn read_value(&self, number: &Number, kind: ValueKind, units: LengthUnit) -> Option<f64> { None }
     fn format_value(&self, value: f64, kind: ValueKind, units: LengthUnit, style: &NumberStyle) -> Option<String> { None }
+
+    /// Why a transformation cannot rewrite a block (M4.6): codes whose effect
+    /// its axis words do not carry (Fanuc: canned cycles, G92/G52/G10 and the
+    /// other ignored shifts, G53, G28/G30). Default `None`.
+    fn transform_refusal(&self, block: &Block, state: &ModalState) -> Option<String> { None }
 }
 ```
 
@@ -380,6 +385,8 @@ pub trait Dialect {
 - **Shared block skeleton.** Both dialects collect words, check groups and report unused words in nearly the same way. That code could move to `dialect-api` helpers, as a separate refactoring once the second real dialect exists.
 
 **Rewriting numbers (M4.4).** A transformation changes values, so the text must be written back as the controller will read it. The parser keeps each word's span, and `gcode_syntax::NumberStyle` reads how its number was written (sign, a gap after the sign, leading zeros, decimal point, decimals); writing a value in that style is lexical and lives there too. What a number *means* is the dialect's: `read_value` turns a literal into mm or degrees, and `format_value` writes a value back so that reading it gives the value within half of the least input increment. For Fanuc both go through the same functions the interpreter uses (`dialect-fanuc/src/numbers.rs`): a literal with a decimal point keeps one, with at least the decimals it had and more as needed up to the increment (3 in mm and degrees, 4 in inches); one without keeps none, counted in least increments (DPI = 0) or whole units (calculator input, which needs a point after all when the value is not whole). The `transform` crate applies the result as text edits by byte span (`apply_edits`), touching nothing else, and `rewrite_word` makes no edit at all when the new text reads back as the value already there, so rewriting a word with its own value never changes it. A dialect that does not implement the two methods (the Osai stub) cannot be rewritten.
+
+**Translate (M4.6).** `transform::transform(source, dialect, machine, options, lines, &Transformation::Translate { offset })` gives the edits and notes, or refuses with the first line that cannot be done (nothing is changed then). It runs the program with a trace of the selection (widened until it reaches the move after the selection, and to the end of the file when the selection calls a subprogram) and walks the trace in run order, following the position the *rewritten* program will reach: a selected move must end at its original end plus the offset (G90 words get the new value; G91 words the new value less where the rewritten program is; an axis not written gets a word only if it now has to change, added after the block's last axis word in its style); blocks run in between that are not selected are replayed from the axis words they give; the first move after the selection keeps its original end if it is incremental (adjusted the same way, with a note naming it) and is left alone if absolute (a note says its path changes). Written values are read back through the dialect, so rounding never accumulates. I/J/K and R are unchanged; an arc cannot be the first move of the selection or the move after it (one end would move and not the other), which is refused with a hint. Refused as well: errors, unknown positions, G53, G28/G30, the dialect's `transform_refusal`, values that are not plain numbers, an axis written twice, offsets on rotary axes or on axes the machine lacks. A subprogram line that runs more than once, an M98 in the selection, and selected lines that never run get notes. Rotate (M4.7) and Scale (M4.8) are further cases of `Transformation`.
 
 ### 7.3 Canned cycles
 

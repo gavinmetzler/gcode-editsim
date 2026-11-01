@@ -92,7 +92,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 3. Editor selection shown bright yellow in the 3D view *(done)*
 4. Exact rewriting (core) *(done)*
 5. Positions in program coordinates (core) *(done)*
-6. Translate
+6. Translate *(done)*
 7. Rotate
 8. Scale (one factor for X and Y; Z never scaled)
 9. Transform dialog (app and UI)

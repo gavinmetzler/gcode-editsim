@@ -263,7 +263,7 @@ DEVELOPMENT_STATUS.md point to it.
 - Tests: absolute and incremental, units changes, work offset changes,
   subprogram calls.
 
-### M4.6: Translate (core)
+### M4.6: Translate (core) *(done)*
 - G90 and G91 moves (the G91 rule in §3), arcs, helices, added words,
   the refusals.
 - The check for all three transformations: run the original and the
