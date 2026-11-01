@@ -255,7 +255,7 @@ DEVELOPMENT_STATUS.md point to it.
 - The identity transformation leaves any program unchanged, byte for
   byte (property test over generated and golden programs).
 
-### M4.5: Positions in program coordinates (core)
+### M4.5: Positions in program coordinates (core) *(done)*
 - For each block: modal state and the full programmed position before
   and after, in program coordinates and program units, from the
   interpreter (a per-block trace alongside the segments, only when

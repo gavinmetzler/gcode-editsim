@@ -91,7 +91,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 2a. Remember the colour key and the diagnostics filters *(done; added by the owner)*
 3. Editor selection shown bright yellow in the 3D view *(done)*
 4. Exact rewriting (core) *(done)*
-5. Positions in program coordinates (core)
+5. Positions in program coordinates (core) *(done)*
 6. Translate
 7. Rotate
 8. Scale (one factor for X and Y; Z never scaled)
