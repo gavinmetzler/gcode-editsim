@@ -107,4 +107,5 @@ export const DIAG_CODE = {
   OutOfLimits: 11,
   ControllerDependent: 12,
   NotYetSimulated: 13,
+  DrawingSimplified: 14,
 } as const;

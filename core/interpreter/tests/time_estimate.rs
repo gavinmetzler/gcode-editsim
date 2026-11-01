@@ -130,3 +130,29 @@ fn the_program_total_adds_up_the_known_times() {
     close(p.meta.estimated_time, sum);
     assert!(sum > 13.0);
 }
+
+#[test]
+fn feed_per_revolution_with_no_known_spindle_speed_says_so() {
+    // The spindle turns (M3) but no S has been given: the speed is unknown,
+    // not zero, so the warning must not say the spindle is stopped.
+    let p = run("M3\nG95 G1 X10. F.1\n");
+    let w = p
+        .diagnostics
+        .iter()
+        .find(|d| d.code == DiagCode::MissingFeedRate)
+        .expect("warned");
+    assert!(w.message.contains("no spindle speed"), "{}", w.message);
+    assert!(!w.message.contains("stopped"), "{}", w.message);
+    assert_eq!(moves(&p)[1].time, None);
+}
+
+#[test]
+fn feed_per_revolution_with_the_spindle_off_says_it_is_stopped() {
+    let p = run("S1000\nG95 G1 X10. F.1\n");
+    let w = p
+        .diagnostics
+        .iter()
+        .find(|d| d.code == DiagCode::MissingFeedRate)
+        .expect("warned");
+    assert!(w.message.contains("spindle stopped"), "{}", w.message);
+}

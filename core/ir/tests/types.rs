@@ -142,7 +142,8 @@ fn diag_code_all_lists_every_code_by_id() {
             | DiagCode::InvalidValue
             | DiagCode::OutOfLimits
             | DiagCode::ControllerDependent
-            | DiagCode::NotYetSimulated => c.id(),
+            | DiagCode::NotYetSimulated
+            | DiagCode::DrawingSimplified => c.id(),
             // DiagCode is non_exhaustive for other crates; a new code must be
             // added to ALL (and here) by hand.
             _ => panic!("{c:?} missing from this test"),

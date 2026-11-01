@@ -54,6 +54,10 @@ pub enum DiagCode {
     ControllerDependent = 12,
     /// Recognised but not yet simulated; the program continues without it.
     NotYetSimulated = 13,
+    /// The drawing was simplified to stay within memory (for example,
+    /// arcs drawn with a coarser tolerance). The program itself is
+    /// unaffected.
+    DrawingSimplified = 14,
 }
 
 impl Severity {
@@ -74,7 +78,7 @@ impl Severity {
 impl DiagCode {
     /// Every code, in id order. Used to generate the TypeScript constants
     /// (`tools/gen-ts`).
-    pub const ALL: [DiagCode; 13] = [
+    pub const ALL: [DiagCode; 14] = [
         DiagCode::SyntaxError,
         DiagCode::UnsupportedGCode,
         DiagCode::UnsupportedMCode,
@@ -88,6 +92,7 @@ impl DiagCode {
         DiagCode::OutOfLimits,
         DiagCode::ControllerDependent,
         DiagCode::NotYetSimulated,
+        DiagCode::DrawingSimplified,
     ];
 
     /// The stable numeric id.

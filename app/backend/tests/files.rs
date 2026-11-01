@@ -165,3 +165,58 @@ fn user_machine_files_are_listed_with_their_problems() {
     );
     assert_eq!(user[1].problem, None);
 }
+
+#[cfg(unix)]
+#[test]
+fn saving_keeps_the_files_permissions() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = TempDir::new("perms");
+    let path = dir.path("private.nc");
+    fs::write(&path, b"G0 X1.\n").expect("write");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("chmod");
+    save_program(&path, b"G0 X2.\n").expect("save");
+    let mode = fs::metadata(&path).expect("stat").permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600, "a private file stays private: {mode:o}");
+    assert_eq!(read_program(&path).expect("read"), b"G0 X2.\n");
+}
+
+#[cfg(unix)]
+#[test]
+fn saving_through_a_symlink_writes_the_real_file() {
+    let dir = TempDir::new("symlink");
+    let real = dir.path("real.nc");
+    let link = dir.path("link.nc");
+    fs::write(&real, b"G0 X1.\n").expect("write");
+    std::os::unix::fs::symlink(&real, &link).expect("symlink");
+    save_program(&link, b"G0 X2.\n").expect("save");
+    assert!(
+        fs::symlink_metadata(&link)
+            .expect("stat")
+            .file_type()
+            .is_symlink(),
+        "the link is still a link"
+    );
+    assert_eq!(fs::read(&real).expect("read"), b"G0 X2.\n");
+    // No temporary file is left next to either.
+    let names: Vec<_> = fs::read_dir(&dir.0)
+        .expect("list")
+        .map(|e| e.expect("entry").file_name())
+        .collect();
+    assert_eq!(names.len(), 2, "{names:?}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_leftover_temporary_link_is_not_followed() {
+    // A stale `.name.saving` symlink (from a crash, or planted) must not
+    // make saving write through it to another file.
+    let dir = TempDir::new("stale");
+    let path = dir.path("part.nc");
+    let elsewhere = dir.path("elsewhere.txt");
+    fs::write(&path, b"G0 X1.\n").expect("write");
+    fs::write(&elsewhere, b"keep me").expect("write");
+    std::os::unix::fs::symlink(&elsewhere, dir.path(".part.nc.saving")).expect("symlink");
+    save_program(&path, b"G0 X2.\n").expect("save");
+    assert_eq!(fs::read(&elsewhere).expect("read"), b"keep me");
+    assert_eq!(fs::read(&path).expect("read"), b"G0 X2.\n");
+}

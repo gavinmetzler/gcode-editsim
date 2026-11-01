@@ -14,7 +14,7 @@
 //! TypeScript constants).
 
 use crate::diag::Diagnostic;
-use crate::geom::{tessellate, Pos};
+use crate::geom::{tessellate, tessellation_len, Pos};
 use crate::segment::{Program, Segment};
 
 /// Byte offsets and sizes of the render buffer, version 2.
@@ -117,6 +117,44 @@ pub enum EncodeError {
     /// A count or offset does not fit the format's 32-bit fields.
     #[error("the program is too large for the render buffer: too many {0}")]
     TooLarge(&'static str),
+}
+
+/// The most vertices the app draws for one program (10 million, about
+/// 130 MB of render buffer). A million-block program needs about 2
+/// million; only very large arcs at a fine tolerance go past this.
+pub const MAX_VERTICES: usize = 10_000_000;
+
+/// How many vertices [`encode_render_buffer`] writes for `program` at
+/// `tolerance` (saturating).
+pub fn vertex_count(program: &Program, tolerance: f64) -> usize {
+    program
+        .channels
+        .iter()
+        .flat_map(|c| &c.segments)
+        .fold(0usize, |n, seg| {
+            n.saturating_add(tessellation_len(seg, tolerance))
+        })
+}
+
+/// The arc tolerance to draw `program` with: `tolerance` if the drawing
+/// fits in `max_vertices`, otherwise the finest tolerance found (doubling
+/// each time) that fits. If nothing fits, the coarsest drawing (every arc
+/// at its minimum of one point per 90 degrees). A crafted program of huge
+/// arcs would otherwise need more memory than the machine has.
+pub fn fit_tolerance(program: &Program, tolerance: f64, max_vertices: usize) -> f64 {
+    let coarsest = vertex_count(program, f64::INFINITY);
+    let mut tol = tolerance;
+    let mut count = vertex_count(program, tol);
+    // Doubling 200 times takes any sensible tolerance past every arc.
+    for _ in 0..200 {
+        // `!(tol > 0.0)` also stops on NaN: nothing to scale.
+        if count <= max_vertices || count <= coarsest || !(tol > 0.0 && (tol * 2.0).is_finite()) {
+            break;
+        }
+        tol *= 2.0;
+        count = vertex_count(program, tol);
+    }
+    tol
 }
 
 /// Encodes `program` as a render buffer, layout version 2.

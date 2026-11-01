@@ -249,7 +249,20 @@ const MAX_STEP: f64 = FRAC_PI_2;
 /// A tolerance that is not a positive number, or needs more than
 /// [`MAX_ARC_POINTS`] points, gives [`MAX_ARC_POINTS`] points.
 pub fn tessellate(seg: &Segment, tol: f64) -> impl Iterator<Item = Pos> + '_ {
-    let (steps, sweep) = if !seg.kind.is_motion() {
+    let (steps, sweep) = steps_of(seg, tol);
+    (0..=steps).map(move |i| point_at(seg, sweep.as_ref(), i, steps))
+}
+
+/// How many points [`tessellate`] gives for `seg` at `tol`, without making
+/// them: cheap enough to size a whole program before drawing it.
+pub fn tessellation_len(seg: &Segment, tol: f64) -> usize {
+    steps_of(seg, tol).0 + 1
+}
+
+/// The number of steps (points minus one) for `seg` at `tol`, and the
+/// arc's sweep if it is drawn as an arc.
+fn steps_of(seg: &Segment, tol: f64) -> (usize, Option<Sweep>) {
+    if !seg.kind.is_motion() {
         (0, None)
     } else {
         match seg.arc.as_ref().filter(|_| seg.kind.is_arc()) {
@@ -262,8 +275,7 @@ pub fn tessellate(seg: &Segment, tol: f64) -> impl Iterator<Item = Pos> + '_ {
             },
             None => (1, None),
         }
-    };
-    (0..=steps).map(move |i| point_at(seg, sweep.as_ref(), i, steps))
+    }
 }
 
 /// How far `seg` travels, in the units of the axes counted: the straight

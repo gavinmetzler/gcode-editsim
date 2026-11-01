@@ -198,6 +198,7 @@ fn set_run_options(
         s.options = RunOptions {
             block_delete,
             tolerance,
+            ..RunOptions::default()
         };
     });
     Ok(())
