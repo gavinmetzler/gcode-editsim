@@ -127,7 +127,10 @@ fn run(args: &Args) -> Result<(), String> {
     );
     let interpreted = start.elapsed();
     let start = Instant::now();
-    let buffer = ir::encode_render_buffer(&program, ir::DEFAULT_TOLERANCE, |p| {
+    // As the app does: arcs coarser if the drawing would pass the budget.
+    let tolerance =
+        ir::render::fit_tolerance(&program, ir::DEFAULT_TOLERANCE, ir::render::MAX_VERTICES);
+    let buffer = ir::encode_render_buffer(&program, tolerance, |p| {
         machine.forward_kinematics(p).position
     })
     .map_err(|e| e.to_string())?;
@@ -142,7 +145,7 @@ fn run(args: &Args) -> Result<(), String> {
     );
     println!("interpret:     {:>8.0} ms", interpreted.as_secs_f64() * 1e3);
     println!(
-        "render buffer: {:>8.0} ms ({:.1} MB)",
+        "render buffer: {:>8.0} ms ({:.1} MB, arc tolerance {tolerance} mm)",
         encoded.as_secs_f64() * 1e3,
         buffer.len() as f64 / 1e6
     );

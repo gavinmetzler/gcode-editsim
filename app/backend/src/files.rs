@@ -47,19 +47,56 @@ pub fn read_program(path: &Path) -> Result<Vec<u8>, BackendError> {
 /// Saves a program file. The text is written to a temporary file next to
 /// it, which then replaces the original, so a failed save never leaves a
 /// half-written program behind.
+///
+/// - A symlink is written through: the file it points at is replaced and
+///   the link stays a link.
+/// - The file keeps its permissions (a private file stays private), where
+///   the file system allows it. A new file gets the usual permissions for
+///   new files.
+/// - A leftover temporary file from an earlier failed save is removed, and
+///   never followed if it is a link.
 pub fn save_program(path: &Path, contents: &[u8]) -> Result<(), BackendError> {
-    let file_name = path
+    // The real file behind any symlinks; a file that does not exist yet is
+    // saved where asked.
+    let target = match fs::canonicalize(path) {
+        Ok(real) => real,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => path.to_path_buf(),
+        Err(e) => return Err(io_error(path, e)),
+    };
+    let file_name = target
         .file_name()
         .ok_or_else(|| io_error(path, std::io::ErrorKind::InvalidInput.into()))?;
     let mut temp_name = std::ffi::OsString::from(".");
     temp_name.push(file_name);
     temp_name.push(".saving");
-    let temp = path.with_file_name(temp_name);
+    let temp = target.with_file_name(temp_name);
+    let permissions = fs::metadata(&target).ok().map(|m| m.permissions());
+
     let write = || -> std::io::Result<()> {
-        let mut f = fs::File::create(&temp)?;
+        match fs::remove_file(&temp) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
+        let mut options = fs::OpenOptions::new();
+        // `create_new` refuses to open anything already there, so a link
+        // planted after the removal above is not followed either.
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        if permissions.is_some() {
+            // Owner-only while writing; the file's own permissions are set
+            // below, before it replaces the original.
+            std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+        }
+        let mut f = options.open(&temp)?;
         f.write_all(contents)?;
+        if let Some(p) = &permissions {
+            // Best effort: some file systems (the Flatpak document portal)
+            // may refuse; the save itself must not fail for that.
+            let _ = f.set_permissions(p.clone());
+        }
         f.sync_all()?;
-        fs::rename(&temp, path)
+        fs::rename(&temp, &target)
     };
     write().map_err(|e| {
         let _ = fs::remove_file(&temp);

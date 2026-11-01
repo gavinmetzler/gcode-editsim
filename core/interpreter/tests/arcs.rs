@@ -3,7 +3,7 @@
 mod common;
 
 use common::{at, errors, moves, run};
-use ir::{ArcPlane, DiagCode, SegKind};
+use ir::{ArcPlane, DiagCode, SegKind, Severity};
 
 /// Program prefix: G54 origin is X-380 Y-205, and we start at part X0 Y0.
 const START: &str = "G0 X0 Y0 Z0\nF100.\n";
@@ -78,12 +78,6 @@ fn radius_too_small_is_an_error() {
 }
 
 #[test]
-fn radius_with_coincident_end_points_is_an_error() {
-    let p = run(&format!("{START}G2 X0 Y0 R5.\n"));
-    assert_eq!(errors(&p), vec![DiagCode::InvalidArc]);
-}
-
-#[test]
 fn end_point_off_the_circle_is_rejected_and_position_kept() {
     let p = run(&format!("{START}G2 X20. Y0 I10.5 J0\nG1 X1.\n"));
     assert_eq!(errors(&p), vec![DiagCode::ArcRadiusMismatch]);
@@ -119,4 +113,24 @@ fn zx_plane_arc() {
         }
     );
     assert!((arc.radius - 10.0).abs() < 1e-9);
+}
+
+#[test]
+fn an_r_arc_ending_where_it_starts_is_a_zero_degree_warning() {
+    // Fanuc treats an R arc with no travel as 0 degrees: nothing moves.
+    // Same as `G2 R5.` with no end point, which the dialect reports as a
+    // warning (docs/dialect-notes/fanuc.md, "R with no end point").
+    let p = run("G21 G90 G17 G54 G0 X0. Y0. Z0.\nG1 F100.\nG2 X0. Y0. R5.\nG1 X10.\n");
+    let d: Vec<_> = p
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == DiagCode::InvalidArc)
+        .collect();
+    assert_eq!(d.len(), 1, "{:?}", p.diagnostics);
+    assert_eq!(d[0].severity, Severity::Warning);
+    assert!(d[0].message.contains("0 degrees"), "{}", d[0].message);
+    // The arc block does not move; the next move still starts from X0.
+    let m = moves(&p);
+    assert_eq!(m.len(), 2);
+    assert!(m.iter().all(|s| s.src.line != 3));
 }

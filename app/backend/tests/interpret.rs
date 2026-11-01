@@ -7,6 +7,7 @@ use app_backend::{
 
 const MILL: &str = machine_mill::EXAMPLE_DEFINITION;
 const LATHE: &str = machine_lathe::EXAMPLE_DEFINITION;
+const ROUTER: &str = machine_mill::ROUTER_EXAMPLE_DEFINITION;
 
 fn u32_at(b: &[u8], at: usize) -> u32 {
     u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
@@ -155,4 +156,56 @@ fn block_delete_is_passed_on() {
         u32_at(&b, 12)
     };
     assert_eq!((segments(false), segments(true)), (1, 0));
+}
+
+fn u16_at(b: &[u8], at: usize) -> u16 {
+    u16::from_le_bytes([b[at], b[at + 1]])
+}
+
+#[test]
+fn huge_arcs_are_drawn_coarser_to_stay_within_the_vertex_budget() {
+    // Full circles of radius 100 m at the default 0.01 mm tolerance need
+    // about 70 000 points each; 20 of them are far over this budget.
+    let mut program = String::from("G21 G90 G17 G54 G0 X0. Y0. Z0.\nG1 F1000.\n");
+    for _ in 0..20 {
+        program.push_str("G2 X0. Y0. I100000. J0.\n");
+    }
+    let options = RunOptions {
+        max_vertices: 50_000,
+        ..RunOptions::default()
+    };
+    let b =
+        interpret_to_buffer(program.as_bytes(), "t.nc", ROUTER, "fanuc", options).expect("runs");
+    let vertices = u32_at(&b, 8) as usize;
+    assert!(vertices <= 50_000, "{vertices}");
+    // One note says the drawing was simplified, and by how much.
+    let diags = u32_at(&b, 16) as usize;
+    let table = u32_at(&b, 56) as usize;
+    let codes: Vec<u16> = (0..diags).map(|i| u16_at(&b, table + i * 20 + 8)).collect();
+    let simplified = ir::DiagCode::DrawingSimplified.id();
+    assert_eq!(
+        codes.iter().filter(|&&c| c == simplified).count(),
+        1,
+        "{codes:?}"
+    );
+}
+
+#[test]
+fn ordinary_programs_are_drawn_at_the_asked_tolerance() {
+    let program = "G21 G90 G17 G54 G0 X0. Y0. Z0.\nG1 F1000.\nG2 X0. Y0. I10. J0.\n";
+    let b = interpret_to_buffer(
+        program.as_bytes(),
+        "t.nc",
+        ROUTER,
+        "fanuc",
+        RunOptions::default(),
+    )
+    .expect("runs");
+    let diags = u32_at(&b, 16) as usize;
+    let table = u32_at(&b, 56) as usize;
+    let codes: Vec<u16> = (0..diags).map(|i| u16_at(&b, table + i * 20 + 8)).collect();
+    assert!(
+        !codes.contains(&ir::DiagCode::DrawingSimplified.id()),
+        "{codes:?}"
+    );
 }

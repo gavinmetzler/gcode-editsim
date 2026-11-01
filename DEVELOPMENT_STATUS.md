@@ -34,7 +34,7 @@ statistics and a time estimate, that opens and saves files.
 
 | Area | Status |
 |---|---|
-| Tests | 542 pass (`cargo test --workspace`); 12 in the app shell (`cd app/shell && cargo test`); 108 in the UI (`cd ui && npm test`) |
+| Tests | 553 pass (`cargo test --workspace`); 12 in the app shell (`cd app/shell && cargo test`); 108 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7), with per-tool times and a time estimate (M3.8); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. The machine folder is created on first start with the example mill and router files; the window reports the app id, so the desktop shows its icon. Windows and macOS: build from source |
@@ -106,7 +106,7 @@ in ARCHITECTURE.md §5).
 | Crate | What it does | Key items |
 |---|---|---|
 | `core/gcode-syntax` | Bytes to blocks (one per non-blank line). Knows no G-code meaning. | `parse(&[u8]) -> Program`; `Block { line, block_skip, sequence_number, words, assignments, comments, program_delimiter, errors }`; `Expr` tree (never evaluated); `MAX_DEPTH` = 64. Fuzz target in `fuzz/` |
-| `core/ir` | The neutral output data model | `Pos = [f64; 9]`; `SegKind` (values fixed for the render buffer); `Segment`; `ArcGeom { center, plane: ArcPlane { first, second }, radius, turns }`; `DiagCode` (u16 values fixed); `Diagnostics`; `Segment::time` (estimated seconds, M3.8); `segments_for_line`; `bounding_box`; `tessellate`; `path_length`; `render::encode_render_buffer` + `render::layout`; `serde` feature |
+| `core/ir` | The neutral output data model | `Pos = [f64; 9]`; `SegKind` (values fixed for the render buffer); `Segment`; `ArcGeom { center, plane: ArcPlane { first, second }, radius, turns }`; `DiagCode` (u16 values fixed); `Diagnostics`; `Segment::time` (estimated seconds, M3.8); `segments_for_line`; `bounding_box`; `tessellate`; `tessellation_len`; `path_length`; `render::encode_render_buffer` + `render::layout`; `render::fit_tolerance` and `MAX_VERTICES` (vertex budget); `serde` feature |
 | `core/dialect-api` | What every dialect shares | `Dialect` trait (`initial_state`, `interpret_block(block, &BlockContext { axes, src }, state, out, diag)`); `Command`; `ModalState` (incl. `feed_mode`, `first_report`); `CodeTable` (TOML); `AxisSet`; `CodeKey` (G1 = G01 = G1.0) |
 | `core/dialect-osai` | Osai 10 Series milling **stub** (M2.2) | `data/osai.toml`; `src/block.rs`; three-letter commands in `src/three_letter.rs`; notes in `docs/dialect-notes/osai.md` |
 | `core/dialect-fanuc` | Fanuc milling | `data/fanuc.toml` (75 codes with handlers); `src/block.rs` (all block logic); `FanucOptions { decimal_input }` |
@@ -256,7 +256,10 @@ Changing any of these is a deliberate, documented change.
   UI gets a real path from the native dialog and the app's own
   `load_file`/`save_file` commands do the reading and writing. Saving
   keeps the file's line endings; a file that was not UTF-8 asks before
-  saving, since its unreadable bytes would change.
+  saving, since its unreadable bytes would change. Saving writes through
+  symlinks and keeps the file's permissions (M3 review).
+- The drawing has a vertex budget (10 million): past it, arcs are drawn
+  coarser, with a `DrawingSimplified` note (M3 review).
 - Flatpak: single file, offline build, `WEBKIT_DISABLE_DMABUF_RENDERER=1`
   (fixes a Wayland protocol error on NVIDIA, confirmed by the owner).
 
@@ -286,7 +289,7 @@ self-review: the same agent wrote the code.
 | I4: IR lacks stop/pause, coolant, spindle direction, program end | **Fixed** (M2.0): event segments |
 | I6: max feed / max rpm / rapid rates loaded but unused | Partly fixed (M3.8): rapid rates and max feed are used by the time estimate; max rpm is still unused |
 | I7: about 19 Fanuc behaviours marked *(unverified)* | Open; needs the owner's control manual |
-| Minor: R arc with equal end points is a warning in the dialect but an error in the interpreter | Open |
+| Minor: R arc with equal end points is a warning in the dialect but an error in the interpreter | **Fixed** (M3 review): a warning in both, an arc of 0° |
 | Minor: G95 feed is stored as mm/min (wrong for cycle time) | **Fixed** (M3.8): G95 is feed per revolution, F × S |
 | Minor: no warning for a feed move with the spindle stopped | Open (feature) |
 | Minor: undefined work offset uses `InvalidValue`; "after program end" uses `NotYetSimulated`; limit summary points at line 0 | Open |

@@ -919,7 +919,8 @@ impl<'m> Executor<'m> {
 
     /// The feed rate in mm/min for a feed move now: the programmed feed,
     /// or under feed per revolution the feed times the spindle speed. With
-    /// the spindle stopped there is none (0), reported once.
+    /// the spindle stopped, or no speed known, there is none (0), reported
+    /// once.
     fn feed_per_minute(&mut self, src: SourceRef, diag: &mut Diagnostics) -> f64 {
         if self.feed_mode != FeedMode::PerRevolution {
             return self.feed;
@@ -934,10 +935,17 @@ impl<'m> Executor<'m> {
         }
         if !self.stopped_feed_reported {
             self.stopped_feed_reported = true;
+            let why = if self.spindle_on {
+                "no spindle speed known (no S word, or S is not in rpm)"
+            } else {
+                "the spindle stopped"
+            };
             diag.warning(
                 DiagCode::MissingFeedRate,
-                "feed per revolution with the spindle stopped: the move has no feed rate in \
-                 mm/min, so it has no time in the estimate. Further cases are not reported.",
+                format!(
+                    "feed per revolution with {why}: the move has no feed rate in mm/min, so \
+                     it has no time in the estimate. Further cases are not reported."
+                ),
                 src,
             );
         }
@@ -1068,11 +1076,16 @@ fn report_arc_problem(problem: ArcProblem, src: SourceRef, diag: &mut Diagnostic
                  {half_chord:.4}); block not moved"
             ),
         ),
-        ArcProblem::ZeroLength => (
-            DiagCode::InvalidArc,
-            "arc with R ends where it starts, so it has no defined size; block not moved"
-                .to_owned(),
-        ),
+        ArcProblem::ZeroLength => {
+            // Fanuc treats this as an arc of 0 degrees: nothing moves. A
+            // warning, like `G2 R5.` with no end point in the dialect.
+            diag.warning(
+                DiagCode::InvalidArc,
+                "arc with R ends where it starts, so it moves 0 degrees; block not moved",
+                src,
+            );
+            return;
+        }
     };
     diag.error(code, message, src);
 }

@@ -19,7 +19,7 @@ use dialect_api::Dialect;
 use dialect_fanuc::Fanuc;
 use dialect_osai::Osai;
 use interpreter::{interpret, Options};
-use ir::{encode_render_buffer, EncodeError, DEFAULT_TOLERANCE};
+use ir::{encode_render_buffer, DiagCode, Diagnostic, EncodeError, SourceRef, DEFAULT_TOLERANCE};
 use machine_api::{Machine, MachineDef, MachineDefError};
 use machine_lathe::Lathe;
 use machine_mill::Mill;
@@ -132,6 +132,9 @@ pub struct RunOptions {
     pub block_delete: bool,
     /// Arc tolerance for drawing, in mm (chord error).
     pub tolerance: f64,
+    /// The most vertices to draw; past it, arcs are drawn with a coarser
+    /// tolerance and a note says so ([`ir::render::fit_tolerance`]).
+    pub max_vertices: usize,
 }
 
 impl Default for RunOptions {
@@ -139,8 +142,15 @@ impl Default for RunOptions {
         Self {
             block_delete: false,
             tolerance: DEFAULT_TOLERANCE,
+            max_vertices: ir::render::MAX_VERTICES,
         }
     }
+}
+
+/// A tolerance in mm, without trailing zeros beyond what it needs.
+fn fmt_mm(v: f64) -> String {
+    let text = format!("{v:.4}");
+    text.trim_end_matches('0').trim_end_matches('.').to_owned()
 }
 
 /// Interprets `program` with the dialect `dialect_id` on the machine
@@ -161,7 +171,7 @@ pub fn interpret_to_buffer(
     }
     let machine = load_machine(machine_toml)?;
     let dialect = load_dialect(dialect_id)?;
-    let result = interpret(
+    let mut result = interpret(
         program,
         file_name,
         dialect.as_ref(),
@@ -171,7 +181,25 @@ pub fn interpret_to_buffer(
             ..Options::default()
         },
     );
-    let buffer = encode_render_buffer(&result, options.tolerance, |p| {
+    let tolerance = ir::render::fit_tolerance(&result, options.tolerance, options.max_vertices);
+    if tolerance > options.tolerance {
+        result.diagnostics.push(Diagnostic::info(
+            DiagCode::DrawingSimplified,
+            format!(
+                "the drawing would need more than {} points, so arcs are drawn with a \
+                 coarser tolerance of {} mm instead of {} mm; the program itself is unchanged",
+                if options.max_vertices >= 1_000_000 {
+                    format!("{} million", options.max_vertices / 1_000_000)
+                } else {
+                    options.max_vertices.to_string()
+                },
+                fmt_mm(tolerance),
+                fmt_mm(options.tolerance)
+            ),
+            SourceRef::default(),
+        ));
+    }
+    let buffer = encode_render_buffer(&result, tolerance, |p| {
         machine.forward_kinematics(p).position
     })?;
     Ok(buffer)

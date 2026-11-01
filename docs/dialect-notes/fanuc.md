@@ -57,8 +57,10 @@ to run on a machine.
   G90 and G91. *(unverified, but standard Fanuc milling behaviour)*
 - **R and I/J/K in the same block:** R is used and the offsets are
   ignored. Reported as a `ControllerDependent` warning. *(unverified)*
-- **R with no end point** (`G2 R5.`): Fanuc treats this as an arc of 0°,
-  so nothing moves. Reported as an `InvalidArc` warning. *(unverified)*
+- **R with no end point** (`G2 R5.`), or an end point equal to the start
+  (`G2 X0. Y0. R5.` from X0 Y0): Fanuc treats this as an arc of 0°, so
+  nothing moves. Reported as an `InvalidArc` warning in both cases (until
+  the M3 review, the second was an error). *(unverified)*
 - **I/J/K with no end point:** a full circle, following the IR rule that
   coincident start and end points mean a full circle. *(unverified, but
   standard)*
@@ -160,8 +162,9 @@ select G55/G56, so the drawing uses those offsets from the machine file.
 Under G95, F is the feed per spindle revolution (mm, or inch under G20).
 The interpreter turns it into mm/min as F × S, the spindle speed, when the
 spindle is turning; G94 returns to feed per minute (the power-on mode).
-With the spindle stopped there is no feed rate: the move is still drawn,
-has no time in the estimate, and a warning is given once. This is the
+With the spindle stopped, or turning with no speed known (no S word yet),
+there is no feed rate: the move is still drawn, has no time in the
+estimate, and a warning saying which is given once. This is the
 standard Fanuc behaviour (G94/G95, feed per minute and per revolution, in
 the Fanuc milling operator's manuals). M3.8.
 
