@@ -25,8 +25,8 @@ explained; tool marker, hover, measuring and orbiting about a node;
 subprograms; statistics per tool with a simple time estimate; a million
 blocks opens in a second or two on the owner's desktop. Coordinate shifts
 and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left
-to the community. **Next: M4, code transformations**: write
-`docs/plans/M4_PLAN.md` and agree it with the owner first.
+to the community. **Next: M4, code transformations**
+(`docs/plans/M4_PLAN.md`, agreed 2026-11-01).
 
 The app is usable today as an editor beside a synced 3D backplot of Fanuc
 (and, as a stub, Osai 10 Series) milling programs, with diagnostics,
@@ -131,7 +131,7 @@ in ARCHITECTURE.md §5).
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
-- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (draft): milestone plans.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (agreed, next): milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.

@@ -1,8 +1,10 @@
 # M4 plan: code transformations
 
-**Status: draft for the owner to review (2026-11-01).** Nothing is built
-yet. Section 6 lists the questions that need an answer before work
-starts; the rest of the plan assumes the recommended answers.
+**Status: agreed with the owner (2026-11-01).** The owner's answers to
+the open questions are in section 6, and the owner added three items: a
+better icon, `.nc` files opening from the file manager, and the editor
+selection shown in the 3D view. Details of each step are settled in its
+PR.
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (§6, §7, §8.4a,
 §8.6 and §13), `DEVELOPMENT_STATUS.md` and the notes in
 `docs/plans/M3_PLAN.md` §5.
@@ -12,6 +14,11 @@ starts; the rest of the plan assumes the recommended answers.
 > **M4: Code transformations.** Translate, scale and rotate a selected
 > range of program lines; the core rewrites the text (keeping comments
 > and number style) and the editor applies it as one undoable edit.
+
+Added by the owner (2026-11-01): the lines selected in the editor are
+shown in bright yellow in the 3D view; a better app icon; and on Linux,
+`.nc` files show the app's icon in the file manager (Dolphin) and open
+in the app.
 
 A CAM-free way to move, turn or resize part of a program: shift a
 pocket 20 mm along X, turn a feature 90° about a point, or scale an
@@ -31,11 +38,18 @@ which the user can read, edit, undo and save.
 4. the toolpath of the rewritten lines is the original path transformed,
    checked by tests that run both through the interpreter;
 5. whatever cannot be transformed exactly is refused with a clear
-   message, or transformed with a warning, never changed silently.
+   message, or transformed with a warning, never changed silently;
+6. selecting lines in the editor colours their segments bright yellow in
+   the 3D view;
+7. the app has a proper icon, and the Flatpak makes `.nc` files show it
+   and open in the app.
 
 **Out of scope for M4:**
-- mirroring (wishlist, or M4 if the owner wants it: question 2)
-- non-uniform scaling of arcs (refused, as agreed)
+- mirroring (wishlist, owner decision)
+- scaling other than uniform in X and Y (owner decision): Z is never
+  scaled, and per-axis factors are not offered
+- a preview of the transformed path before applying (not needed, owner
+  decision: one Undo reverts it)
 - transforming rotary axes, canned-cycle depths in incremental mode, and
   the codes M3 left on hold (coordinate shifts, macros): refused with a
   message (question 4)
@@ -53,8 +67,8 @@ which the user can read, edit, undo and save.
    - Rotate: angle (degrees, counter-clockwise looking down the plane's
      third axis) and centre, in the active plane (G17 XY first; G18 and
      G19 as the program selects them).
-   - Scale: factor and centre (uniform; question 3 covers per-axis
-     factors for programs without arcs).
+   - Scale: one factor for X and Y, and a centre; Z is unchanged (owner
+     decision).
    The centre can be typed, or picked by clicking a node in the 3D view
    (the M3.3 snapping), which fills in its program coordinates.
 3. **The core rewrites the lines.** The UI sends the whole program text
@@ -92,18 +106,24 @@ axis that was modal (not written) but now changes gets a word added
 after the last axis word of the block.
 
 **Incremental moves (G91).** Each move's delta is rotated or scaled (a
-translation does not change deltas). Translating an incremental section
-is the open question 1.
+translation does not change deltas). To translate a selection that
+starts in G91, the first move into it gains the offset, and if the first
+move after the selection is incremental it loses the offset, so the rest
+of the program is unchanged (owner decision). That second edit is outside
+the selection; the message says so and names the line.
 
 **Arcs (G2/G3).**
 - I/J/K are offsets from the start (Fanuc default), so they are rotated
   and scaled with the move and unchanged by a translation.
-- R is unchanged by translation and rotation and scaled by a uniform
-  scale (a negative scale factor is refused: it would mirror).
+- R is unchanged by translation and rotation and scaled with X and Y (a
+  zero or negative factor is refused: a negative one would mirror).
+- Scaling is in X and Y only, so an arc in the XZ or YZ plane (G18,
+  G19) cannot be scaled exactly and is refused.
 - An arc whose plane is not the rotation plane is refused (for example,
   a G18 arc rotated about Z), because it would leave its plane.
-- Helical arcs: the axis outside the plane is translated and scaled like
-  a line; rotation is about that axis, so it is unchanged.
+- Helical arcs: the axis outside the plane is translated like a line;
+  rotation is about that axis and scaling leaves Z alone, so neither
+  changes it.
 
 **The first and last block of the selection.** The first move starts
 from the (untransformed) point before the selection, and the first move
@@ -139,19 +159,34 @@ subprogram runs more than once. A selection containing an M98 call does
 not transform the called subprogram (it is elsewhere in the file); a
 warning says so.
 
-**Refused, with a message** (question 4): a selection containing G53,
-G28/G30 intermediate points, canned cycles, G92/G52/G10, macro
+**Refused, with a message** (owner decision): a selection containing
+G53, G28/G30 intermediate points, canned cycles, G92/G52/G10, macro
 variables or expressions, or a block the dialect reported as an error.
-The message names the first such line. Nothing is changed.
+The whole transformation is refused, the message names the first such
+line, and nothing is changed.
 
 ## 4. PR sequence
 
 One PR per step, in this order. Each starts with failing tests.
 
 ### M4.0: This plan
-Agreed with the owner; ARCHITECTURE.md §13 and CLAUDE.md point to it.
+Agreed with the owner; ARCHITECTURE.md §13, CLAUDE.md and
+DEVELOPMENT_STATUS.md point to it.
 
-### M4.1: Exact rewriting (core)
+### M4.1: The editor selection in the 3D view (UI)
+- Selecting lines in the editor colours all their segments **bright
+  yellow** in the view (every run of a subprogram line, from the line
+  index); a single cursor line is the one-line case of the same thing,
+  replacing today's white highlight.
+- Yellow is also the tool marker's and the measure line's colour; both
+  are drawn on top in the overlay and keep their shapes, so they stay
+  distinct. The colour key gains a "Selected" entry.
+- Works for large selections (the whole of a million-block program):
+  the highlight is built from index ranges, not segment by segment.
+- Out of date (after an edit): no highlight, as for clicks today.
+- Comes first because the transformations act on this same selection.
+
+### M4.2: Exact rewriting (core)
 - A new core crate `transform` (depends on `gcode-syntax`, `dialect-api`,
   `ir`, `machine-api` and `interpreter`, not on concrete dialects), and
   its place in `tools/depcheck/rules.toml` and ARCHITECTURE.md §5.
@@ -164,7 +199,7 @@ Agreed with the owner; ARCHITECTURE.md §13 and CLAUDE.md point to it.
 - The identity transformation leaves any program unchanged, byte for
   byte (property test over generated and golden programs).
 
-### M4.2: Positions in program coordinates (core)
+### M4.3: Positions in program coordinates (core)
 - For each block: modal state and the full programmed position before
   and after, in program coordinates and program units, from the
   interpreter (a per-block trace alongside the segments, only when
@@ -172,28 +207,53 @@ Agreed with the owner; ARCHITECTURE.md §13 and CLAUDE.md point to it.
 - Tests: absolute and incremental, units changes, work offset changes,
   subprogram calls.
 
-### M4.3: Translate (core)
-- G90 moves, arcs, helices, added words; the rules in §3; the refusals.
+### M4.4: Translate (core)
+- G90 and G91 moves (the G91 rule in §3), arcs, helices, added words,
+  the refusals.
 - The check for all three transformations: run the original and the
   rewritten program; the rewritten selection's segments equal the
   original's transformed, within the rounding tolerance (property test).
 
-### M4.4: Rotate (core)
+### M4.5: Rotate (core)
 - In G17, G18 and G19; added axis words; arcs and helices; incremental
   sections.
 
-### M4.5: Scale (core)
-- Uniform, about a centre; R and I/J/K; refusal of a negative or zero
-  factor; per-axis factors only if question 3 says yes.
+### M4.6: Scale (core)
+- One factor for X and Y about a centre, Z unchanged; R and I/J; refusal
+  of a zero or negative factor and of G18/G19 arcs.
 
-### M4.6: The app and UI
+### M4.7: The Transform dialog (app and UI)
 - Shell command `transform` (raw program in, binary edit list out,
   parameters in small JSON) and its IPC tests.
-- UI: Transform… dialog, line-range selection, centre picked from the
+- UI: Transform… dialog, the selected lines, centre picked from the
   view, applying the edits as one transaction, running again, showing
   warnings. Unit tests for the pure parts; a browser check.
 
-### M4.7: Wrap-up
+### M4.8: A better icon
+- The current icon is a placeholder. A new one as SVG (with the PNG
+  sizes Tauri and the desktop need), drawn for clarity at 16–48 px.
+- The agent proposes two or three designs as images; the owner picks
+  (or supplies one). No trademarked logos or look-alikes.
+
+### M4.9: `.nc` files on the Linux desktop (Flatpak)
+- The Flatpak exports a MIME type for G-code (`*.nc`, `*.ngc`, `*.tap`
+  and upper-case forms, in a package file named after the app id) with
+  the app's icon, and the desktop file says the app opens it.
+- **What a Flatpak cannot do:** it runs no script at install time, so it
+  cannot make itself the default for a file type. Desktops (Dolphin
+  included) use an app as the default when it is the only one for the
+  type, or when the user picks "Always open with". The README says how.
+- **A clash to handle:** the shared MIME database already gives `*.nc` to
+  NetCDF (`application/x-netcdf`, binary scientific data). NetCDF files
+  start with a fixed signature, so G-code can be told apart by content;
+  the PR checks how Dolphin resolves it and chooses weights so G-code
+  wins only for text files, without taking real NetCDF files.
+- **The app must open a file given to it:** today it always starts with
+  the sample. The shell passes a path from the command line (through the
+  Flatpak document portal, `@@ %f @@`) to the UI, which opens it.
+- Tested in the container's Flatpak and by the owner in Dolphin.
+
+### M4.10: Wrap-up
 - The corpus and goldens: transform each private program with a few
   transformations and check the path (locally); a short public golden
   excerpt if the owner agrees.
@@ -209,24 +269,18 @@ Agreed with the owner; ARCHITECTURE.md §13 and CLAUDE.md point to it.
 | Edits shift byte positions | Edits are applied from the end of the line backwards, and only within the selected lines |
 | Large selections | Edits cross the boundary as a binary list; the trace is only built for the selected range |
 | Scope creep (mirror, per-axis scale, canned cycles) | Section 6; anything not agreed goes to `docs/WISHLIST.md` |
+| Claiming `*.nc` takes NetCDF files from scientific users | Match by content as well as name (M4.9); tested against a real NetCDF signature |
 
-## 6. Questions for the owner
+## 6. Owner decisions (2026-11-01)
 
-1. **Translating incremental (G91) moves.** Deltas do not change, so to
-   move an incremental section the first move into it must gain the
-   offset and the first move after it must lose it, which changes a line
-   outside the selection. Recommended: do that, and say so in the
-   message; the alternative is to refuse translation of selections that
-   start in G91.
-2. **Mirroring** (flipping X or Y, which also swaps G2 and G3). Not in
-   the agreed M4 list. Recommended: wishlist, unless you use it.
-3. **Per-axis scale factors** for selections without arcs (stretching
-   an engraving in X only). Recommended: allow it when the selection has
-   no arcs, refuse with a clear message when it does.
-4. **Unsupported codes in the selection** (G53, G28/G30, canned cycles,
-   G92/G52/G10, macros). Recommended: refuse the whole transformation and
-   name the line, rather than transform the rest and leave those as
-   they are.
-5. **Preview.** Show the transformed path as a ghost in the 3D view
-   while the dialog is open, before applying. Recommended: not in M4
-   (undo is one step, and the program runs again at once); wishlist.
+1. **Translating incremental (G91) sections:** allowed. The first move
+   after the selection is adjusted when it is incremental, and the
+   message says so (§3).
+2. **Mirroring:** on the wishlist, not in M4.
+3. **Scaling:** one factor for X and Y only; Z is never scaled.
+4. **Codes that cannot be transformed** in the selection: the whole
+   transformation is refused, naming the line.
+5. **Preview:** not needed.
+6. **Added:** the editor selection shown bright yellow in the 3D view
+   (M4.1), a better icon (M4.8), and `.nc` files showing the icon and
+   opening in the app on the Linux desktop (M4.9).

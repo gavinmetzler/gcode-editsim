@@ -114,3 +114,13 @@ Inside the Flatpak the sandbox limits this to files the user picked; a
 build outside it trusts the window. Having the Rust side open the
 dialogs, and the commands accept only paths it handed out, would close
 that gap without relying on the sandbox (ARCHITECTURE.md §8.4a).
+
+## Mirroring
+
+*Left out of M4 by the owner, 2026-11-01.*
+
+Mirror a selected range of lines about the X or Y axis (or a line
+through a point), as a fourth code transformation beside translate,
+rotate and scale (`docs/plans/M4_PLAN.md`). Mirroring swaps G2 and G3
+and reverses the side of cutter compensation (G41/G42), so climb and
+conventional milling swap too; the message should say so.
