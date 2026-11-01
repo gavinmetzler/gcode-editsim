@@ -72,7 +72,7 @@ fn generate(blocks: usize) -> String {
         let _ = write!(out, "G0 Z5.\nG0 X0. Y0.\nG1 Z{z:.3} F300.\n");
         lines += 3;
         let mut y = 0.0;
-        for row in 0..100 {
+        for row in 0..100u32 {
             let even = row.is_multiple_of(2);
             for k in 0..20 {
                 let x = if even { (k + 1) * 5 } else { (19 - k) * 5 };
