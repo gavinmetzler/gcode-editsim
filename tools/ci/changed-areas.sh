@@ -9,7 +9,7 @@
 # everything on.
 set -euo pipefail
 
-areas=(rust fuzz ui app flatpak)
+areas=(rust fuzz ui app flatpak audit)
 declare -A on
 for a in "${areas[@]}"; do on[$a]=false; done
 all() { for a in "${areas[@]}"; do on[$a]=true; done; }
@@ -32,6 +32,8 @@ while IFS= read -r path || [ -n "$path" ]; do
   case "$path" in ui/*) mark ui app flatpak ;; esac
   case "$path" in app/*) mark app flatpak ;; esac
   case "$path" in packaging/* | LICENSE) mark flatpak ;; esac
+  # Lock files say which dependency versions are used: audit them.
+  case "$path" in Cargo.lock | */Cargo.lock | ui/package-lock.json) mark audit ;; esac
   if [ "$matched" = false ]; then all; fi
 done
 

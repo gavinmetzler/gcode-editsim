@@ -29,6 +29,7 @@ jobs:
       ui: ${{ steps.areas.outputs.ui }}
       app: ${{ steps.areas.outputs.app }}
       flatpak: ${{ steps.areas.outputs.flatpak }}
+      audit: ${{ steps.areas.outputs.audit }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,7 +50,7 @@ jobs:
             echo "$files" | tools/ci/changed-areas.sh | tee -a "$GITHUB_OUTPUT"
           else
             # Not a pull request, or the diff failed: run everything.
-            printf '%s\n' rust=true fuzz=true ui=true app=true flatpak=true | tee -a "$GITHUB_OUTPUT"
+            printf '%s\n' rust=true fuzz=true ui=true app=true flatpak=true audit=true | tee -a "$GITHUB_OUTPUT"
           fi
 
   rust:
@@ -87,7 +88,10 @@ jobs:
         working-directory: app/shell
     steps:
       - uses: actions/checkout@v7
+      # The package mirrors once hung here for over 30 minutes (normally
+      # about 20 s): fail fast instead, and re-run.
       - name: Install WebKit and the other system libraries Tauri needs
+        timeout-minutes: 10
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -137,7 +141,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       # Includes the cross-boundary test: the TypeScript decoder reads the
-      # same render_buffer_v1.bin fixture as the Rust test. The generated
+      # same render_buffer_v2.bin fixture as the Rust test. The generated
       # constants are checked against core/ir by `cargo test` in the job
       # above.
       - name: Test
@@ -229,3 +233,35 @@ jobs:
           name: fuzz-crash
           path: core/gcode-syntax/fuzz/artifacts/
           if-no-files-found: ignore
+
+  # Known vulnerabilities in the dependencies (RustSec advisory database
+  # and the npm registry). Runs on every push to main and on pull requests
+  # that change a lock file. Advisories marked unmaintained or unsound are
+  # reported as warnings; a vulnerability fails the job.
+  audit:
+    needs: changes
+    if: needs.changes.outputs.audit == 'true'
+    name: dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned toolchain
+        run: rustup toolchain install
+      # Not pinned, unlike the other tools: the advisory database it reads
+      # changes format over time (0.21.2 could not read CVSS 4.0 scores),
+      # so an old cargo-audit stops working. The latest release keeps up.
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Audit the core workspace
+        run: cargo audit
+      - name: Audit the app shell
+        run: cargo audit --file app/shell/Cargo.lock
+      - name: Audit the fuzz target
+        run: cargo audit --file core/gcode-syntax/fuzz/Cargo.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Audit the UI packages
+        working-directory: ui
+        run: npm audit --audit-level=high
