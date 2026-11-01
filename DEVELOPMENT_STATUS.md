@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M4.2a (remembering the colour key and diagnostics filters, 2026-11-01).
+Last updated: M4.3 (the editor selection in the 3D view, 2026-11-01).
 M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
@@ -287,6 +287,12 @@ Changing any of these is a deliberate, documented change.
   Checked for real under Xvfb with openbox (`xdotool`, `wmctrl -c` to
   close politely); there the window manager decides the frame, so the
   client area sits a few pixels inside the saved frame position.
+- **Editor selection in the view (M4.3):** the selected lines (whole
+  lines; the cursor's line otherwise) are drawn bright yellow, replacing
+  the white one-line highlight; the range comes from
+  `LineIndex.segmentsInLines` (a view of the index) and the drawing from
+  `highlightGeometry`. Selecting all of a million blocks: about 250 ms
+  of JavaScript in the container, plus drawing.
 - Flatpak: single file, offline build, `WEBKIT_DISABLE_DMABUF_RENDERER=1`
   (fixes a Wayland protocol error on NVIDIA, confirmed by the owner).
 

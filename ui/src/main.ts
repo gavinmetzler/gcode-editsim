@@ -1,6 +1,7 @@
 // The UI: a toolbar, the program editor, the toolpath viewport, the
 // diagnostics panel, and a status line; statistics open in a dialog. The
-// cursor's line is highlighted in the toolpath, and clicking the toolpath
+// lines selected in the editor (or the cursor's line) are drawn bright
+// yellow in the toolpath, and clicking the toolpath
 // or a diagnostic jumps to its line. Edits do not re-run the program: they
 // mark the results out of date (and turn line sync off) until the user
 // refreshes with the button or F5.
@@ -18,7 +19,7 @@ import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
 import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from "./files";
 import { Freshness } from "./freshness";
-import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark } from "./editor/lines";
+import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark, type LineRange } from "./editor/lines";
 import { addSplitter, dblclickToggles, Maximiser } from "./layout/layout";
 import { layoutToSave, paneName, restoredShare, shownSeverities, type PaneLayout } from "./layout/panes";
 import {
@@ -357,26 +358,48 @@ async function main(app: HTMLElement): Promise<void> {
   const showFreshness = (): void => {
     const stale = freshness.stale && current !== null;
     staleBar.hidden = !stale;
+    if (stale) viewport.highlight([]);
     for (const box of [viewportBox, panelBox, editorBox]) box.classList.toggle("stale", stale);
   };
 
-  const showLine = (line: number, quiet = false): void => {
+  const showLine = (line: number): void => {
     if (freshness.stale) return;
     cursorLine = line;
     if (!current) return;
     const rb = current;
-    // Every run of the line: a subprogram line is highlighted in each call.
-    const segments = Array.from(lineIndex.segments(line));
-    viewport.highlight(segments);
     if (pinned && pinned.line !== line) pinned = null;
     resting = restingFor(pinned, line, restingPoint(rb, lineIndex.lastAfter(line)));
     showMarker();
+  };
+
+  /** The lines selected in the editor (the cursor's line when nothing is
+   *  selected), drawn bright yellow in the view (M4.3). */
+  let selection: LineRange = { first: 1, last: 1 };
+  const showSelection = (quiet = false): void => {
+    // Line numbers may have moved since the run: no highlight while out of date.
+    if (freshness.stale || !current) {
+      viewport.highlight([]);
+      return;
+    }
+    // Every run of each line: a subprogram line is highlighted in each call.
+    const segments = lineIndex.segmentsInLines(selection.first, selection.last);
+    viewport.highlight(segments);
     if (quiet) return;
-    setStatus(
-      segments.length === 0
-        ? `Line ${String(line)}: no toolpath`
-        : `Line ${String(line)}: ${String(segments.length)} segment${segments.length === 1 ? "" : "s"}`,
-    );
+    const lines =
+      selection.first === selection.last
+        ? `Line ${String(selection.first)}`
+        : `Lines ${String(selection.first)}–${String(selection.last)}`;
+    const n = segments.length;
+    setStatus(n === 0 ? `${lines}: no toolpath` : `${lines}: ${String(n)} segment${n === 1 ? "" : "s"}`);
+  };
+  /** Redraws the selection at most once a frame while it is being dragged. */
+  let selectionFrame = 0;
+  const scheduleSelection = (): void => {
+    if (selectionFrame !== 0) return;
+    selectionFrame = requestAnimationFrame(() => {
+      selectionFrame = 0;
+      showSelection();
+    });
   };
 
   const runner = latestOnly(
@@ -398,7 +421,9 @@ async function main(app: HTMLElement): Promise<void> {
       panel.show(rb);
       hovered = null;
       pinned = null;
-      showLine(editor.cursorLineNumber(), true);
+      showLine(editor.cursorLineNumber());
+      selection = editor.selectedLines();
+      showSelection(true);
       const d = rb.header.diagCount;
       setStatus(
         withNotice(
@@ -452,6 +477,10 @@ async function main(app: HTMLElement): Promise<void> {
   });
   editor.onCursorLine = (line) => {
     showLine(line);
+  };
+  editor.onSelectedLines = (range) => {
+    selection = range;
+    scheduleSelection();
   };
   viewport.onHover = (p) => {
     hovered = p && current ? preferArrivingMove(current, p) : null;

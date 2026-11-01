@@ -9,6 +9,10 @@ import { SEVERITY } from "../generated/render_buffer";
 export interface LineIndex {
   /** The segments from `line`, in run order: every run of the line. */
   segments(line: number): Uint32Array;
+  /** The segments from every line between `first` and `last` (either
+   *  order, both included): all their runs, by line. A view of the index,
+   *  not a copy, so a range as large as the program costs nothing. */
+  segmentsInLines(first: number, last: number): Uint32Array;
   /**
    * The segment that leaves the tool where it is after `line`: the last
    * segment of the line's first run, or, for a line with no segments, of
@@ -39,6 +43,8 @@ export function buildLineIndex(count: number, lineOf: (index: number) => number)
   };
   return {
     segments: (line) => order.subarray(lower(line), lower(line + 1)),
+    segmentsInLines: (first, last) =>
+      order.subarray(lower(Math.min(first, last)), lower(Math.max(first, last) + 1)),
     lastAfter: (line) => {
       // The nearest line at or before `line` with segments.
       const end = lower(line + 1);
@@ -50,6 +56,24 @@ export function buildLineIndex(count: number, lineOf: (index: number) => number)
       return order[k] ?? -1;
     },
   };
+}
+
+/** A range of whole editor lines, `first` to `last` (1-based, both
+ *  included). */
+export interface LineRange {
+  readonly first: number;
+  readonly last: number;
+}
+
+/**
+ * The whole lines a selection covers, from the lines of its start and end
+ * (`fromLine` <= `toLine`): a partial line counts as selected, except the
+ * line a multi-line selection ends at the very start of (`toAtLineStart`),
+ * since nothing of it is selected. A plain cursor gives its own line.
+ */
+export function selectedLines(fromLine: number, toLine: number, toAtLineStart: boolean): LineRange {
+  const last = toLine > fromLine && toAtLineStart ? toLine - 1 : toLine;
+  return { first: fromLine, last };
 }
 
 /** A diagnostic placed on an editor line, ready for the gutter. */

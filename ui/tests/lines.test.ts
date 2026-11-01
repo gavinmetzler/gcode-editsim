@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { decodeRenderBuffer, type Diagnostic } from "../src/buffer/decode";
-import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark } from "../src/editor/lines";
+import {
+  buildLineIndex,
+  latestOnly,
+  lineMarks,
+  selectedLines,
+  shownMarks,
+  type LineIndex,
+  type LineMark,
+} from "../src/editor/lines";
 import { SEVERITY } from "../src/generated/render_buffer";
 import { fixture } from "./fixture";
 
@@ -35,6 +43,27 @@ describe("buildLineIndex", () => {
     expect(straight.lastAfter(4)).toBe(3);
     expect(straight.lastAfter(9)).toBe(5);
     expect(straight.lastAfter(0)).toBe(-1);
+  });
+
+  it("finds every segment of a range of lines, every run included", () => {
+    const index = of([1, 2, 6, 7, 6, 7, 3]);
+    const range = (first: number, last: number) => Array.from(index.segmentsInLines(first, last));
+    expect(range(6, 7)).toEqual([2, 4, 3, 5]);
+    expect(range(1, 3)).toEqual([0, 1, 6]);
+    expect(range(1, 99)).toHaveLength(7);
+    expect(range(4, 5)).toEqual([]);
+    expect(range(3, 3)).toEqual(Array.from(index.segments(3)));
+    // A range given backwards is the same range.
+    expect(range(7, 6)).toEqual(range(6, 7));
+  });
+
+  it("gives a range as a view of the index, not a copy", () => {
+    // Selecting a whole million-line program must stay cheap.
+    const index = of(Array.from({ length: 1000 }, (_, i) => i + 1));
+    const all = index.segmentsInLines(1, 1000);
+    expect(all).toHaveLength(1000);
+    expect(all.byteOffset + all.byteLength).toBeLessThanOrEqual(all.buffer.byteLength);
+    expect(all.buffer).toBe(index.segmentsInLines(10, 20).buffer);
   });
 
   it("uses a subprogram line's first run", () => {
@@ -135,5 +164,22 @@ describe("shownMarks", () => {
     expect(shownMarks(marks, new Set(["error"])).map((m) => m.line)).toEqual([1]);
     expect(shownMarks(marks, new Set(["warning", "info"])).map((m) => m.line)).toEqual([2, 3]);
     expect(shownMarks(marks, new Set())).toEqual([]);
+  });
+});
+
+describe("selectedLines", () => {
+  it("is the cursor's line for a plain cursor", () => {
+    expect(selectedLines(5, 5, false)).toEqual({ first: 5, last: 5 });
+    // A cursor at the start of a line is on that line.
+    expect(selectedLines(5, 5, true)).toEqual({ first: 5, last: 5 });
+  });
+
+  it("grows a partial selection to whole lines", () => {
+    expect(selectedLines(3, 7, false)).toEqual({ first: 3, last: 7 });
+  });
+
+  it("leaves out the line a selection ends at the very start of", () => {
+    // Dragging down over whole lines ends at the start of the next one.
+    expect(selectedLines(3, 8, true)).toEqual({ first: 3, last: 7 });
   });
 });

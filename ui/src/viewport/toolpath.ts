@@ -29,6 +29,8 @@ export const PALETTE = {
   toolChange: [0.8, 0.45, 1.0],
   programEnd: [1.0, 0.3, 0.6],
   positionUnknown: [0.5, 0.5, 0.5],
+  /** The lines selected in the editor, drawn on top (M4.3). */
+  selected: [1.0, 1.0, 0.0],
 } as const satisfies Record<string, Rgb>;
 
 /** One entry of the colour legend. */
@@ -48,6 +50,7 @@ export function cssColor(c: Rgb): string {
 
 /** What the toolpath colours mean, in the order the legend shows them. */
 export const LEGEND: readonly LegendEntry[] = [
+  { label: "Selected", color: cssColor(PALETTE.selected), style: "solid" },
   { label: "Rapid", color: cssColor(PALETTE.rapid), style: "solid" },
   { label: "Linear feed", color: cssColor(PALETTE.linear), style: "solid" },
   { label: "Arc feed", color: cssColor(PALETTE.arc), style: "solid" },
@@ -192,4 +195,50 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
         }
       : null,
   };
+}
+
+/** Index pairs and event points to draw a set of segments on top. */
+export interface HighlightGeometry {
+  /** Vertex index pairs (into the toolpath's positions) for line segments. */
+  readonly pairs: Uint32Array;
+  /** Positions (x, y, z) of the events among them, drawn as dots. */
+  readonly points: Float32Array;
+}
+
+/**
+ * What to draw to highlight `segments` (indices; ones the toolpath does
+ * not have are skipped): each segment's own vertices joined, and a dot for
+ * each event. Two passes over typed arrays, so a highlight as large as
+ * the program needs no temporary lists.
+ */
+export function highlightGeometry(
+  toolpath: Pick<Toolpath, "positions" | "segmentVertices">,
+  segments: ArrayLike<number>,
+): HighlightGeometry {
+  let pairCount = 0;
+  let pointCount = 0;
+  for (let i = 0; i < segments.length; i += 1) {
+    const range = toolpath.segmentVertices(segments[i] ?? -1);
+    if (!range) continue;
+    if (range.count === 1) pointCount += 1;
+    else pairCount += range.count - 1;
+  }
+  const pairs = new Uint32Array(pairCount * 2);
+  const points = new Float32Array(pointCount * 3);
+  let p = 0;
+  let q = 0;
+  for (let i = 0; i < segments.length; i += 1) {
+    const range = toolpath.segmentVertices(segments[i] ?? -1);
+    if (!range) continue;
+    if (range.count === 1) {
+      points.set(toolpath.positions.subarray(range.first * 3, range.first * 3 + 3), q);
+      q += 3;
+    }
+    for (let v = range.first; v + 1 < range.first + range.count; v += 1) {
+      pairs[p] = v;
+      pairs[p + 1] = v + 1;
+      p += 2;
+    }
+  }
+  return { pairs, points };
 }
