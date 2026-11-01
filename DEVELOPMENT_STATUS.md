@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M4.6 (translate, 2026-11-01).
+Last updated: M4.7 (rotate, 2026-11-01).
 M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
@@ -34,7 +34,7 @@ statistics and a time estimate, that opens and saves files.
 
 | Area | Status |
 |---|---|
-| Tests | 653 pass (`cargo test --workspace`); 24 in the app shell (`cd app/shell && cargo test`); 125 in the UI (`cd ui && npm test`) |
+| Tests | 667 pass (`cargo test --workspace`); 24 in the app shell (`cd app/shell && cargo test`); 125 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build), a Flatpak build (artifact kept 30 days) and a dependency audit (`cargo audit` on the three Rust lock files, `npm audit` on the UI; on pull requests only when a lock file changes); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7), with per-tool times and a time estimate (M3.8); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. The machine folder is created on first start with the example mill and router files; the window reports the app id, so the desktop shows its icon. Windows and macOS: build from source |
@@ -124,7 +124,7 @@ in ARCHITECTURE.md §5).
 | `core/machine-mill` | 3-axis mill | `Mill::new(def)`, `Mill::generic()`; example files `data/generic_3axis_mill.toml` and `data/generic_3axis_router.toml` (no travel limits, every work offset at zero) |
 | `core/machine-lathe` | 2-axis lathe **stub** (M2.2) | `Lathe::new(def)`, `Lathe::generic()`; X diameter → radius in `normalize_axis_value`; example file `data/generic_2axis_lathe.toml` |
 | `core/interpreter` | Dialect + machine to IR | `interpret(source, file, &dyn Dialect, &dyn Machine, Options) -> ir::Program`; `interpret_traced(…, lines) -> (Program, Vec<BlockTrace>)` (M4.5: per run of each block in the lines, state after it, commands, errors, position before/after in work coordinates, mm); `examples/summary.rs` |
-| `core/transform` | Rewrites selected lines exactly (M4; M4.4 so far) | `TextEdit { line, span, text }`; `apply_edits` (every other byte kept); `source_lines` (split as the parser splits); `rewrite_word` (one word's new value in the program's style; no edit if it reads back the same); `transform(…, lines, &Transformation::Translate { offset })` → `Transformed { edits, notes }` or `TransformError::Refused { line, reason }` (M4.6). Number style: `gcode_syntax::NumberStyle`; meaning: `Dialect::read_value` / `format_value` (Fanuc in `dialect-fanuc/src/numbers.rs`) |
+| `core/transform` | Rewrites selected lines exactly (M4) | `TextEdit { line, span, text }`; `apply_edits` (every other byte kept); `source_lines` (split as the parser splits); `rewrite_word` (one word's new value in the program's style; no edit if it reads back the same); `transform(…, lines, &Transformation)` (Translate M4.6, Rotate M4.7) → `Transformed { edits, notes }` or `TransformError::Refused { line, reason }` (M4.6). Number style: `gcode_syntax::NumberStyle`; meaning: `Dialect::read_value` / `format_value` (Fanuc in `dialect-fanuc/src/numbers.rs`) |
 | `core/testkit` | Golden helpers (no file access) | `summary(&Program, letters)`: compact JSON rounded to 1e-6; `compare`; `UPDATE_GOLDEN` |
 | `core/sim` | Empty placeholder (M7) | |
 | `app/backend` | The app's behaviour without Tauri (M2.3a) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, seed_machine_folder, list_machine_files}`, `settings::{load, save, update, RememberedMachine}` (the remembered machine and dialect, M4.1) |
@@ -235,6 +235,15 @@ Changing any of these is a deliberate, documented change.
   `tests/translate_paths.rs` compares the interpreted paths before and
   after (400 random programs; about two thirds transformed, the rest
   refused at an arc).
+
+- **Rotate (M4.7):** `Transformation::Rotate { plane, angle, centre }`;
+  arc offsets turn (added when no longer zero), R stays, an arc in another
+  plane is refused. `tests/rotate_paths.rs` (800 random programs, about a
+  third with arcs inside the selection) compares the paths within one
+  increment, since turned values are rounded. Lesson: a property test
+  that passes can still miss a whole case (here, every arc in a rotated
+  selection was refused because of rounding); count what it exercises and
+  mutation-check it.
 
 **Interpreter**
 - `interpret_traced` (M4.5) traces only the lines asked for; both positions use the work offset in effect *for* the block, so `G55 X10.` has a `before` already in G55 coordinates.

@@ -93,7 +93,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 4. Exact rewriting (core) *(done)*
 5. Positions in program coordinates (core) *(done)*
 6. Translate *(done)*
-7. Rotate
+7. Rotate *(done)*
 8. Scale (one factor for X and Y; Z never scaled)
 9. Transform dialog (app and UI)
 10. A better icon

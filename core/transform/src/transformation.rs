@@ -18,10 +18,10 @@
 use std::collections::BTreeSet;
 use std::ops::RangeInclusive;
 
-use dialect_api::{AxisWord, Command, Dialect, DistanceMode, ValueKind};
+use dialect_api::{ArcCenter, AxisWord, Command, Dialect, DistanceMode, ValueKind};
 use gcode_syntax::{parse, Block, Expr, NumberStyle, Program as Parsed, Span, Word};
 use interpreter::{interpret_traced, BlockTrace, Options};
-use ir::{LengthUnit, Pos, Severity, MAX_AXES};
+use ir::{ArcPlane, LengthUnit, Pos, Severity, MAX_AXES};
 use machine_api::{AxisKind, Machine};
 
 use crate::{rewrite_word, source_lines, RewriteError, TextEdit};
@@ -35,6 +35,58 @@ pub enum Transformation {
         /// The offset, indexed like the machine's axes.
         offset: Pos,
     },
+    /// Turn by `angle` degrees about `centre` in `plane`: counter-clockwise
+    /// from the plane's first axis toward its second, as for arcs (so
+    /// looking down the third axis for G17, G18 and G19). Axes outside the
+    /// plane are unchanged. Arc centre offsets turn with the moves; R does
+    /// not change.
+    Rotate {
+        /// Two linear axes of the machine (indices), in arc-plane order.
+        plane: ArcPlane,
+        /// Degrees, counter-clockwise.
+        angle: f64,
+        /// The point turned about (only the plane's two axes are used),
+        /// in program coordinates.
+        centre: Pos,
+    },
+}
+
+/// Cosine and sine of `degrees`, exact for whole quarter turns, so 90°
+/// gives 0 and not 6e-17.
+fn cos_sin(degrees: f64) -> (f64, f64) {
+    let turn = degrees.rem_euclid(360.0);
+    if turn == 0.0 {
+        (1.0, 0.0)
+    } else if turn == 90.0 {
+        (0.0, 1.0)
+    } else if turn == 180.0 {
+        (-1.0, 0.0)
+    } else if turn == 270.0 {
+        (0.0, -1.0)
+    } else {
+        let r = turn.to_radians();
+        (r.cos(), r.sin())
+    }
+}
+
+/// `v` turned counter-clockwise in `plane` (a vector: no centre).
+fn turn(v: &Pos, plane: ArcPlane, degrees: f64) -> Pos {
+    let (a, b) = (usize::from(plane.first), usize::from(plane.second));
+    let (cos, sin) = cos_sin(degrees);
+    let mut out = *v;
+    if let (Some(&x), Some(&y)) = (v.get(a), v.get(b)) {
+        if let Some(slot) = out.get_mut(a) {
+            *slot = x * cos - y * sin;
+        }
+        if let Some(slot) = out.get_mut(b) {
+            *slot = x * sin + y * cos;
+        }
+    }
+    out
+}
+
+fn same_plane(a: ArcPlane, b: ArcPlane) -> bool {
+    (a.first, a.second) == (b.first, b.second) || (a.first, a.second) == (b.second, b.first)
 }
 
 impl Transformation {
@@ -48,6 +100,50 @@ impl Transformation {
                 }
                 out
             }
+            Self::Rotate {
+                plane,
+                angle,
+                centre,
+            } => {
+                let mut rel = *p;
+                for (v, c) in rel.iter_mut().zip(centre) {
+                    *v -= c;
+                }
+                let mut out = turn(&rel, *plane, *angle);
+                for (v, c) in out.iter_mut().zip(centre) {
+                    *v += c;
+                }
+                // Axes outside the plane are exactly as they were.
+                for (i, (v, orig)) in out.iter_mut().zip(p).enumerate() {
+                    if i != usize::from(plane.first) && i != usize::from(plane.second) {
+                        *v = *orig;
+                    }
+                }
+                out
+            }
+        }
+    }
+
+    /// What happens to a vector, such as an arc's centre offset from its
+    /// start: a translation leaves it, a rotation turns it.
+    fn apply_vector(&self, v: &Pos) -> Pos {
+        match self {
+            Self::Translate { .. } => *v,
+            Self::Rotate { plane, angle, .. } => turn(v, *plane, *angle),
+        }
+    }
+
+    /// Why an arc in `plane` cannot be transformed, if it cannot.
+    fn arc_refusal(&self, plane: ArcPlane) -> Option<&'static str> {
+        match self {
+            Self::Translate { .. } => None,
+            Self::Rotate {
+                plane: turned,
+                angle,
+                ..
+            } => (!same_plane(plane, *turned) && cos_sin(*angle) != (1.0, 0.0)).then_some(
+                "the arc is not in the plane of the rotation, so turning it would take it out of its plane",
+            ),
         }
     }
 }
@@ -169,6 +265,29 @@ fn check_transformation(
     line: u32,
 ) -> Result<(), TransformError> {
     match t {
+        Transformation::Rotate {
+            plane,
+            angle,
+            centre,
+        } => {
+            if !angle.is_finite() || centre.iter().any(|c| !c.is_finite()) {
+                return Err(refuse(line, "the angle or the centre is not a number"));
+            }
+            let axes = machine.axes();
+            let (a, b) = (usize::from(plane.first), usize::from(plane.second));
+            match (axes.get(a), axes.get(b)) {
+                (Some(x), Some(y))
+                    if a != b && x.kind == AxisKind::Linear && y.kind == AxisKind::Linear =>
+                {
+                    Ok(())
+                }
+                (Some(_), Some(_)) if a != b => Err(refuse(line, "rotary axes cannot be rotated")),
+                _ => Err(refuse(
+                    line,
+                    "the rotation plane must be two different axes of this machine",
+                )),
+            }
+        }
         Transformation::Translate { offset } => {
             for (i, d) in offset.iter().enumerate() {
                 if !d.is_finite() {
@@ -289,12 +408,16 @@ impl Job<'_> {
         let mut pos = first.before;
         let mut prev_after = first.before;
         let mut first_move = true;
+        // Whether `pos` was reached by a move this transformation rewrote
+        // (then it is the transformed point, rounded as written).
+        let mut pos_transformed = false;
         let mut edited = BTreeSet::new();
         for t in trace.get(start..=end).unwrap_or_default() {
             if far(&t.before, &prev_after) {
                 // Something not traced moved the tool (a subprogram far
                 // down the file): assume it ends where it did.
                 pos = t.before;
+                pos_transformed = false;
             }
             prev_after = t.after;
             if self.selected(t) && t.run == 0 && edited.insert(t.block) {
@@ -325,10 +448,15 @@ impl Job<'_> {
                             ),
                         });
                     }
-                    pos = self.rewrite(t, &pos, &start, &target, &mut out.edits)?;
+                    // A start reached by a rewritten move is that point;
+                    // otherwise it must be exactly the transformed start.
+                    let check = (!pos_transformed).then_some(&start);
+                    pos = self.rewrite(t, &pos, check, &target, true, &mut out.edits)?;
+                    pos_transformed = true;
                 }
-            } else {
+            } else if moves_position(t) {
                 pos = self.replay(t, &pos);
+                pos_transformed = false;
             }
         }
 
@@ -393,7 +521,7 @@ impl Job<'_> {
         }
         if t.state.distance == DistanceMode::Incremental {
             let mut edits = Vec::new();
-            self.rewrite(t, pos, pos, &t.after, &mut edits)?;
+            self.rewrite(t, pos, None, &t.after, false, &mut edits)?;
             if !edits.is_empty() {
                 out.edits.extend(edits);
                 out.notes.push(Note {
@@ -445,6 +573,13 @@ impl Job<'_> {
                     return Err(refuse(t.line, "the line leaves the position unknown"))
                 }
                 _ => {}
+            }
+        }
+        for c in &t.commands {
+            if let Command::Arc { plane, .. } = c {
+                if let Some(why) = self.transformation.arc_refusal(*plane) {
+                    return Err(refuse(t.line, why));
+                }
             }
         }
         if !t.known_before || !t.known_after {
@@ -537,15 +672,17 @@ impl Job<'_> {
     }
 
     /// Rewrites the axis words of `t`'s move so that, starting from `pos`
-    /// in the rewritten program, it ends at `target`. `start` is where the
-    /// move should start for an arc to stay the same arc. Returns where the
+    /// in the rewritten program, it ends at `target`. `start`, if given, is
+    /// where the move must start for an arc to stay the same arc (`None`
+    /// when `pos` was reached by a rewritten move, so it is that point). Returns where the
     /// rewritten move ends (the written values, as the dialect reads them).
     fn rewrite(
         &self,
         t: &BlockTrace,
         pos: &Pos,
-        start: &Pos,
+        start: Option<&Pos>,
         target: &Pos,
+        turn_offsets: bool,
         edits: &mut Vec<TextEdit>,
     ) -> Result<Pos, TransformError> {
         let block = self
@@ -555,8 +692,11 @@ impl Job<'_> {
             .lines
             .get((t.line as usize).saturating_sub(1))
             .ok_or_else(|| refuse(t.line, "internal error: no such line"))?;
+        // An arc stays the same arc only if its start moved with it: the
+        // point a rewritten move reached (rounded as written), or exactly
+        // the transformed start.
         if let Some((Command::Arc { .. }, _)) = motion(t) {
-            if far(pos, start) {
+            if start.is_some_and(|s| far(pos, s)) {
                 return Err(refuse(
                     t.line,
                     "the selection starts with an arc, whose start point is not moved, so it would no longer be \
@@ -617,8 +757,22 @@ impl Job<'_> {
                 }
             }
         }
-        if !insert.is_empty() {
-            let (at, prefix, upper, style) = self.insertion_point(block, line_text)?;
+        let mut insert_offsets: Vec<(char, f64)> = Vec::new();
+        if let (true, Some((Command::Arc { center, plane, .. }, _))) = (turn_offsets, motion(t)) {
+            self.turn_centre(
+                t,
+                block,
+                line_text,
+                center,
+                *plane,
+                edits,
+                &mut insert_offsets,
+            )?;
+        }
+        if !insert.is_empty() || !insert_offsets.is_empty() {
+            let axis_letters: Vec<char> = self.machine.axes().iter().map(|a| a.name).collect();
+            let (at, prefix, upper, style) =
+                self.insertion_point(block, line_text, &axis_letters)?;
             for (i, letter, kind, value) in insert {
                 let text = self
                     .dialect
@@ -642,24 +796,133 @@ impl Job<'_> {
                     text: format!("{prefix}{letter}{text}"),
                 });
             }
+            // Centre offsets after the block's offset words, or after its
+            // axis words (and any just added there).
+            let offset_letters: Vec<char> = self
+                .machine
+                .axes()
+                .iter()
+                .filter_map(|a| a.arc_offset_letter)
+                .collect();
+            let has_offset_word = block
+                .words
+                .iter()
+                .any(|w| offset_letters.contains(&w.letter));
+            let (at, prefix, upper, style) = if has_offset_word {
+                self.insertion_point(block, line_text, &offset_letters)?
+            } else {
+                (at, prefix, upper, style)
+            };
+            for (letter, value) in insert_offsets {
+                let text = self
+                    .dialect
+                    .format_value(value, ValueKind::Length, units, &style)
+                    .ok_or_else(|| {
+                        refuse(t.line, format!("the new {letter} value cannot be written"))
+                    })?;
+                let letter = if upper {
+                    letter
+                } else {
+                    letter.to_ascii_lowercase()
+                };
+                edits.push(TextEdit {
+                    line: t.line,
+                    span: Span::new(at, at),
+                    text: format!("{prefix}{letter}{text}"),
+                });
+            }
         }
         Ok(reached)
     }
 
-    /// Where to add axis words to a block: after its last axis word (or
-    /// its last word), with a space if the line's words are spaced, in the
-    /// letter case and number style of that word.
+    /// Rewrites an arc's centre offsets (I/J/K, letters from the machine
+    /// file) as the transformation turns them; offsets that were not
+    /// written but are no longer zero go to `insert`. R is left as it is.
+    #[allow(clippy::too_many_arguments)]
+    fn turn_centre(
+        &self,
+        t: &BlockTrace,
+        block: &Block,
+        line_text: &[u8],
+        center: &ArcCenter,
+        plane: ArcPlane,
+        edits: &mut Vec<TextEdit>,
+        insert: &mut Vec<(char, f64)>,
+    ) -> Result<(), TransformError> {
+        let offsets = match center {
+            ArcCenter::Radius(_) => return Ok(()),
+            ArcCenter::Offset(offsets) => offsets,
+            ArcCenter::Position(_) => {
+                return Err(refuse(
+                    t.line,
+                    "an arc centre given as a position cannot be transformed yet",
+                ))
+            }
+        };
+        let mut old: Pos = [0.0; MAX_AXES];
+        for o in offsets {
+            if let Some(slot) = old.get_mut(o.axis) {
+                *slot = o.value;
+            }
+        }
+        let new = self.transformation.apply_vector(&old);
+        let units = t.state.units;
+        for axis in [usize::from(plane.first), usize::from(plane.second)] {
+            let (Some(&was), Some(&now)) = (old.get(axis), new.get(axis)) else {
+                continue;
+            };
+            let letter = self
+                .machine
+                .axes()
+                .get(axis)
+                .and_then(|a| a.arc_offset_letter);
+            let words: Vec<&Word> = letter
+                .map(|l| block.words.iter().filter(|w| w.letter == l).collect())
+                .unwrap_or_default();
+            match (letter, words.as_slice()) {
+                (_, []) if (now - was).abs() <= SAME => {}
+                (Some(l), []) => insert.push((l, now)),
+                (None, _) => {
+                    return Err(refuse(
+                        t.line,
+                        "the machine file gives this axis no arc-centre letter",
+                    ))
+                }
+                (Some(_), [word]) => {
+                    let edit = rewrite_word(
+                        line_text,
+                        t.line,
+                        word,
+                        now,
+                        ValueKind::Length,
+                        units,
+                        self.dialect,
+                    )
+                    .map_err(|e| self.rewrite_refusal(e))?;
+                    edits.extend(edit);
+                }
+                (Some(l), _) => {
+                    return Err(refuse(t.line, format!("{l} is written twice in the line")))
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Where to add words to a block: after its last word with one of
+    /// `letters` (or its last word), with a space if the line's words are
+    /// spaced, in the letter case and number style of that word.
     fn insertion_point(
         &self,
         block: &Block,
         line: &[u8],
+        letters: &[char],
     ) -> Result<(usize, &'static str, bool, NumberStyle), TransformError> {
-        let is_axis = |w: &&Word| self.machine.axes().iter().any(|a| a.name == w.letter);
+        let is_axis = |w: &&Word| letters.contains(&w.letter);
         let anchor = block
             .words
             .iter()
-            .filter(is_axis)
-            .last()
+            .rfind(is_axis)
             .or_else(|| block.words.last())
             .ok_or_else(|| refuse(block.line, "there is no word to add a value after"))?;
         // Spaced like the line's other words; a line of one word gets a
