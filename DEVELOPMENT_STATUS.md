@@ -453,7 +453,8 @@ Decided (2026-10-31 to 2026-11-01), M3.7 to M3.10:
   for M5.
 - **UI:** panes are resizable and maximisable (double-click the view or
   the diagnostics, a button on the editor); the editor margin follows the
-  diagnostics filters; remembering the layout is on the wishlist.
+  diagnostics filters; remembering the layout, with the machine and
+  dialect, moved from the wishlist to the start of M4 (owner, 2026-11-01).
 
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their

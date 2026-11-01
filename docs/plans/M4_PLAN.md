@@ -1,9 +1,10 @@
 # M4 plan: code transformations
 
 **Status: agreed with the owner (2026-11-01).** The owner's answers to
-the open questions are in section 6, and the owner added three items: a
-better icon, `.nc` files opening from the file manager, and the editor
-selection shown in the 3D view. Details of each step are settled in its
+the open questions are in section 6, and the owner added five items:
+remembering the machine and dialect and the window layout (moved from
+the wishlist), the editor selection shown in the 3D view, a better icon,
+and `.nc` files opening from the file manager. Details of each step are settled in its
 PR.
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (§6, §7, §8.4a,
 §8.6 and §13), `DEVELOPMENT_STATUS.md` and the notes in
@@ -15,7 +16,9 @@ PR.
 > range of program lines; the core rewrites the text (keeping comments
 > and number style) and the editor applies it as one undoable edit.
 
-Added by the owner (2026-11-01): the lines selected in the editor are
+Added by the owner (2026-11-01): the app remembers the machine,
+dialect and window layout between sessions; the lines selected in the
+editor are
 shown in bright yellow in the 3D view; a better app icon; and on Linux,
 `.nc` files show the app's icon in the file manager (Dolphin) and open
 in the app.
@@ -39,9 +42,11 @@ which the user can read, edit, undo and save.
    checked by tests that run both through the interpreter;
 5. whatever cannot be transformed exactly is refused with a clear
    message, or transformed with a warning, never changed silently;
-6. selecting lines in the editor colours their segments bright yellow in
+6. the app starts with the machine, dialect and window layout of the
+   last session;
+7. selecting lines in the editor colours their segments bright yellow in
    the 3D view;
-7. the app has a proper icon, and the Flatpak makes `.nc` files show it
+8. the app has a proper icon, and the Flatpak makes `.nc` files show it
    and open in the app.
 
 **Out of scope for M4:**
@@ -167,13 +172,45 @@ line, and nothing is changed.
 
 ## 4. PR sequence
 
-One PR per step, in this order. Each starts with failing tests.
+One PR per step, in this order. Each starts with failing tests. M4.1
+and M4.2 come first, at the owner's request (2026-11-01): they make
+every later test session quicker.
 
 ### M4.0: This plan
 Agreed with the owner; ARCHITECTURE.md §13, CLAUDE.md and
 DEVELOPMENT_STATUS.md point to it.
 
-### M4.1: The editor selection in the 3D view (UI)
+### M4.1: Remember the machine and dialect
+*Moved from the wishlist by the owner, 2026-11-01.*
+- The app starts with the machine file and dialect chosen last, instead
+  of the first machine in the list (which drew router programs mostly
+  red, outside the generic VMC's travel).
+- Kept in a small settings file in the app's configuration folder (next
+  to `machines/`), read and written by `app-backend` (small JSON, not
+  bulk data). The later settings dialog (wishlist) uses the same file.
+- If the remembered machine file is gone or has problems, the app falls
+  back to the first usable machine and says so in the status line.
+- Tests: the settings file round-trips, a missing or damaged file gives
+  the defaults (never an error at start-up), a removed machine falls
+  back.
+
+### M4.2: Remember the window layout
+*Moved from the wishlist by the owner, 2026-11-01.*
+- The pane sizes (the dragged splitters), the maximised pane, and the
+  window's size and maximised state are saved when they change and
+  restored at start-up, in the same settings file.
+- **Window position:** restored on X11 and on Windows and macOS. Under
+  Wayland (the owner's desktop) an app cannot place its own window: the
+  desktop decides, so only the size and maximised state come back. Said
+  in the README.
+- A layout that no longer fits (a smaller screen, a pane share out of
+  range) is clamped or reset to the default, never restored off-screen.
+- A way back to the default layout: a "Reset layout" item (the settings
+  dialog on the wishlist would be its later home).
+- Done with Tauri's own window API, not a new plugin, unless that proves
+  unreliable (then `tauri-plugin-window-state`, justified in the PR).
+
+### M4.3: The editor selection in the 3D view (UI)
 - Selecting lines in the editor colours all their segments **bright
   yellow** in the view (every run of a subprogram line, from the line
   index); a single cursor line is the one-line case of the same thing,
@@ -186,7 +223,7 @@ DEVELOPMENT_STATUS.md point to it.
 - Out of date (after an edit): no highlight, as for clicks today.
 - Comes first because the transformations act on this same selection.
 
-### M4.2: Exact rewriting (core)
+### M4.4: Exact rewriting (core)
 - A new core crate `transform` (depends on `gcode-syntax`, `dialect-api`,
   `ir`, `machine-api` and `interpreter`, not on concrete dialects), and
   its place in `tools/depcheck/rules.toml` and ARCHITECTURE.md §5.
@@ -199,7 +236,7 @@ DEVELOPMENT_STATUS.md point to it.
 - The identity transformation leaves any program unchanged, byte for
   byte (property test over generated and golden programs).
 
-### M4.3: Positions in program coordinates (core)
+### M4.5: Positions in program coordinates (core)
 - For each block: modal state and the full programmed position before
   and after, in program coordinates and program units, from the
   interpreter (a per-block trace alongside the segments, only when
@@ -207,35 +244,35 @@ DEVELOPMENT_STATUS.md point to it.
 - Tests: absolute and incremental, units changes, work offset changes,
   subprogram calls.
 
-### M4.4: Translate (core)
+### M4.6: Translate (core)
 - G90 and G91 moves (the G91 rule in §3), arcs, helices, added words,
   the refusals.
 - The check for all three transformations: run the original and the
   rewritten program; the rewritten selection's segments equal the
   original's transformed, within the rounding tolerance (property test).
 
-### M4.5: Rotate (core)
+### M4.7: Rotate (core)
 - In G17, G18 and G19; added axis words; arcs and helices; incremental
   sections.
 
-### M4.6: Scale (core)
+### M4.8: Scale (core)
 - One factor for X and Y about a centre, Z unchanged; R and I/J; refusal
   of a zero or negative factor and of G18/G19 arcs.
 
-### M4.7: The Transform dialog (app and UI)
+### M4.9: The Transform dialog (app and UI)
 - Shell command `transform` (raw program in, binary edit list out,
   parameters in small JSON) and its IPC tests.
 - UI: Transform… dialog, the selected lines, centre picked from the
   view, applying the edits as one transaction, running again, showing
   warnings. Unit tests for the pure parts; a browser check.
 
-### M4.8: A better icon
+### M4.10: A better icon
 - The current icon is a placeholder. A new one as SVG (with the PNG
   sizes Tauri and the desktop need), drawn for clarity at 16–48 px.
 - The agent proposes two or three designs as images; the owner picks
   (or supplies one). No trademarked logos or look-alikes.
 
-### M4.9: `.nc` files on the Linux desktop (Flatpak)
+### M4.11: `.nc` files on the Linux desktop (Flatpak)
 - The Flatpak exports a MIME type for G-code (`*.nc`, `*.ngc`, `*.tap`
   and upper-case forms, in a package file named after the app id) with
   the app's icon, and the desktop file says the app opens it.
@@ -253,7 +290,7 @@ DEVELOPMENT_STATUS.md point to it.
   Flatpak document portal, `@@ %f @@`) to the UI, which opens it.
 - Tested in the container's Flatpak and by the owner in Dolphin.
 
-### M4.10: Wrap-up
+### M4.12: Wrap-up
 - The corpus and goldens: transform each private program with a few
   transformations and check the path (locally); a short public golden
   excerpt if the owner agrees.
@@ -269,7 +306,7 @@ DEVELOPMENT_STATUS.md point to it.
 | Edits shift byte positions | Edits are applied from the end of the line backwards, and only within the selected lines |
 | Large selections | Edits cross the boundary as a binary list; the trace is only built for the selected range |
 | Scope creep (mirror, per-axis scale, canned cycles) | Section 6; anything not agreed goes to `docs/WISHLIST.md` |
-| Claiming `*.nc` takes NetCDF files from scientific users | Match by content as well as name (M4.9); tested against a real NetCDF signature |
+| Claiming `*.nc` takes NetCDF files from scientific users | Match by content as well as name (M4.11); tested against a real NetCDF signature |
 
 ## 6. Owner decisions (2026-11-01)
 
@@ -281,6 +318,8 @@ DEVELOPMENT_STATUS.md point to it.
 4. **Codes that cannot be transformed** in the selection: the whole
    transformation is refused, naming the line.
 5. **Preview:** not needed.
-6. **Added:** the editor selection shown bright yellow in the 3D view
-   (M4.1), a better icon (M4.8), and `.nc` files showing the icon and
-   opening in the app on the Linux desktop (M4.9).
+6. **Added:** remembering the machine and dialect (M4.1) and the window
+   layout (M4.2), moved from the wishlist to the start of M4; the editor
+   selection shown bright yellow in the 3D view
+   (M4.3), a better icon (M4.10), and `.nc` files showing the icon and
+   opening in the app on the Linux desktop (M4.11).

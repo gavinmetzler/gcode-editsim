@@ -227,7 +227,7 @@ See [Trying it out](#trying-it-out).
 
 ### Later Milestones
 
-- **M4 – Code transformations:** translate, rotate and scale a selected part of the program; the editor selection shown in the 3D view; a better icon; `.nc` files opening in the app from the Linux file manager.
+- **M4 – Code transformations:** translate, rotate and scale a selected part of the program; remembering the machine, dialect and window layout; the editor selection shown in the 3D view; a better icon; `.nc` files opening in the app from the Linux file manager.
 - **M5 – Mobile:** the same app on Android; iOS later.
 - **M6 – Machine state and accuracy:** tool table, cutter radius compensation, cycle-time estimation with acceleration, the dog-leg rapid path, limits checking.
 - **M7 – Material removal (mill).**

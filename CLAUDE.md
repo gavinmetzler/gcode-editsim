@@ -86,16 +86,18 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 **Next: M4, code transformations** (`ARCHITECTURE.md` §13 and `docs/plans/M4_PLAN.md`, agreed 2026-11-01). Steps, in order:
 
 0. Plan *(done)*
-1. Editor selection shown bright yellow in the 3D view
-2. Exact rewriting (core)
-3. Positions in program coordinates (core)
-4. Translate
-5. Rotate
-6. Scale (one factor for X and Y; Z never scaled)
-7. Transform dialog (app and UI)
-8. A better icon
-9. `.nc` files on the Linux desktop (Flatpak)
-10. Wrap-up
+1. Remember the machine and dialect
+2. Remember the window layout
+3. Editor selection shown bright yellow in the 3D view
+4. Exact rewriting (core)
+5. Positions in program coordinates (core)
+6. Translate
+7. Rotate
+8. Scale (one factor for X and Y; Z never scaled)
+9. Transform dialog (app and UI)
+10. A better icon
+11. `.nc` files on the Linux desktop (Flatpak)
+12. Wrap-up
 
 Desktop only. The lathe and Osai crates stay stubs; full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.
 
