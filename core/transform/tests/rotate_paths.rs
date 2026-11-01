@@ -18,6 +18,12 @@ use transform::{apply_edits, transform, TransformError, Transformation};
 /// itself rounded.
 const TOLERANCE: f64 = 0.0011;
 
+/// An arc centre is worked out by the interpreter (from R and the rounded
+/// end points, or from the rounded start and offsets), so rounding moves it
+/// a little more than the ends; still well inside the 0.01 mm a control
+/// allows between the radii at the two ends.
+const CENTRE_TOLERANCE: f64 = 0.005;
+
 fn turned(p: &Pos, angle: f64, c: (f64, f64)) -> Pos {
     let (s, k) = angle.to_radians().sin_cos();
     let (x, y) = (p[0] - c.0, p[1] - c.1);
@@ -28,7 +34,11 @@ fn turned(p: &Pos, angle: f64, c: (f64, f64)) -> Pos {
 }
 
 fn near(a: &Pos, b: &Pos, axes: &[usize]) -> bool {
-    axes.iter().all(|&i| (a[i] - b[i]).abs() <= TOLERANCE)
+    within(a, b, axes, TOLERANCE)
+}
+
+fn within(a: &Pos, b: &Pos, axes: &[usize], tolerance: f64) -> bool {
+    axes.iter().all(|&i| (a[i] - b[i]).abs() <= tolerance)
 }
 
 proptest! {
@@ -79,7 +89,7 @@ proptest! {
             prop_assert!(near(&new.end, &expected, &[0, 1, 2]), "line {}: {:?} != {:?}\n{}\n--\n{}", old.src.line, new.end, expected, src, out_text);
             if let (Some(oa), Some(na)) = (&old.arc, &new.arc) {
                 let centre = if selected { to_machine(turned(&to_work(&oa.center), angle, c)) } else { oa.center };
-                prop_assert!(near(&na.center, &centre, &[0, 1]), "arc centre on line {}\n{}\n--\n{}", old.src.line, src, out_text);
+                prop_assert!(within(&na.center, &centre, &[0, 1], CENTRE_TOLERANCE), "arc centre on line {}\n{}\n--\n{}", old.src.line, src, out_text);
                 prop_assert_eq!(oa.plane, na.plane);
             }
         }

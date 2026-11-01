@@ -169,6 +169,11 @@ impl Dialect for Fanuc {
         block::transform_refusal(self, block, state)
     }
 
+    /// `R` (a negative value is the long arc).
+    fn arc_radius_letter(&self) -> Option<char> {
+        Some('R')
+    }
+
     /// Fanuc's decimal-point rule (DPI) and units, as the interpreter
     /// applies them.
     fn read_value(&self, number: &Number, kind: ValueKind, units: LengthUnit) -> Option<f64> {
