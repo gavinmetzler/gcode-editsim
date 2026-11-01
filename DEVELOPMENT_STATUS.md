@@ -131,7 +131,7 @@ in ARCHITECTURE.md §5).
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
-- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`: milestone plans.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (draft): milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.
