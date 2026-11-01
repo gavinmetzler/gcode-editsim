@@ -76,6 +76,13 @@ pub trait Dialect {
         None
     }
 
+    /// The letter of the word that gives an arc's radius (Fanuc `R`), so a
+    /// transformation that changes radii (scaling, M4.8) can find it. The
+    /// default is `None`: such arcs cannot be scaled.
+    fn arc_radius_letter(&self) -> Option<char> {
+        None
+    }
+
     /// The value of a number literal as this controller reads it, in
     /// internal units (mm or degrees), with the program in `units`. Used to
     /// check rewritten text (M4.4). The default is `None`: a dialect that

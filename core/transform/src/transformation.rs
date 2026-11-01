@@ -49,6 +49,31 @@ pub enum Transformation {
         /// in program coordinates.
         centre: Pos,
     },
+    /// Scale by `factor` about `centre` in `plane`: both of the plane's
+    /// axes by the same factor (X and Y in the app; Z is never scaled).
+    /// Axes outside the plane are unchanged. Arc centre offsets and radii
+    /// scale with the moves. The factor must be greater than zero (a
+    /// negative one would mirror).
+    Scale {
+        /// Two linear axes of the machine (indices).
+        plane: ArcPlane,
+        /// The factor, greater than zero.
+        factor: f64,
+        /// The point scaled about (only the plane's two axes are used), in
+        /// program coordinates.
+        centre: Pos,
+    },
+}
+
+/// `v` scaled by `factor` in `plane` (a vector: no centre).
+fn stretch(v: &Pos, plane: ArcPlane, factor: f64) -> Pos {
+    let mut out = *v;
+    for axis in [usize::from(plane.first), usize::from(plane.second)] {
+        if let Some(slot) = out.get_mut(axis) {
+            *slot *= factor;
+        }
+    }
+    out
 }
 
 /// Cosine and sine of `degrees`, exact for whole quarter turns, so 90°
@@ -100,16 +125,12 @@ impl Transformation {
                 }
                 out
             }
-            Self::Rotate {
-                plane,
-                angle,
-                centre,
-            } => {
+            Self::Rotate { plane, centre, .. } | Self::Scale { plane, centre, .. } => {
                 let mut rel = *p;
                 for (v, c) in rel.iter_mut().zip(centre) {
                     *v -= c;
                 }
-                let mut out = turn(&rel, *plane, *angle);
+                let mut out = self.apply_vector(&rel);
                 for (v, c) in out.iter_mut().zip(centre) {
                     *v += c;
                 }
@@ -130,6 +151,7 @@ impl Transformation {
         match self {
             Self::Translate { .. } => *v,
             Self::Rotate { plane, angle, .. } => turn(v, *plane, *angle),
+            Self::Scale { plane, factor, .. } => stretch(v, *plane, *factor),
         }
     }
 
@@ -144,6 +166,23 @@ impl Transformation {
             } => (!same_plane(plane, *turned) && cos_sin(*angle) != (1.0, 0.0)).then_some(
                 "the arc is not in the plane of the rotation, so turning it would take it out of its plane",
             ),
+            Self::Scale {
+                plane: scaled,
+                factor,
+                ..
+            } => (!same_plane(plane, *scaled) && *factor != 1.0).then_some(
+                "the arc is not in the plane being scaled, and scaling only two axes would make it no longer \
+                 an arc",
+            ),
+        }
+    }
+
+    /// An arc radius (R) after the transformation: scaled by a scale,
+    /// unchanged otherwise. The sign (long or short arc) stays.
+    fn radius(&self, r: f64) -> f64 {
+        match self {
+            Self::Scale { factor, .. } => r * factor,
+            Self::Translate { .. } | Self::Rotate { .. } => r,
         }
     }
 }
@@ -273,20 +312,23 @@ fn check_transformation(
             if !angle.is_finite() || centre.iter().any(|c| !c.is_finite()) {
                 return Err(refuse(line, "the angle or the centre is not a number"));
             }
-            let axes = machine.axes();
-            let (a, b) = (usize::from(plane.first), usize::from(plane.second));
-            match (axes.get(a), axes.get(b)) {
-                (Some(x), Some(y))
-                    if a != b && x.kind == AxisKind::Linear && y.kind == AxisKind::Linear =>
-                {
-                    Ok(())
-                }
-                (Some(_), Some(_)) if a != b => Err(refuse(line, "rotary axes cannot be rotated")),
-                _ => Err(refuse(
+            check_plane(*plane, machine, line, "rotated")
+        }
+        Transformation::Scale {
+            plane,
+            factor,
+            centre,
+        } => {
+            if !(factor.is_finite() && *factor > 0.0) {
+                return Err(refuse(
                     line,
-                    "the rotation plane must be two different axes of this machine",
-                )),
+                    "the factor must be a number greater than zero (a negative one would mirror)",
+                ));
             }
+            if centre.iter().any(|c| !c.is_finite()) {
+                return Err(refuse(line, "the centre is not a number"));
+            }
+            check_plane(*plane, machine, line, "scaled")
         }
         Transformation::Translate { offset } => {
             for (i, d) in offset.iter().enumerate() {
@@ -314,6 +356,30 @@ fn check_transformation(
             }
             Ok(())
         }
+    }
+}
+
+/// The plane of a rotation or scale must be two different linear axes of
+/// the machine.
+fn check_plane(
+    plane: ArcPlane,
+    machine: &dyn Machine,
+    line: u32,
+    done: &str,
+) -> Result<(), TransformError> {
+    let axes = machine.axes();
+    let (a, b) = (usize::from(plane.first), usize::from(plane.second));
+    match (axes.get(a), axes.get(b)) {
+        (Some(x), Some(y))
+            if a != b && x.kind == AxisKind::Linear && y.kind == AxisKind::Linear =>
+        {
+            Ok(())
+        }
+        (Some(_), Some(_)) if a != b => Err(refuse(line, format!("rotary axes cannot be {done}"))),
+        _ => Err(refuse(
+            line,
+            "the plane must be two different axes of this machine",
+        )),
     }
 }
 
@@ -835,9 +901,48 @@ impl Job<'_> {
         Ok(reached)
     }
 
+    /// Rewrites an arc's radius word (the dialect names its letter) as the
+    /// transformation changes it: scaled by a scale, otherwise unchanged.
+    fn scale_radius(
+        &self,
+        t: &BlockTrace,
+        block: &Block,
+        line_text: &[u8],
+        r: f64,
+        edits: &mut Vec<TextEdit>,
+    ) -> Result<(), TransformError> {
+        let new = self.transformation.radius(r);
+        if (new - r).abs() <= SAME {
+            return Ok(());
+        }
+        let letter = self.dialect.arc_radius_letter().ok_or_else(|| {
+            refuse(t.line, "this dialect does not say which word gives an arc's radius, so it cannot be scaled")
+        })?;
+        let words: Vec<&Word> = block.words.iter().filter(|w| w.letter == letter).collect();
+        let [word] = words.as_slice() else {
+            return Err(refuse(
+                t.line,
+                format!("the arc's radius ({letter}) cannot be found once in the line"),
+            ));
+        };
+        let edit = rewrite_word(
+            line_text,
+            t.line,
+            word,
+            new,
+            ValueKind::Length,
+            t.state.units,
+            self.dialect,
+        )
+        .map_err(|e| self.rewrite_refusal(e))?;
+        edits.extend(edit);
+        Ok(())
+    }
+
     /// Rewrites an arc's centre offsets (I/J/K, letters from the machine
-    /// file) as the transformation turns them; offsets that were not
-    /// written but are no longer zero go to `insert`. R is left as it is.
+    /// file) as the transformation turns or scales them; offsets that were
+    /// not written but are no longer zero go to `insert`. A radius (R) is
+    /// scaled by a scale and otherwise left as it is.
     #[allow(clippy::too_many_arguments)]
     fn turn_centre(
         &self,
@@ -850,7 +955,7 @@ impl Job<'_> {
         insert: &mut Vec<(char, f64)>,
     ) -> Result<(), TransformError> {
         let offsets = match center {
-            ArcCenter::Radius(_) => return Ok(()),
+            ArcCenter::Radius(r) => return self.scale_radius(t, block, line_text, *r, edits),
             ArcCenter::Offset(offsets) => offsets,
             ArcCenter::Position(_) => {
                 return Err(refuse(

@@ -17,7 +17,9 @@ pub enum Step {
     /// G91 move by the given axes (thousandths), others not written.
     Incremental([Option<i32>; 3]),
     /// G90 arc in XY about a centre offset from the start, by an angle.
-    Arc(bool, [i32; 2], f64),
+    /// The last flag writes R instead of I/J (not for arcs near a half
+    /// circle, where R is ill-conditioned).
+    Arc(bool, [i32; 2], f64, bool),
 }
 
 pub fn steps() -> impl Strategy<Value = Vec<Step>> {
@@ -27,7 +29,7 @@ pub fn steps() -> impl Strategy<Value = Vec<Step>> {
         3 => (any::<bool>(), [value.clone(), value.clone(), value]).prop_map(|(r, p)| Step::Absolute(r, p)),
         3 => [delta.clone(), delta.clone(), delta].prop_map(Step::Incremental),
         2 => (any::<bool>(), [1_000i32..30_000, -30_000i32..30_000], 0.2f64..5.0)
-            .prop_map(|(cw, c, a)| Step::Arc(cw, c, a)),
+            .prop_flat_map(|(cw, c, a)| any::<bool>().prop_map(move |r| Step::Arc(cw, c, a, r))),
     ];
     proptest::collection::vec(step, 1..14)
 }
@@ -68,7 +70,7 @@ pub fn program(steps: &[Step]) -> String {
                 // Keep positions to whole thousandths, as written.
                 at = at.map(|v| (v * 1000.0).round() / 1000.0);
             }
-            Step::Arc(cw, c, angle) => {
+            Step::Arc(cw, c, angle, use_r) => {
                 let (i, j) = (f64::from(c[0]) / 1000.0, f64::from(c[1]) / 1000.0);
                 let (cx, cy) = (at[0] + i, at[1] + j);
                 let (sx, sy) = (at[0] - cx, at[1] - cy);
@@ -79,13 +81,22 @@ pub fn program(steps: &[Step]) -> String {
                 );
                 let (ex, ey) = ((ex * 1000.0).round() as i32, (ey * 1000.0).round() as i32);
                 let code = if *cw { "G2" } else { "G3" };
-                text.push_str(&format!(
-                    "G90 {code} X{} Y{} I{} J{}\n",
-                    mm(ex),
-                    mm(ey),
-                    mm(c[0]),
-                    mm(c[1])
-                ));
+                // R is ill-conditioned near a half circle: keep I/J there.
+                let near_half = (2.6..3.7).contains(angle);
+                if *use_r && !near_half {
+                    // Negative R for the long way round (more than 180°).
+                    let r = (i * i + j * j).sqrt();
+                    let r = if *angle > std::f64::consts::PI { -r } else { r };
+                    text.push_str(&format!("G90 {code} X{} Y{} R{:.3}\n", mm(ex), mm(ey), r));
+                } else {
+                    text.push_str(&format!(
+                        "G90 {code} X{} Y{} I{} J{}\n",
+                        mm(ex),
+                        mm(ey),
+                        mm(c[0]),
+                        mm(c[1])
+                    ));
+                }
                 at[0] = f64::from(ex) / 1000.0;
                 at[1] = f64::from(ey) / 1000.0;
             }

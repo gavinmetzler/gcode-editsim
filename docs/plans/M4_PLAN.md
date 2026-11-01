@@ -274,7 +274,7 @@ DEVELOPMENT_STATUS.md point to it.
 - In G17, G18 and G19; added axis words; arcs and helices; incremental
   sections.
 
-### M4.8: Scale (core)
+### M4.8: Scale (core) *(done)*
 - One factor for X and Y about a centre, Z unchanged; R and I/J; refusal
   of a zero or negative factor and of G18/G19 arcs.
 
