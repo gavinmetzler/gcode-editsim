@@ -103,3 +103,14 @@ Keep the pane sizes (dragged splitters) and which pane is maximised
 between sessions, along with the window's own size and position. The
 settings dialog above would be a natural home for a "reset layout"
 button.
+
+## Open and save dialogs on the Rust side
+
+*Added by the owner after the M3 review, 2026-11-01.*
+
+Today the UI opens the native file dialogs and passes the chosen path to
+the app's `load_file` and `save_file` commands, which accept any path.
+Inside the Flatpak the sandbox limits this to files the user picked; a
+build outside it trusts the window. Having the Rust side open the
+dialogs, and the commands accept only paths it handed out, would close
+that gap without relying on the sandbox (ARCHITECTURE.md §8.4a).

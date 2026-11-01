@@ -63,12 +63,12 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 │  ├─ dialect-api/             # Dialect trait, Command enum, ModalState, CodeTable loader
 │  ├─ dialect-fanuc/           # first real dialect (+ data/fanuc.toml)
 │  ├─ dialect-osai/            # Osai 10 Series stub (M2), to exercise the dialect traits
-│  ├─ machine-api/             # Machine trait, AxisDef, Kinematics, Tool, Stock traits
+│  ├─ machine-api/             # Machine trait, AxisDef, machine-file loader (tool and stock models come with M6/M7)
 │  ├─ machine-mill/            # first real machine (3-axis)
 │  ├─ machine-lathe/           # 2-axis lathe stub (M2), to exercise the machine traits
 │  ├─ interpreter/             # glue: dialect + machine + state → IR
-│  ├─ sim/                     # material removal, per machine family (mill first)
-│  └─ testkit/                 # golden-file helpers, fixtures loader
+│  ├─ sim/                     # material removal, per machine family (placeholder until M7)
+│  └─ testkit/                 # golden-file helpers (compact summary, compare, UPDATE_GOLDEN)
 ├─ app/
 │  ├─ backend/                 # the app's behaviour without Tauri: machine/dialect choice, interpret → render buffer, file access
 │  └─ shell/                   # Tauri 2 shell: thin commands over backend (its own Cargo workspace, so the rest builds without WebKit)
@@ -76,6 +76,8 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 ├─ tools/
 │  ├─ depcheck/                # the dependency-rule check below
 │  ├─ gen-ts/                  # generates the UI's render-buffer constants (§8.4)
+│  ├─ corpus/                  # runs real (private) programs and groups their diagnostics (M3.0)
+│  ├─ bench/                   # times the pipeline on a large program (M3.9)
 │  └─ ci/                      # which CI jobs a pull request needs
 ├─ packaging/                  # Flatpak package and the app icon (§8.7)
 ├─ docs/                       # machine file format, dialect notes, milestone plans
@@ -97,7 +99,8 @@ The interpreter's entry point is `interpret(source, file_name, &dyn Dialect, &dy
 | `sim` | `machine-api`, `ir` |
 | `testkit` | `ir` |
 | `gen-ts` (`tools/gen-ts`) | `ir` |
-| `corpus` (`tools/corpus`) | `app-backend`, `interpreter`, `ir` |
+| `corpus` (`tools/corpus`), `bench` (`tools/bench`) | `app-backend`, `interpreter`, `ir` |
+| `depcheck` (`tools/depcheck`) | nothing in the workspace |
 | `app-backend` (`app/backend`) | `interpreter`, `ir`, the `*-api` crates, and the concrete dialects and machines |
 
 The principles behind the table:
@@ -470,7 +473,7 @@ The Tauri shell (`app/shell`) forwards to `app-backend` and holds no G-code logi
 
 The user's machine folder is `machines` in the app's configuration folder. On start, if it has no `*.toml` files, the app copies in the shipped mill and router examples (built into the app, so nothing is downloaded; an existing file is never overwritten). `list_machines` lists only the folder's files; the shipped examples are listed instead only when the folder has none (for example, it could not be written).
 
-The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at compile time (so the UI is built before the shell, locally and in CI). Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. It allows inline *styles* (`style-src 'unsafe-inline'`), because the editor (CodeMirror) injects its styles at run time; scripts stay `'self'` only. File paths come from the user through the native open and save dialogs (`tauri-plugin-dialog`, M2.8b), so the app knows the open file's real path and can save over it; the files themselves are still read and written by the app's own commands. The window may use only those dialogs, the app's commands, and the close-request event (to ask before closing with unsaved changes); the dialog plugin's file-system companion (`tauri-plugin-fs`, a dependency) is not enabled. Saving writes UTF-8 with the file's own line endings, through a temporary file that then replaces the original: it writes through a symlink to the real file, keeps the file's permissions where the file system allows, and never follows a leftover temporary file (M3 review).
+The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at compile time (so the UI is built before the shell, locally and in CI). Interpretation and file reads run on a worker thread (`spawn_blocking`). The commands answer only the app's own pages: a page from another origin gets "not allowed" (tested), and the content security policy allows no remote content. It allows inline *styles* (`style-src 'unsafe-inline'`), because the editor (CodeMirror) injects its styles at run time; scripts stay `'self'` only. The UI takes file paths from the native open and save dialogs (`tauri-plugin-dialog`, M2.8b), so the app knows the open file's real path and can save over it; the files themselves are read and written by the app's own commands. Those commands accept any path the window sends: the app does not itself check that a path came from a dialog. Inside the Flatpak the sandbox limits them to the files the user picked; a build outside it relies on the window being trustworthy (no remote content, scripts `'self'` only). Having the Rust side open the dialogs and accept only the paths it handed out is on the wishlist. The window may use only those dialogs, the app's commands, and the close-request event (to ask before closing with unsaved changes); the dialog plugin's file-system companion (`tauri-plugin-fs`, a dependency) is not enabled. Saving writes UTF-8 with the file's own line endings, through a temporary file that then replaces the original: it writes through a symlink to the real file, keeps the file's permissions where the file system allows, and never follows a leftover temporary file (M3 review).
 
 ### 8.5 Large programs
 
@@ -575,7 +578,9 @@ Not started; planned for M7, after tool geometry (M6). Dexels are the leading ca
 | Traits designed from one implementation are wrong in ways only a second one reveals | Done in M2.2: a stub `machine-lathe` and a stub Osai 10 Series dialect. Findings are in §7.2 and §9; one interface change (`ArcCenter::Position`). |
 | Fanuc behaviour varies by series, options and parameters | Target one documented profile first; surface everything unsupported as a Diagnostic; keep parameters in the dialect TOML. |
 | Cutter compensation (G41/G42) is genuinely hard | Deferred to M6. Until then a `Warning` diagnostic is emitted and the path is drawn without compensation. |
-| Every test program so far was written by the agent, not a CAM system | A private corpus of the owner's real programs, run locally (M3.0); agreed excerpts become golden tests. |
+| Test programs written by the agent, not a CAM system | A private corpus of the owner's real programs, run locally with `tools/corpus` (M3.0; clean again at M3.10); agreed excerpts become golden tests. More programs from other CAM systems and controls are welcome. |
+| Large programs, and crafted files, exhausting memory | A million blocks needs about 715 MB in the core (§8.5; to reduce before M5). The drawing has a vertex budget, so huge arcs in a small file are drawn coarser rather than exhausting memory (§8.5). |
+| The window could be misused to read or write any file | No remote content, scripts `'self'` only, the commands answer only the app's own pages (§8.4a); the Flatpak sandbox limits files to those the user picked. Rust-side dialogs are on the wishlist. |
 | Tauri mobile maturity | **Android: done (M2.3 spike).** The app's own commands ran on a real arm64 phone: the program crossed as a raw request body and the render buffer came back as raw bytes, identical in every checked value to the desktop build, and file save/load round-tripped raw bytes. Branch `claude/android-spike`, `app/shell/SPIKE.md`. **iOS: not yet tried** (needs a Mac); planned much later. |
 | Heidenhain conversational / non-G-code formats | Parser crate is isolated; a non-G-code front end can produce the same `Command` stream. Not in scope yet. |
 | `f32` GPU precision | Origin-relative vertices (§8.2). |
@@ -586,7 +591,7 @@ Status: M1, M2 and M3 done; M4 next.
 
 1. **M1: Core skeleton** *(done)*. Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
 2. **M2: Render buffer + minimal UI** *(done)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), CI jobs that run only when their files change, refresh on demand after edits, and the tool marker with hover readout (M3.1/M3.2 brought forward). See `docs/plans/M2_PLAN.md`.
-3. **M3: A dependable backplotter** *(done)*. Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; codes that change later moves are ignored with a warning, never hiding moves; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community; macro variables are on the wishlist. Added along the way: resizable and maximisable panes, a colour key, the machine folder seeded with the examples, the window's app id for the desktop icon. See `docs/plans/M3_PLAN.md`.
+3. **M3: A dependable backplotter** *(done)*. Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; codes that change later moves are ignored with a warning, never hiding moves; subprograms; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community; macro variables are on the wishlist. Added along the way: resizable and maximisable panes, a colour key, the machine folder seeded with the examples, the window's app id for the desktop icon. See `docs/plans/M3_PLAN.md`.
 4. **M4: Code transformations** *(next; plan to be agreed)*. Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
 5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later. Reduce the core's memory for large programs first (§8.5: about 715 MB for a million blocks).
 6. **M6: Machine state and accuracy.** Tool table and tool geometry, cutter radius compensation, time estimation with an acceleration model, the dog-leg rapid path, speed-limit checks.

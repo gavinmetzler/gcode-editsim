@@ -116,11 +116,11 @@ Positions are indexed by the machine's own axis list, so nothing downstream assu
 
 ## Planned Capabilities
 
-These are the project's intended direction. Most are not implemented yet; see the roadmap.
+These are the project's intended direction. Items marked *(built)* exist today; the rest come in later milestones (see the roadmap).
 
 ### Controller Dialects
 
-- **Fanuc first**, starting with:
+- **Fanuc first** *(built)*, starting with:
   - G0–G3 (including helical arcs)
   - planes G17–G19, inch/metric G20/G21, absolute/incremental G90/G91
   - work offsets G54–G59
@@ -134,8 +134,8 @@ These are the project's intended direction. Most are not implemented yet; see th
 
 ### Machine Support
 
-- **Machine types:** 3-axis mills first, then lathes, mill-turn, multi-channel machines and 5-axis.
-- **User-defined machines:** described in editable text files (TOML) covering axes, travel limits, maximum speeds, tool table format and default work offsets. A graphical editor for these files will come later.
+- **Machine types:** 3-axis mills first *(built)*, then lathes, mill-turn, multi-channel machines and 5-axis.
+- **User-defined machines** *(built)*: described in editable text files (TOML) covering axes, travel limits, speeds and work offsets. A tool table (M6) and a graphical editor for these files will come later.
 
 ### Visualisation, Analysis and Simulation
 
@@ -144,7 +144,7 @@ These are the project's intended direction. Most are not implemented yet; see th
 - Backplot tools: a tool marker with hover info on the nearest point (position, tool, feed), and measuring between two points *(built)*; orbiting around a point on the toolpath *(built)*.
 - Code transformations (M4): translate, scale and rotate a selected range of lines, applied as an undoable edit.
 - Tool movement playback and simulation controls.
-- Travel-limit checking.
+- Travel-limit checking *(built: moves outside the travel are flagged; speed limits are checked in M6)*.
 - Material removal simulation, milling first.
 
 ---
@@ -287,7 +287,7 @@ Correctness is a priority, because the application deals with CNC machine moveme
 - **Unit tests,** and **conformance tests** for each dialect, one file per behaviour.
 - **Golden-file tests:** sample programs in `tests/golden/`, each with reviewed expected output for the parser (`.syntax.txt`) and for the whole pipeline (`.ir.json`).
 - **Property tests (proptest):** for example, the parser never panics on any input, and arc bounding boxes are exact.
-- **Fuzzing (cargo-fuzz):** of the parser, because G-code files come from untrusted sources. CI runs a short (60 s) fuzz session on every change.
+- **Fuzzing (cargo-fuzz):** of the parser, because G-code files come from untrusted sources. CI runs a short (60 s) fuzz session on every push to `main` and on pull requests that change the parser.
 - **Architecture checks:** CI fails if a crate depends on something the architecture forbids. For example, the machine model may not depend on a dialect. The rules are in `tools/depcheck/rules.toml` and are explained in [ARCHITECTURE.md §5](ARCHITECTURE.md#5-workspace-layout).
 - **Checks:** formatting (`cargo fmt`), linting (`cargo clippy`, warnings as errors) and continuous integration through GitHub Actions.
 
