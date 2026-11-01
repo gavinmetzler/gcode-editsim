@@ -1,6 +1,8 @@
 # GCode EditSim
-<img width="2265" height="1631" alt="Screenshot_20261101_072649" src="https://github.com/user-attachments/assets/737f0699-4aab-4c67-94a9-215aee960516" />
 **A modern G-code editor, backplotter and CNC simulator for desktop and mobile.**
+
+<img width="2265" height="1631" alt="Screenshot_20261101_072649" src="https://github.com/user-attachments/assets/737f0699-4aab-4c67-94a9-215aee960516" />
+
 
 GCode EditSim is an open-source project to develop a dedicated G-code editor, visualiser and machining simulator, in the spirit of tools such as CIMCOEdit and NCPlot. It emphasises accurate CNC program interpretation, clear visual feedback and a modular architecture.
 
