@@ -30,6 +30,7 @@ pub fn seg(kind: SegKind, start: Pos, end: Pos, line: u32) -> Segment {
         },
         cycle_step: CycleStep::None,
         flags: SegFlags::EMPTY,
+        time: None,
     }
 }
 

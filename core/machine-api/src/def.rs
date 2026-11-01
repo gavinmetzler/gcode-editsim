@@ -65,13 +65,15 @@ pub struct AxisDef {
     pub diameter_mode_capable: bool,
 }
 
-/// Machine-wide speed limits.
+/// Machine-wide speed limits and timings.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct SpeedLimits {
     /// Maximum cutting feed rate in mm/min, if known.
     pub max_feed: Option<f64>,
     /// Maximum spindle speed in rpm, if known.
     pub max_spindle_rpm: Option<f64>,
+    /// Seconds a tool change takes, for the time estimate, if known.
+    pub tool_change_time: Option<f64>,
 }
 
 /// A machine as described by the user, before a machine type checks it.
@@ -123,6 +125,10 @@ pub enum MachineDefError {
         /// Which setting.
         what: String,
     },
+    /// A tool change time that is not a finite number of seconds, zero or
+    /// more.
+    #[error("tool_change_time must be a number of seconds, zero or more")]
+    InvalidToolChangeTime,
     /// A reference position that is not finite or lies outside the travel.
     #[error("axis {0}: reference must be a finite number within the travel limits")]
     InvalidReference(char),
@@ -175,6 +181,8 @@ struct RawMachine {
     max_feed: Option<f64>,
     #[serde(default)]
     max_spindle_rpm: Option<f64>,
+    #[serde(default)]
+    tool_change_time: Option<f64>,
     #[serde(default)]
     ignore_codes: Vec<String>,
 }
@@ -289,6 +297,12 @@ impl MachineDef {
         let speeds = SpeedLimits {
             max_feed: speed(raw.machine.max_feed, || "max_feed".into())?,
             max_spindle_rpm: speed(raw.machine.max_spindle_rpm, || "max_spindle_rpm".into())?,
+            tool_change_time: match raw.machine.tool_change_time {
+                Some(t) if !(t.is_finite() && t >= 0.0) => {
+                    return Err(MachineDefError::InvalidToolChangeTime)
+                }
+                other => other,
+            },
         };
 
         let mut work_offsets = BTreeMap::new();

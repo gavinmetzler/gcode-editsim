@@ -266,6 +266,40 @@ pub fn tessellate(seg: &Segment, tol: f64) -> impl Iterator<Item = Pos> + '_ {
     (0..=steps).map(move |i| point_at(seg, sweep.as_ref(), i, steps))
 }
 
+/// How far `seg` travels, in the units of the axes counted: the straight
+/// distance for a straight move; for an arc, the length along the arc
+/// (mean radius times the angle swept, as [`tessellate`] draws it)
+/// combined with the straight travel of the other counted axes, which
+/// gives a helix its true length. Only axes for which `counts(index)` is
+/// `true` are included; when an arc's plane axes are not both counted,
+/// it is measured as a straight move. Events have no length. A non-finite
+/// position gives NaN.
+pub fn path_length(seg: &Segment, counts: impl Fn(usize) -> bool) -> f64 {
+    if !seg.kind.is_motion() {
+        return 0.0;
+    }
+    let sweep = seg
+        .arc
+        .as_ref()
+        .filter(|_| seg.kind.is_arc())
+        .and_then(|arc| Sweep::of(seg, arc))
+        .filter(|sw| counts(sw.ia) && counts(sw.ib));
+    let mut straight = 0.0;
+    for (k, (s, e)) in seg.start.iter().zip(&seg.end).enumerate() {
+        let in_plane = sweep.as_ref().is_some_and(|sw| k == sw.ia || k == sw.ib);
+        if counts(k) && !in_plane {
+            straight += (e - s) * (e - s);
+        }
+    }
+    match sweep {
+        Some(sw) => {
+            let r = (sw.radius_of(&seg.start) + sw.radius_of(&seg.end)) / 2.0;
+            (r * sw.sweep).hypot(straight.sqrt())
+        }
+        None => straight.sqrt(),
+    }
+}
+
 /// Number of chords for an arc of radius `r` sweeping `sweep` radians.
 fn arc_steps(r: f64, sweep: f64, tol: f64) -> usize {
     // `tol > 0.0` is false for NaN; an infinite tolerance is just coarse.

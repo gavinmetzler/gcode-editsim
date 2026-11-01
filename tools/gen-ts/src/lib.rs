@@ -89,6 +89,7 @@ fn write_all(s: &mut String) -> std::fmt::Result {
             ("KIND", n(l::SEGMENT_KIND)),
             ("FLAGS", n(l::SEGMENT_FLAGS)),
             ("FEED", n(l::SEGMENT_FEED)),
+            ("TIME", n(l::SEGMENT_TIME)),
         ],
     )?;
     object(

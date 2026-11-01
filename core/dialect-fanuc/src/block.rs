@@ -497,6 +497,11 @@ fn apply_gcode(
             set_active(fanuc, state, code.key);
             out.push(Command::SetFeedMode(FeedMode::PerMinute));
         }
+        Handler::FeedPerRevolution => {
+            state.feed_mode = FeedMode::PerRevolution;
+            set_active(fanuc, state, code.key);
+            out.push(Command::SetFeedMode(FeedMode::PerRevolution));
+        }
         Handler::NoEffect => set_active(fanuc, state, code.key),
         Handler::NotSimulated => {
             set_active(fanuc, state, code.key);

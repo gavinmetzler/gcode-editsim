@@ -1,5 +1,6 @@
 // A hand-made render-buffer source for tests: segments given as
-// [kind, tool, feed, flags, ...vertices], vertices relative to `origin`.
+// [kind, tool, feed, flags, ...vertices], vertices relative to `origin`,
+// and optionally each segment's estimated time (NaN when not given).
 
 import type { RenderBuffer, Segment } from "../src/buffer/decode";
 
@@ -8,10 +9,12 @@ export type Source = Pick<RenderBuffer, "positions" | "segment"> & {
   readonly header: Pick<RenderBuffer["header"], "segmentCount" | "origin">;
 };
 
-/** A source from segments given as [kind, tool, feed, flags, ...vertices]. */
+/** A source from segments given as [kind, tool, feed, flags, ...vertices],
+ *  with `times[i]` as segment i's estimated time (NaN if missing). */
 export function source(
   origin: [number, number, number],
   segments: [number, number, number, number, ...[number, number, number][]][],
+  times: readonly number[] = [],
 ): Source {
   const positions: number[] = [];
   const table: Segment[] = [];
@@ -26,6 +29,7 @@ export function source(
       kind,
       flags,
       feed,
+      time: times[table.length] ?? NaN,
     });
     for (const v of vertices) positions.push(...v);
   }

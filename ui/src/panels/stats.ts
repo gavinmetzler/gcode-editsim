@@ -26,6 +26,24 @@ export interface ToolStats {
   readonly feedLength: number;
   /** Length of rapids, mm. */
   readonly rapidLength: number;
+  /** Estimated time, seconds: its moves, tool changes and dwells, leaving
+   *  out segments without a time. */
+  readonly time: number;
+}
+
+/** The program's estimated time, seconds, from the core's per-segment
+ *  times (no acceleration). */
+export interface TimeStats {
+  /** Feed moves (linear and arcs). */
+  readonly feed: number;
+  /** Rapids. */
+  readonly rapid: number;
+  /** Everything else: tool changes and dwells (other events take none). */
+  readonly other: number;
+  /** All of the above. */
+  readonly total: number;
+  /** Segments the core could not estimate, left out of the sums. */
+  readonly unknown: number;
 }
 
 /** Statistics for one program run. */
@@ -42,7 +60,9 @@ export interface Stats {
   readonly bounds: Box | null;
   /** Bounds of feed moves only, in machine coordinates. */
   readonly feedBounds: Box | null;
-  /** Per tool, in order of first motion. */
+  /** The time estimate. */
+  readonly time: TimeStats;
+  /** Per tool, in order of first motion or timed event. */
   readonly tools: readonly ToolStats[];
   /** Lowest and highest feed rate of feed moves, mm/min (zero feeds are
    *  left out: they are already reported as diagnostics). */
@@ -79,7 +99,16 @@ class BoxBuilder {
 /** Works out the statistics of `rb`. Non-finite positions are skipped. */
 export function computeStats(rb: StatsSource): Stats {
   const kindCounts = new Map<number, number>();
-  const tools = new Map<number, { feedLength: number; rapidLength: number }>();
+  const tools = new Map<number, { feedLength: number; rapidLength: number; time: number }>();
+  const toolEntry = (tool: number) => {
+    let t = tools.get(tool);
+    if (!t) {
+      t = { feedLength: 0, rapidLength: 0, time: 0 };
+      tools.set(tool, t);
+    }
+    return t;
+  };
+  const time = { feed: 0, rapid: 0, other: 0, unknown: 0 };
   const all = new BoxBuilder();
   const feedOnly = new BoxBuilder();
   const [ox, oy, oz] = rb.header.origin;
@@ -99,6 +128,15 @@ export function computeStats(rb: StatsSource): Stats {
     const rapid = seg.kind === SEG_KIND.Rapid;
     const feed =
       seg.kind === SEG_KIND.Linear || seg.kind === SEG_KIND.ArcCw || seg.kind === SEG_KIND.ArcCcw;
+    if (!Number.isFinite(seg.time) || seg.time < 0) {
+      time.unknown += 1;
+    } else if (rapid || feed || seg.time > 0) {
+      // Events of no time do not give their tool a row.
+      if (rapid) time.rapid += seg.time;
+      else if (feed) time.feed += seg.time;
+      else time.other += seg.time;
+      toolEntry(seg.tool).time += seg.time;
+    }
     if (!rapid && !feed) continue;
 
     let length = 0;
@@ -117,11 +155,7 @@ export function computeStats(rb: StatsSource): Stats {
       prev = [x, y, z];
     }
 
-    let perTool = tools.get(seg.tool);
-    if (!perTool) {
-      perTool = { feedLength: 0, rapidLength: 0 };
-      tools.set(seg.tool, perTool);
-    }
+    const perTool = toolEntry(seg.tool);
     if (rapid) {
       rapidLength += length;
       perTool.rapidLength += length;
@@ -141,6 +175,7 @@ export function computeStats(rb: StatsSource): Stats {
     rapidLength,
     bounds: all.build(),
     feedBounds: feedOnly.build(),
+    time: { ...time, total: time.feed + time.rapid + time.other },
     tools: Array.from(tools, ([tool, t]) => ({ tool, ...t })),
     feedRange: feedMin <= feedMax ? { min: feedMin, max: feedMax } : null,
     outOfLimits,
@@ -181,6 +216,18 @@ export function mm(value: number): string {
   return `${value.toFixed(3)} mm`;
 }
 
+/** A time in seconds as shown: seconds to one decimal under a minute,
+ *  then minutes and seconds, then hours, minutes and seconds. */
+export function duration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "unknown";
+  if (seconds < 59.95) return `${seconds.toFixed(1)} s`;
+  const whole = Math.round(seconds);
+  const h = Math.floor(whole / 3600);
+  const m = Math.floor((whole % 3600) / 60);
+  const s = String(whole % 60).padStart(2, "0");
+  return h > 0 ? `${String(h)} h ${String(m).padStart(2, "0")} min ${s} s` : `${String(m)} min ${s} s`;
+}
+
 /** One row of the statistics table. */
 export interface StatRow {
   readonly label: string;
@@ -214,6 +261,13 @@ export function statSections(stats: Stats): StatSection[] {
     });
   }
   const segments = (n: number): string => `${String(n)} segment${n === 1 ? "" : "s"}`;
+  const time: StatRow[] = [
+    { label: "Total", value: duration(stats.time.total) },
+    { label: "Feed moves", value: duration(stats.time.feed) },
+    { label: "Rapids", value: duration(stats.time.rapid) },
+    { label: "Tool changes and dwells", value: duration(stats.time.other) },
+  ];
+  if (stats.time.unknown > 0) time.push({ label: "Not estimated", value: segments(stats.time.unknown) });
   if (stats.outOfLimits > 0) path.push({ label: "Out of travel limits", value: segments(stats.outOfLimits) });
   if (stats.positionUnknown > 0) path.push({ label: "Position unknown", value: segments(stats.positionUnknown) });
 
@@ -231,13 +285,14 @@ export function statSections(stats: Stats): StatSection[] {
 
   const tools = stats.tools.map((t) => ({
     label: toolName(t.tool),
-    value: `feed ${mm(t.feedLength)}, rapid ${mm(t.rapidLength)}`,
+    value: `feed ${mm(t.feedLength)}, rapid ${mm(t.rapidLength)}, time ${duration(t.time)}`,
   }));
   const kinds = [...stats.kindCounts]
     .sort((a, b) => a[0] - b[0])
     .map(([kind, count]) => ({ label: kindLabel(kind), value: String(count) }));
 
   return [
+    { title: "Time (estimate)", rows: time },
     { title: "Path", rows: path },
     { title: "Bounds (machine coordinates)", rows: bounds },
     { title: "Tools", rows: tools },

@@ -27,6 +27,7 @@ your programs use.
 | `family` | yes | Machine type that reads the file: `"mill"` (3-axis mill) or `"lathe"` (2-axis lathe, an early stub). |
 | `max_feed` | no | Fastest cutting feed, mm/min |
 | `max_spindle_rpm` | no | Fastest spindle speed, rpm |
+| `tool_change_time` | no | Seconds a tool change takes, for the time estimate in **Statistics…** (0 if not set). Zero or more. |
 | `ignore_codes` | no | M codes your programs use that do not move the machine (head selection, clamps, vacuum), e.g. `["M92", "M213"]`. They are removed from every block with one note per code. Only M codes: a G code's axis words would be left behind and read as a move. Codes not listed that the dialect does not know are still noted once each and ignored. |
 
 ## `[[axis]]`, one block per axis

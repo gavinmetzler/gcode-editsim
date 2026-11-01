@@ -232,6 +232,11 @@ pub struct Segment {
     pub cycle_step: CycleStep,
     /// State flags.
     pub flags: SegFlags,
+    /// Estimated time in seconds: the move at its feed or rapid rate
+    /// without acceleration, a dwell's time, a tool change's time from the
+    /// machine; `None` if it cannot be worked out (for example, no rapid
+    /// rate is known for an axis that moves). An estimate only.
+    pub time: Option<f64>,
 }
 
 /// The segments of one independent execution stream.

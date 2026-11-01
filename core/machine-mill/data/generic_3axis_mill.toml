@@ -6,6 +6,7 @@
 [machine]
 name = "Generic 3-axis VMC"
 family = "mill"          # which machine type reads this file
+# tool_change_time = 6.0 # seconds per tool change, for the time estimate
 max_feed = 10000.0       # fastest cutting feed, mm/min
 max_spindle_rpm = 12000.0
 

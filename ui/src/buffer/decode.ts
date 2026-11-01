@@ -55,6 +55,8 @@ export interface Segment {
   readonly flags: number;
   /** Feed rate, mm/min. */
   readonly feed: number;
+  /** Estimated time in seconds, without acceleration; NaN if unknown. */
+  readonly time: number;
 }
 
 /** One diagnostic. */
@@ -176,6 +178,7 @@ export function decodeRenderBuffer(buffer: ArrayBuffer, options: DecodeOptions =
       kind: view.getUint8(at + SEGMENT.KIND),
       flags: view.getUint8(at + SEGMENT.FLAGS),
       feed: view.getFloat32(at + SEGMENT.FEED, true),
+      time: view.getFloat32(at + SEGMENT.TIME, true),
     };
   };
   for (let i = 0; i < header.segmentCount; i += 1) {

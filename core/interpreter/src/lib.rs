@@ -23,13 +23,13 @@ use std::collections::BTreeSet;
 
 use dialect_api::{
     literal, ArcCenter, ArcDir, AxisInfo, AxisSet, AxisWord, BlockContext, CodeKey, Command,
-    CoolantState, Dialect, ModalState, SpindleState,
+    CoolantState, Dialect, FeedMode, ModalState, SpindleState,
 };
 use gcode_syntax::Block;
 use ir::{
-    bounding_box, ArcGeom, ArcPlane, ChannelStream, CycleStep, DiagCode, Diagnostic, Diagnostics,
-    LengthUnit, Pos, Program, ProgramMeta, SegFlags, SegKind, Segment, SourceRef, WorkOffsetId,
-    MAX_AXES,
+    bounding_box, path_length, ArcGeom, ArcPlane, ChannelStream, CycleStep, DiagCode, Diagnostic,
+    Diagnostics, LengthUnit, Pos, Program, ProgramMeta, SegFlags, SegKind, Segment, SourceRef,
+    WorkOffsetId, MAX_AXES,
 };
 use machine_api::{AxisKind, Machine};
 
@@ -290,7 +290,7 @@ pub fn interpret(
         units_used: exec.units_used.clone(),
         tools_used: exec.tools_used.clone(),
         bbox: bounding_box(&exec.segments),
-        estimated_time: None,
+        estimated_time: Some(exec.segments.iter().filter_map(|s| s.time).sum()),
     };
     finish(exec.segments, diag, file_name, meta)
 }
@@ -441,6 +441,10 @@ struct Executor<'m> {
     work_offset: WorkOffsetId,
     origin: Pos,
     feed: f64,
+    feed_mode: FeedMode,
+    /// Whether a feed per revolution with the spindle stopped has been
+    /// reported.
+    stopped_feed_reported: bool,
     spindle_rpm: f64,
     spindle_on: bool,
     tool: u32,
@@ -471,6 +475,8 @@ impl<'m> Executor<'m> {
             work_offset,
             origin: machine.work_offset(work_offset).unwrap_or([0.0; MAX_AXES]),
             feed: state.feed_rate.unwrap_or(0.0),
+            feed_mode: state.feed_mode,
+            stopped_feed_reported: false,
             spindle_rpm: state.spindle_rpm,
             spindle_on: state.spindle_state != SpindleState::Off,
             tool: state.current_tool.unwrap_or(0),
@@ -532,8 +538,15 @@ impl<'m> Executor<'m> {
                 self.unknown_reason.clone_from(reason);
                 self.unknown_reported = false;
             }
-            Command::Dwell { .. } => self.push(SegKind::Dwell, self.pos, None, src, diag),
+            Command::Dwell { seconds } => {
+                self.push(SegKind::Dwell, self.pos, None, src, diag);
+                // A dwell of unknown length (Osai's DWT) comes as zero.
+                if let Some(s) = self.segments.last_mut() {
+                    s.time = (seconds.is_finite() && *seconds > 0.0).then_some(*seconds);
+                }
+            }
             Command::SetFeedRate(f) => self.feed = *f,
+            Command::SetFeedMode(mode) => self.feed_mode = *mode,
             Command::SetUnits(u) => {
                 if !self.units_used.contains(u) {
                     self.units_used.push(*u);
@@ -585,7 +598,6 @@ impl<'m> Executor<'m> {
             // and commands already reported by the dialect.
             Command::SetDistanceMode(_)
             | Command::SetPlane(_)
-            | Command::SetFeedMode(_)
             | Command::SetSpindleSpeed { .. }
             | Command::SetSpindleState { .. }
             | Command::SelectTool(_)
@@ -872,7 +884,7 @@ impl<'m> Executor<'m> {
         diag: &mut Diagnostics,
     ) {
         let feed = match kind {
-            SegKind::Linear | SegKind::ArcCw | SegKind::ArcCcw => self.feed,
+            SegKind::Linear | SegKind::ArcCw | SegKind::ArcCcw => self.feed_per_minute(src, diag),
             _ => 0.0,
         };
         let mut segment = Segment {
@@ -891,6 +903,7 @@ impl<'m> Executor<'m> {
             src,
             cycle_step: CycleStep::None,
             flags: SegFlags::EMPTY,
+            time: None,
         };
         if kind.is_motion() {
             self.check_limits(&mut segment, diag);
@@ -899,8 +912,88 @@ impl<'m> Executor<'m> {
             // the last known position, so say so.
             segment.flags.insert(SegFlags::POSITION_UNKNOWN);
         }
+        segment.time = self.estimate_time(&segment);
         self.pos = end;
         self.segments.push(segment);
+    }
+
+    /// The feed rate in mm/min for a feed move now: the programmed feed,
+    /// or under feed per revolution the feed times the spindle speed. With
+    /// the spindle stopped there is none (0), reported once.
+    fn feed_per_minute(&mut self, src: SourceRef, diag: &mut Diagnostics) -> f64 {
+        if self.feed_mode != FeedMode::PerRevolution {
+            return self.feed;
+        }
+        let rpm = if self.spindle_on {
+            self.spindle_rpm
+        } else {
+            0.0
+        };
+        if rpm > 0.0 && rpm.is_finite() {
+            return self.feed * rpm;
+        }
+        if !self.stopped_feed_reported {
+            self.stopped_feed_reported = true;
+            diag.warning(
+                DiagCode::MissingFeedRate,
+                "feed per revolution with the spindle stopped: the move has no feed rate in \
+                 mm/min, so it has no time in the estimate. Further cases are not reported.",
+                src,
+            );
+        }
+        0.0
+    }
+
+    /// The simple time estimate for `seg`, in seconds (no acceleration):
+    ///
+    /// - a rapid takes as long as its slowest axis at that axis's rapid
+    ///   rate (unknown if a moving axis has none);
+    /// - a feed move takes its length over the linear axes divided by the
+    ///   feed rate, capped at the machine's maximum feed (unknown with no
+    ///   feed rate, or when only rotary axes move);
+    /// - a tool change takes the machine's tool change time (0 if not set);
+    /// - other events take no time (a dwell's time is set by the caller).
+    fn estimate_time(&self, seg: &Segment) -> Option<f64> {
+        let axes = self.machine.axes();
+        match seg.kind {
+            SegKind::Rapid => {
+                let mut time: f64 = 0.0;
+                for (k, axis) in axes.iter().enumerate() {
+                    let (s, e) = (seg.start.get(k)?, seg.end.get(k)?);
+                    let distance = (e - s).abs();
+                    if !distance.is_finite() {
+                        return None;
+                    }
+                    if distance > 0.0 {
+                        time = time.max(distance / axis.rapid_rate? * 60.0);
+                    }
+                }
+                Some(time)
+            }
+            SegKind::Linear | SegKind::ArcCw | SegKind::ArcCcw => {
+                let linear = |k: usize| axes.get(k).is_some_and(|a| a.kind == AxisKind::Linear);
+                let length = path_length(seg, linear);
+                let feed = match self.machine.speeds().max_feed {
+                    Some(max) => seg.feed.min(max),
+                    None => seg.feed,
+                };
+                if !(length.is_finite() && feed > 0.0 && feed.is_finite()) {
+                    return None;
+                }
+                let rotary_moves = seg
+                    .start
+                    .iter()
+                    .zip(&seg.end)
+                    .enumerate()
+                    .any(|(k, (s, e))| s != e && !linear(k));
+                if length == 0.0 && rotary_moves {
+                    return None;
+                }
+                Some(length / feed * 60.0)
+            }
+            SegKind::ToolChange => Some(self.machine.speeds().tool_change_time.unwrap_or(0.0)),
+            _ => Some(0.0),
+        }
     }
 
     /// Flags (and reports) a segment that goes outside the travel limits

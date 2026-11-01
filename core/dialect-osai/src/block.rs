@@ -560,6 +560,11 @@ fn apply_gcode(
             set_active(osai, state, code.key);
             out.push(Command::SetFeedMode(FeedMode::PerMinute));
         }
+        Handler::FeedPerRevolution => {
+            state.feed_mode = FeedMode::PerRevolution;
+            set_active(osai, state, code.key);
+            out.push(Command::SetFeedMode(FeedMode::PerRevolution));
+        }
         Handler::NoEffect => set_active(osai, state, code.key),
         Handler::NotSimulated => {
             set_active(osai, state, code.key);

@@ -16,6 +16,8 @@ pub(crate) enum Handler {
     Incremental,
     WorkOffset,
     FeedPerMinute,
+    /// Feed per spindle revolution (G95).
+    FeedPerRevolution,
     /// Cancels something that is never active here, so it cannot change
     /// the path.
     NoEffect,
@@ -72,6 +74,7 @@ impl Handler {
             "incremental" => Self::Incremental,
             "work_offset" => Self::WorkOffset,
             "feed_per_minute" => Self::FeedPerMinute,
+            "feed_per_revolution" => Self::FeedPerRevolution,
             "no_effect" => Self::NoEffect,
             "not_simulated" => Self::NotSimulated,
             "length_compensation" => Self::LengthCompensation,

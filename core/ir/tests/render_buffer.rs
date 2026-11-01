@@ -1,5 +1,5 @@
 //! Tests for the render buffer encoder, including the shared fixture
-//! `tests/golden/render_buffer_v1.bin` that the TypeScript decoder checks
+//! `tests/golden/render_buffer_v2.bin` that the TypeScript decoder checks
 //! as well (ARCHITECTURE.md §8.4).
 //!
 //! The decoder here is written independently of the encoder (plain byte
@@ -87,10 +87,13 @@ struct SegEntry {
     kind: u8,
     flags: u8,
     feed: f32,
+    /// `None` for NaN (time unknown).
+    time: Option<f32>,
 }
 
 fn seg_entry(b: &[u8], h: &Header, i: usize) -> SegEntry {
-    let at = h.segments_offset as usize + i * 24;
+    let at = h.segments_offset as usize + i * 28;
+    let time = f32_at(b, at + 24);
     SegEntry {
         first_vertex: u32_at(b, at),
         vertex_count: u32_at(b, at + 4),
@@ -100,6 +103,7 @@ fn seg_entry(b: &[u8], h: &Header, i: usize) -> SegEntry {
         kind: b[at + 18],
         flags: b[at + 19],
         feed: f32_at(b, at + 20),
+        time: (!time.is_nan()).then_some(time),
     }
 }
 
@@ -167,10 +171,13 @@ fn fixture_program() -> Program {
     let p2 = pos(&[1010.0, 2000.0, -1.0]);
     let p3 = pos(&[1000.0, 2010.0, -1.0]);
 
-    let rapid = on(seg(SegKind::Rapid, p0, p1, 1), 3, 2);
-    let spindle = on(seg(SegKind::SpindleCw, p1, p1, 1), 4, 3);
+    let mut rapid = on(seg(SegKind::Rapid, p0, p1, 1), 3, 2);
+    rapid.time = Some(0.125);
+    let mut spindle = on(seg(SegKind::SpindleCw, p1, p1, 1), 4, 3);
+    spindle.time = Some(0.0);
     let mut feed = on(seg(SegKind::Linear, p1, p2, 1), 5, 4);
     feed.feed = 250.0;
+    feed.time = Some(1.44);
     feed.flags = SegFlags::OUT_OF_LIMITS;
     // Quarter circle, centre (1000, 2000), radius 10, counter-clockwise.
     let mut quarter = on(
@@ -185,7 +192,9 @@ fn fixture_program() -> Program {
         5,
     );
     quarter.feed = 500.0;
-    // Block index above 65535: only its low 16 bits (6) are stored.
+    quarter.time = Some(1.875);
+    // Block index above 65535: only its low 16 bits (6) are stored. Its
+    // time is unknown (NaN in the buffer).
     let mut end = on(seg(SegKind::ProgramEnd, p3, p3, 1), 7, 65_536 + 6);
     end.flags = SegFlags::POSITION_UNKNOWN;
 
@@ -221,7 +230,7 @@ fn fixture_program() -> Program {
 const FIXTURE_TOLERANCE: f64 = 1.0;
 
 fn fixture_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/render_buffer_v1.bin")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/render_buffer_v2.bin")
 }
 
 #[test]
@@ -247,7 +256,7 @@ fn fixture_decodes_to_the_expected_values() {
 
     assert_eq!(&b[0..4], b"RPCG");
     assert_eq!(h.magic, 0x4743_5052);
-    assert_eq!(h.version, 1);
+    assert_eq!(h.version, 2);
     assert_eq!(h.flags, 0);
     assert_eq!(h.vertex_count, 9);
     assert_eq!(h.segment_count, 5);
@@ -256,13 +265,13 @@ fn fixture_decodes_to_the_expected_values() {
     // Centre of x 1000..1010, y 2000..2010, z -1..50.
     assert_eq!(h.origin, [1005.0, 2005.0, 24.5]);
     // 64-byte header; 9 × 12 position bytes + 9 kind bytes = 117, padded
-    // to 120; 5 × 24 segment bytes; 3 × 20 diagnostic bytes; 51 string
+    // to 120; 5 × 28 segment bytes; 3 × 20 diagnostic bytes; 51 string
     // bytes padded to the end.
     assert_eq!(h.vertices_offset, 64);
     assert_eq!(h.segments_offset, 184);
-    assert_eq!(h.diags_offset, 304);
-    assert_eq!(h.strings_offset, 364);
-    assert_eq!(b.len(), 416);
+    assert_eq!(h.diags_offset, 324);
+    assert_eq!(h.strings_offset, 384);
+    assert_eq!(b.len(), 436);
 
     // Vertices relative to the origin. The arc's middle point is at 45°:
     // 10·cos 45° = 7.0710678, i.e. 2.0710678 from the origin.
@@ -292,7 +301,7 @@ fn fixture_decodes_to_the_expected_values() {
     // Padding after the kinds is zero.
     assert_eq!(&b[181..184], &[0, 0, 0]);
 
-    let entry = |first_vertex, vertex_count, src_line, block, kind, flags, feed| SegEntry {
+    let entry = |first_vertex, vertex_count, src_line, block, kind, flags, feed, time| SegEntry {
         first_vertex,
         vertex_count,
         src_line,
@@ -301,16 +310,17 @@ fn fixture_decodes_to_the_expected_values() {
         kind,
         flags,
         feed,
+        time,
     };
     let segs: Vec<SegEntry> = (0..5).map(|i| seg_entry(&b, &h, i)).collect();
     assert_eq!(
         segs,
         vec![
-            entry(0, 2, 3, 2, 0, 0, 0.0),
-            entry(2, 1, 4, 3, 9, 0, 0.0),
-            entry(3, 2, 5, 4, 1, 2, 250.0),
-            entry(5, 3, 6, 5, 3, 0, 500.0),
-            entry(8, 1, 7, 6, 15, 4, 0.0),
+            entry(0, 2, 3, 2, 0, 0, 0.0, Some(0.125)),
+            entry(2, 1, 4, 3, 9, 0, 0.0, Some(0.0)),
+            entry(3, 2, 5, 4, 1, 2, 250.0, Some(1.44)),
+            entry(5, 3, 6, 5, 3, 0, 500.0, Some(1.875)),
+            entry(8, 1, 7, 6, 15, 4, 0.0, None),
         ]
     );
 
@@ -332,11 +342,11 @@ fn fixture_decodes_to_the_expected_values() {
     );
     // Message offsets and byte lengths: 35, then 13 ("Ø" and "–" take 2
     // and 3 bytes), then 3.
-    assert_eq!(u32_at(&b, 304 + 12), 0);
-    assert_eq!(u32_at(&b, 324 + 12), 35);
-    assert_eq!(u32_at(&b, 324 + 16), 13);
-    assert_eq!(u32_at(&b, 344 + 12), 48);
-    assert_eq!(&b[415..416], &[0]);
+    assert_eq!(u32_at(&b, 324 + 12), 0);
+    assert_eq!(u32_at(&b, 344 + 12), 35);
+    assert_eq!(u32_at(&b, 344 + 16), 13);
+    assert_eq!(u32_at(&b, 364 + 12), 48);
+    assert_eq!(&b[435..436], &[0]);
 }
 
 // ---- other encoder behaviour -----------------------------------------------
@@ -344,12 +354,13 @@ fn fixture_decodes_to_the_expected_values() {
 #[test]
 fn layout_constants_match_section_8_3() {
     assert_eq!(layout::MAGIC, 0x4743_5052);
-    assert_eq!(layout::VERSION, 1);
+    assert_eq!(layout::VERSION, 2);
     assert_eq!(layout::HEADER_SIZE, 64);
     assert_eq!(layout::HEADER_ORIGIN, 24);
     assert_eq!(layout::HEADER_STRINGS_OFFSET, 60);
-    assert_eq!(layout::SEGMENT_SIZE, 24);
-    assert_eq!(layout::SEGMENT_FEED + 4, layout::SEGMENT_SIZE);
+    assert_eq!(layout::SEGMENT_SIZE, 28);
+    assert_eq!(layout::SEGMENT_FEED, 20);
+    assert_eq!(layout::SEGMENT_TIME + 4, layout::SEGMENT_SIZE);
     assert_eq!(layout::DIAG_SIZE, 20);
     assert_eq!(layout::DIAG_MESSAGE_LENGTH + 4, layout::DIAG_SIZE);
 }

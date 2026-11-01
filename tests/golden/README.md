@@ -17,7 +17,7 @@ no travel limits, every work offset at zero) instead of the generic mill. In `ro
 enough to review; the 19-repeat form is tested in
 `core/dialect-fanuc/tests/subprogram_calls.rs`.
 
-`render_buffer_v1.bin` is the shared render-buffer fixture (ARCHITECTURE.md
+`render_buffer_v2.bin` is the shared render-buffer fixture (ARCHITECTURE.md
 §8.4). It is built from a hand-made program in
 `core/ir/tests/render_buffer.rs`, which also lists every value it holds;
 the TypeScript decoder test checks the same values. Regenerate it with

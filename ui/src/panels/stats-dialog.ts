@@ -20,7 +20,7 @@ export function showStatsDialog(rb: RenderBuffer, title: string): void {
       {
         className: "note",
         textContent:
-          "Lengths are as drawn: rapids as straight lines, arcs along their chords. No time estimate yet. A visualization aid, not a safety check.",
+          "Times are a simple estimate: each move at its feed rate (capped at the machine's maximum feed; feed per revolution times the spindle speed) or at its axes' rapid rates, with no acceleration or deceleration, plus dwells and the machine file's tool change time. Real run times are longer. Lengths are as drawn: rapids as straight lines, arcs along their chords. A visualization aid, not a safety check.",
       },
     ),
     el("div", { className: "buttons" }, ok),
