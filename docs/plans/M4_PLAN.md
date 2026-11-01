@@ -198,7 +198,7 @@ DEVELOPMENT_STATUS.md point to it.
   (the machine folder), and `ui/src/main.ts` (`fillMachines`,
   `applySettings`: today the first usable machine is chosen).
 
-### M4.2: Remember the window layout
+### M4.2: Remember the window layout *(done)*
 *Moved from the wishlist by the owner, 2026-11-01.*
 - The pane sizes (the dragged splitters), the maximised pane, and the
   window's size and maximised state are saved when they change and

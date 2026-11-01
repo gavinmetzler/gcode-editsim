@@ -9,13 +9,14 @@ import { splitFraction, toggleMaximised, type PaneName } from "./panes";
  * Puts a splitter before `after` inside `container`. Dragging it gives the
  * first pane the share of `container` up to the pointer, through
  * `apply(share)` (0 to 1). `axis` "x" splits side by side, "y" one above
- * the other.
+ * the other. `done` is called when a drag ends.
  */
 export function addSplitter(
   container: HTMLElement,
   after: HTMLElement,
   axis: "x" | "y",
   apply: (share: number) => void,
+  done: () => void = () => undefined,
 ): HTMLElement {
   const bar = el("div", { className: `split split-${axis}` });
   bar.setAttribute("role", "separator");
@@ -36,9 +37,11 @@ export function addSplitter(
     bar.addEventListener("pointermove", move);
   });
   const end = (e: PointerEvent): void => {
+    const dragging = bar.classList.contains("dragging");
     if (bar.hasPointerCapture(e.pointerId)) bar.releasePointerCapture(e.pointerId);
     bar.classList.remove("dragging");
     bar.removeEventListener("pointermove", move);
+    if (dragging) done();
   };
   bar.addEventListener("pointerup", end);
   bar.addEventListener("pointercancel", end);

@@ -309,7 +309,7 @@ fn nothing_is_remembered_on_the_first_start() {
     let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
     assert_eq!(
         r,
-        serde_json::json!({ "machine": null, "dialect": null, "problem": null })
+        serde_json::json!({ "machine": null, "dialect": null, "layout": null, "problem": null })
     );
     assert!(!settings.exists(), "reading does not create the file");
 }
@@ -409,4 +409,80 @@ fn only_real_choices_are_remembered() {
         assert!(json(&w, "remember_choice", bad.clone()).is_err(), "{bad}");
     }
     assert!(!settings.exists(), "nothing was written");
+}
+
+#[test]
+fn the_pane_layout_is_remembered_for_the_next_session() {
+    let (_dir, machines, settings) = config_with_router("layout");
+    {
+        let w = window_with(machines.clone(), settings.clone());
+        let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+        assert_eq!(r["layout"], serde_json::Value::Null, "nothing yet");
+        json(
+            &w,
+            "remember_layout",
+            serde_json::json!({ "layout": { "editor": 0.3, "panel": 0.4, "maximised": "viewport" } }),
+        )
+        .expect("remembered");
+    }
+    let w = window_with(machines, settings);
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+    assert_eq!(
+        r["layout"],
+        serde_json::json!({ "editor": 0.3, "panel": 0.4, "maximised": "viewport" })
+    );
+}
+
+#[test]
+fn remembering_the_layout_keeps_the_machine_and_dialect() {
+    let (_dir, machines, settings) = config_with_router("layout-keeps");
+    let w = window_with(machines.clone(), settings);
+    let router = machines.join("router.toml").display().to_string();
+    json(
+        &w,
+        "remember_choice",
+        serde_json::json!({ "machine": { "kind": "user", "id": router }, "dialect": "osai" }),
+    )
+    .expect("choice");
+    json(
+        &w,
+        "remember_layout",
+        serde_json::json!({ "layout": { "editor": 0.5 } }),
+    )
+    .expect("layout");
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+    assert_eq!(r["dialect"], "osai");
+    assert_eq!(r["machine"]["id"], router.as_str());
+    assert_eq!(r["layout"], serde_json::json!({ "editor": 0.5 }));
+}
+
+#[test]
+fn a_layout_out_of_range_is_refused() {
+    let (_dir, machines, settings) = config_with_router("layout-bad");
+    let w = window_with(machines, settings.clone());
+    for bad in [
+        serde_json::json!({ "layout": { "editor": 0.0 } }),
+        serde_json::json!({ "layout": { "panel": 1.2 } }),
+        serde_json::json!({ "layout": { "editor": -1 } }),
+    ] {
+        assert!(json(&w, "remember_layout", bad.clone()).is_err(), "{bad}");
+    }
+    assert!(!settings.exists(), "nothing was written");
+}
+
+#[test]
+fn reset_layout_forgets_the_layout_and_the_window_but_not_the_choice() {
+    let (_dir, machines, settings) = config_with_router("reset");
+    std::fs::write(
+        &settings,
+        br#"{"version":1,"dialect":"osai","layout":{"editor":0.3},"window":{"width":900,"height":600,"maximized":true}}"#,
+    )
+    .expect("write");
+    let w = window_with(machines, settings.clone());
+    json(&w, "reset_layout", serde_json::json!({})).expect("reset");
+    let value: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&settings).expect("read")).expect("json");
+    assert_eq!(value["dialect"], "osai");
+    assert_eq!(value.get("layout"), None);
+    assert_eq!(value.get("window"), None);
 }

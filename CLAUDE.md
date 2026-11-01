@@ -87,7 +87,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 0. Plan *(done)*
 1. Remember the machine and dialect *(done)*
-2. Remember the window layout
+2. Remember the window layout *(done)*
 3. Editor selection shown bright yellow in the 3D view
 4. Exact rewriting (core)
 5. Positions in program coordinates (core)

@@ -5,6 +5,8 @@
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
+import type { PaneLayout } from "../layout/panes";
+
 /** A dialect the user can choose. */
 export interface DialectEntry {
   readonly id: string;
@@ -30,6 +32,8 @@ export interface MachineEntry {
 export interface Remembered {
   readonly machine: MachineRef | null;
   readonly dialect: string | null;
+  /** The panes as last left (M4.2); null when never saved. */
+  readonly layout: PaneLayout | null;
   /** Why some or all of the saved settings could not be used. */
   readonly problem: string | null;
 }
@@ -77,6 +81,17 @@ export function rememberedSettings(): Promise<Remembered> {
 /** Remembers the user's choice of machine and dialect for the next session. */
 export function rememberChoice(machine: MachineRef, dialect: string): Promise<void> {
   return invoke<undefined>("remember_choice", { machine, dialect });
+}
+
+/** Remembers the panes' sizes and the maximised pane for the next session. */
+export function rememberLayout(layout: PaneLayout): Promise<void> {
+  return invoke<undefined>("remember_layout", { layout });
+}
+
+/** Puts the window back to its default size and forgets the remembered
+ *  layout (the caller resets the panes). */
+export function resetLayout(): Promise<void> {
+  return invoke<undefined>("reset_layout");
 }
 
 /** Interprets `program` (raw bytes) and returns the render buffer. */
