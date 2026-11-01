@@ -14,12 +14,18 @@
 //! dialect reports that the machine moved somewhere it cannot model
 //! ([`Command::PositionUnknown`]), moves are left out, with one warning,
 //! until every axis has been given an absolute position again.
+//!
+//! [`interpret_traced`] also records, for each run of each block in a range
+//! of lines, the modal state, the commands and the position before and
+//! after in program coordinates ([`BlockTrace`]), which code
+//! transformations need (M4.5). A plain [`interpret`] builds no trace.
 
 #![forbid(unsafe_code)]
 
 mod arc;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+use std::ops::RangeInclusive;
 
 use dialect_api::{
     literal, ArcCenter, ArcDir, AxisInfo, AxisSet, AxisWord, BlockContext, CodeKey, Command,
@@ -34,6 +40,56 @@ use ir::{
 use machine_api::{AxisKind, LimitViolation, Machine};
 
 use crate::arc::{ArcProblem, RADIUS_TOLERANCE, SAME_POINT};
+
+/// One run of one block, as [`interpret_traced`] records it.
+///
+/// Positions are in the block's **work coordinates** (the program
+/// coordinates its words are written in): the machine position less the
+/// origin of the work offset in effect for the block (after any work-offset
+/// change in the block itself), for `before` as well as `after`, so both
+/// are in the same frame. They are in internal units (mm, degrees) as the
+/// machine model holds them; [`ModalState::units`] says which units the
+/// block's text is in.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockTrace {
+    /// 0-based block index (as in [`SourceRef::block`]).
+    pub block: u32,
+    /// 1-based source line.
+    pub line: u32,
+    /// Which run of this block it is, from 0: a subprogram block runs once
+    /// per call.
+    pub run: u32,
+    /// The modal state after the block, so modes set in the block (G91,
+    /// G20, G55) are those its words were read in.
+    pub state: ModalState,
+    /// The commands the dialect made from the block, in order.
+    pub commands: Vec<Command>,
+    /// The full position before the block.
+    pub before: Pos,
+    /// The full position after the block.
+    pub after: Pos,
+    /// Whether every axis's position was known before the block.
+    pub known_before: bool,
+    /// Whether every axis's position is known after the block.
+    pub known_after: bool,
+    /// Whether the block reported an error (its words may not have been
+    /// used as written).
+    pub errors: bool,
+}
+
+/// Collects [`BlockTrace`]s for a range of lines.
+struct Tracer {
+    first: u32,
+    last: u32,
+    runs: BTreeMap<usize, u32>,
+    entries: Vec<BlockTrace>,
+}
+
+impl Tracer {
+    fn wants(&self, line: u32) -> bool {
+        (self.first..=self.last).contains(&line)
+    }
+}
 
 /// Settings for one interpretation run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +144,48 @@ pub fn interpret(
     dialect: &dyn Dialect,
     machine: &dyn Machine,
     options: Options,
+) -> Program {
+    run(source, file_name, dialect, machine, options, None)
+}
+
+/// Interprets a whole program, like [`interpret`], and also records a
+/// [`BlockTrace`] for each run of each block on the lines in `lines`
+/// (either order, both included), in the order they ran. Blocks that do
+/// not run (after the end, never called, or skipped by block delete) have
+/// none. The returned [`Program`] is the same as [`interpret`] gives.
+pub fn interpret_traced(
+    source: &[u8],
+    file_name: &str,
+    dialect: &dyn Dialect,
+    machine: &dyn Machine,
+    options: Options,
+    lines: RangeInclusive<u32>,
+) -> (Program, Vec<BlockTrace>) {
+    let (a, b) = (*lines.start(), *lines.end());
+    let mut tracer = Tracer {
+        first: a.min(b),
+        last: a.max(b),
+        runs: BTreeMap::new(),
+        entries: Vec::new(),
+    };
+    let program = run(
+        source,
+        file_name,
+        dialect,
+        machine,
+        options,
+        Some(&mut tracer),
+    );
+    (program, tracer.entries)
+}
+
+fn run(
+    source: &[u8],
+    file_name: &str,
+    dialect: &dyn Dialect,
+    machine: &dyn Machine,
+    options: Options,
+    mut trace: Option<&mut Tracer>,
 ) -> Program {
     let mut diag = Diagnostics::new();
     let axes = match axis_set(machine) {
@@ -202,12 +300,46 @@ pub fn interpret(
         let mut next = pc + 1;
         if !(options.block_delete && block.block_skip.is_some()) {
             commands.clear();
+            let line = block.line;
+            let before = trace
+                .as_ref()
+                .is_some_and(|t| t.wants(line))
+                .then(|| (exec.pos, exec.all_known(), diag.len()));
             let stripped = strip_ignored(block, &ignored, &mut noted_ignored, src, &mut diag);
             let block = stripped.as_ref().unwrap_or(block);
             let ctx = BlockContext { axes: &axes, src };
             dialect.interpret_block(block, &ctx, &mut exec.state, &mut commands, &mut diag);
             for command in &commands {
                 exec.apply(command, src, &mut diag);
+            }
+            if let (Some(t), Some((pos, known_before, diag_len))) = (trace.as_deref_mut(), before) {
+                let run = t.runs.entry(pc).or_insert(0);
+                let this_run = *run;
+                *run = run.saturating_add(1);
+                let work = |p: &Pos| -> Pos {
+                    let mut w = *p;
+                    for (v, o) in w.iter_mut().zip(&exec.origin) {
+                        *v -= o;
+                    }
+                    w
+                };
+                t.entries.push(BlockTrace {
+                    block: src.block,
+                    line,
+                    run: this_run,
+                    state: exec.state.clone(),
+                    commands: commands.clone(),
+                    before: work(&pos),
+                    after: work(&exec.pos),
+                    known_before,
+                    known_after: exec.all_known(),
+                    errors: diag
+                        .as_slice()
+                        .get(diag_len..)
+                        .unwrap_or_default()
+                        .iter()
+                        .any(|d| d.severity == ir::Severity::Error),
+                });
             }
             // Calls and returns take effect after the block's other commands.
             for command in &commands {
@@ -605,6 +737,14 @@ impl<'m> Executor<'m> {
             // Followed by the run loop, after the block's other commands.
             Command::CallSubprogram { .. } | Command::ReturnFromSubprogram => {}
         }
+    }
+
+    /// `true` if every axis of the machine has a known position.
+    fn all_known(&self) -> bool {
+        self.known
+            .iter()
+            .take(self.machine.axes().len())
+            .all(|&k| k)
     }
 
     /// `true` if every axis's position is known, so a move can be drawn
