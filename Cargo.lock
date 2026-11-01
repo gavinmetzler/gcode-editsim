@@ -9,6 +9,7 @@ dependencies = [
  "dialect-api",
  "dialect-fanuc",
  "dialect-osai",
+ "gcode-syntax",
  "interpreter",
  "ir",
  "machine-api",
@@ -17,6 +18,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "transform",
 ]
 
 [[package]]

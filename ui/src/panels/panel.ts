@@ -24,6 +24,9 @@ export class DiagnosticsPanel {
   private readonly filterBox = el("span", { className: "filters" });
   private readonly diagBody = el("div", { className: "panel-body diagnostics" });
   private rows: DiagnosticRow[] = [];
+  /** Notes from the last transformation, shown above the run's
+   *  diagnostics until cleared (M4.9). */
+  private notes: DiagnosticRow[] = [];
 
   /** Called with the line of a clicked diagnostic. */
   onLine: (line: number) => void = () => undefined;
@@ -67,6 +70,13 @@ export class DiagnosticsPanel {
     this.onFilter(this.shownSeverities());
   }
 
+  /** Shows notes from a transformation above the diagnostics, until
+   *  replaced (an empty list clears them). */
+  setNotes(notes: readonly { readonly severity: SeverityName; readonly line: number; readonly message: string }[]): void {
+    this.notes = notes.map((n) => ({ line: n.line, severity: n.severity, code: "Transform", message: n.message }));
+    this.drawDiagnostics();
+  }
+
   /** Shows the diagnostics of `rb`. */
   show(rb: RenderBuffer): void {
     this.rows = diagnosticRows(rb.diagnostics);
@@ -81,11 +91,12 @@ export class DiagnosticsPanel {
   }
 
   private drawDiagnostics(): void {
-    const counts = severityCounts(this.rows);
+    const all = [...this.notes, ...this.rows];
+    const counts = severityCounts(all);
     this.title.textContent = `Diagnostics (${countsText(counts)})`;
-    const shown = this.rows.filter((r) => this.filters.get(r.severity)?.checked !== false);
+    const shown = all.filter((r) => this.filters.get(r.severity)?.checked !== false);
     if (shown.length === 0) {
-      const text = this.rows.length === 0 ? "No diagnostics." : "All diagnostics are filtered out.";
+      const text = all.length === 0 ? "No diagnostics." : "All diagnostics are filtered out.";
       this.diagBody.replaceChildren(el("p", { className: "empty", textContent: text }));
       return;
     }

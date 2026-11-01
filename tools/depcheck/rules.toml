@@ -38,11 +38,13 @@ app-backend = [
     "dialect-api",
     "dialect-fanuc",
     "dialect-osai",
+    "gcode-syntax",
     "interpreter",
     "ir",
     "machine-api",
     "machine-lathe",
     "machine-mill",
+    "transform",
 ]
 
 # Runs real programs through the app's pipeline and reports diagnostics

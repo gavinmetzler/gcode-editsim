@@ -2,7 +2,7 @@
 // search, G-code highlighting, diagnostics in the gutter, and callbacks for
 // edits and for the line the cursor is on.
 
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, indentWithTab, isolateHistory } from "@codemirror/commands";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { lintGutter, setDiagnostics, type Diagnostic as LintDiagnostic } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
@@ -18,6 +18,7 @@ import {
 import { tags } from "@lezer/highlight";
 
 import { gcodeLanguage } from "./gcode-language";
+import type { LineChange } from "../transform/edits";
 import { selectedLines as wholeLines, type LineMark, type LineRange } from "./lines";
 
 const highlight = HighlightStyle.define([
@@ -109,6 +110,40 @@ export class GcodeEditor {
     const { from, to } = selection.main;
     const end = doc.lineAt(to);
     return wholeLines(doc.lineAt(from).number, end.number, to === end.from);
+  }
+
+  /** The text of line `n` (1-based), or null if there is no such line. */
+  lineText(n: number): string | null {
+    const doc = this.view.state.doc;
+    return n >= 1 && n <= doc.lines ? doc.line(n).text : null;
+  }
+
+  /** Applies changes to lines as one edit, which a single Undo reverts
+   *  (M4.9). Changes are in UTF-16 offsets within their lines; insertions
+   *  at the same place go in the order given. */
+  applyLineChanges(changes: readonly LineChange[]): void {
+    const doc = this.view.state.doc;
+    const specs = changes
+      .map((c, order) => {
+        const line = doc.line(c.line);
+        return { from: line.from + c.from, to: line.from + c.to, insert: c.insert, order };
+      })
+      .sort((a, b) => a.from - b.from || a.to - b.to || a.order - b.order);
+    // Merge insertions at the same place, keeping their order.
+    const merged: { from: number; to: number; insert: string }[] = [];
+    for (const s of specs) {
+      const last = merged[merged.length - 1];
+      if (last && last.from === s.from && last.to === last.from && s.to === s.from) {
+        last.insert += s.insert;
+      } else {
+        merged.push({ from: s.from, to: s.to, insert: s.insert });
+      }
+    }
+    this.view.dispatch({
+      changes: merged,
+      annotations: isolateHistory.of("full"),
+      userEvent: "input.transform",
+    });
   }
 
   /** The 1-based line the cursor is on. */

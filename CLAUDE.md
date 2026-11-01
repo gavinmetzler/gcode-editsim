@@ -95,7 +95,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 6. Translate *(done)*
 7. Rotate *(done)*
 8. Scale (one factor for X and Y; Z never scaled) *(done)*
-9. Transform dialog (app and UI)
+9. Transform dialog (app and UI) *(done)*
 10. A better icon
 11. `.nc` files on the Linux desktop (Flatpak)
 12. Wrap-up

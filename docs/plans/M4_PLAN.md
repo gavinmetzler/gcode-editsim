@@ -278,7 +278,7 @@ DEVELOPMENT_STATUS.md point to it.
 - One factor for X and Y about a centre, Z unchanged; R and I/J; refusal
   of a zero or negative factor and of G18/G19 arcs.
 
-### M4.9: The Transform dialog (app and UI)
+### M4.9: The Transform dialog (app and UI) *(done)*
 - Shell command `transform` (raw program in, binary edit list out,
   parameters in small JSON) and its IPC tests.
 - UI: Transform… dialog, the selected lines, centre picked from the
