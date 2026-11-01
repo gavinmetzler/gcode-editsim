@@ -81,20 +81,10 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 to 3.4 and 3.7 to 3.9 are done):
+**M3 is complete** (2026-11-01; see `docs/plans/M3_PLAN.md`). Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community; macro variables are on the wishlist.
 
-0. Real-program corpus (private, run locally) and lenient handling of ignorable codes
-1. Tool marker *(done)*
-2. Hover info *(done)*
-3. Measure between two points *(done)*
-4. Orbit around the snapped point *(done)*
-5. Program coordinates and coordinate shifts *(on hold, left to the community)*
-6. Canned cycles *(on hold, left to the community)*
-7. Subprograms *(done; macro variables on the wishlist)*
-8. Statistics, extended (per tool, simple time estimate) *(done)*
-9. Large programs *(done)*
-10. Wrap-up
+**Next: M4, code transformations** (`ARCHITECTURE.md` §13; notes in `docs/plans/M3_PLAN.md` §5). Write `docs/plans/M4_PLAN.md` and agree it with the owner before building.
 
 Desktop only. The lathe and Osai crates stay stubs; full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.
 
-**Then:** M4 code transformations, M5 mobile, M6 machine state and accuracy, M7 material removal (`ARCHITECTURE.md` §13).
+**Then:** M5 mobile (reduce memory for large programs first), M6 machine state and accuracy, M7 material removal (`ARCHITECTURE.md` §13).

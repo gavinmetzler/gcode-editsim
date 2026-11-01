@@ -10,7 +10,7 @@ The long-term goal is to provide a practical environment where CNC programmers c
 
 The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline) and 2 (render buffer and minimal desktop UI) are complete. Next is Milestone 3: a dependable backplotter. On Linux it installs as a Flatpak.
+> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline), 2 (render buffer and minimal desktop UI) and 3 (a dependable backplotter: real programs without false alarms, subprograms, hover, measuring, orbiting, statistics with a time estimate, million-block programs) are complete. Next is Milestone 4: code transformations. On Linux it installs as a Flatpak.
 
 GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
@@ -126,9 +126,8 @@ These are the project's intended direction. Most are not implemented yet; see th
   - work offsets G54–G59
   - F, S and T words
   - common M codes: stops, program end, spindle, tool change, coolant
-- **Done in M3.0:** machine-specific M codes are noted once and skipped rather than reported as errors (a machine file can list them in `ignore_codes`); tool length compensation is noted, not simulated; G92 is ignored with a warning for now.
-- **Subprograms (M3.7):** M98/M99 calls to programs in the same file, with repeat counts, are followed and drawn.
-- **Next (M3):** extended statistics and large programs. Macro variables are on the wishlist. Coordinate shifts and canned cycles are on hold, left to the community: they are reported and drawn without their effect, never hiding moves.
+- **Done in M3:** machine-specific M codes are noted once and skipped rather than reported as errors (a machine file can list them in `ignore_codes`); tool length compensation is noted, not simulated; G92 is ignored with a warning; M98/M99 subprogram calls within the file, with repeat counts, are followed and drawn; G95 feed per revolution.
+- **On hold, left to the community:** coordinate shifts and canned cycles. They are reported and drawn without their effect, never hiding moves. Macro variables are on the wishlist.
 - **Then (M6):** cutter radius compensation.
 - **Not planned:** tool length (height) and wear compensation. The backplot shows the path as programmed and notes these codes.
 - **Later:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.
@@ -141,7 +140,7 @@ These are the project's intended direction. Most are not implemented yet; see th
 ### Visualisation, Analysis and Simulation
 
 - Interactive 3D toolpath display, with editor line and toolpath segment selection kept in sync *(built)*.
-- Diagnostics panel and statistics dialog *(built)*: path lengths, bounds, feed rates and per-tool figures; a cycle-time estimate comes in M3.
+- Diagnostics panel and statistics dialog *(built)*: path lengths, bounds, feed rates, per-tool figures and a simple time estimate (no acceleration; an acceleration model comes in M6).
 - Backplot tools: a tool marker with hover info on the nearest point (position, tool, feed), and measuring between two points *(built)*; orbiting around a point on the toolpath *(built)*.
 - Code transformations (M4): translate, scale and rotate a selected range of lines, applied as an undoable edit.
 - Tool movement playback and simulation controls.
@@ -190,7 +189,7 @@ See [Trying it out](#trying-it-out).
 
 **Never drawing a misleading toolpath without saying so** is the rule. The M1 review made unsupported codes hide later moves; since M3 (owner decision) moves are **never hidden**: a backplot drawn without an unsupported code's effect, with a warning, is more useful than none.
 
-- **Codes that change later moves** (G92, G52, G10, rotation, scaling, mirroring, polar input, macro and subprogram calls, unknown G codes) are reported once where they appear; their values are data, not moves, and later moves are drawn as programmed. Canned cycles draw their hole positions.
+- **Codes that change later moves** (G92, G52, G10, rotation, scaling, mirroring, polar input, macro calls, unknown G codes) are reported once where they appear; their values are data, not moves, and later moves are drawn as programmed. Canned cycles draw their hole positions.
 - **Unknown position.** After the machine has gone somewhere the machine file doesn't describe (G30), nothing is drawn until the position is known again.
 - **Assumed defaults.** Modes a program relies on without setting them (units, G90/G91, plane, motion mode) are warned about. On a real control they depend on parameters or on the state at power-off.
 
@@ -198,7 +197,10 @@ See [Trying it out](#trying-it-out).
 
 - **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length. This is intended: height and wear compensation are not planned, and the path is shown as programmed.
 - **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M6).
-- **Speed limits aren't checked yet.** The machine file's maximum feed and spindle speed are loaded but not used (M6).
+- **Speed limits aren't checked yet.** The machine file's maximum feed and rapid rates are used only by the time estimate; moves are not checked against them, and the maximum spindle speed is unused (M6).
+- **Positions are machine coordinates.** Program (work) coordinates are on hold.
+- **Fanuc G04 (dwell) is reported as an error** and adds no time to the estimate; Osai dwells are drawn without their time.
+- **Memory:** a program of a million blocks needs about 850 MB. Fine on a desktop; to be reduced before mobile (M5).
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 
 ### M2 – Render Buffer and Minimal UI (complete)
@@ -213,9 +215,18 @@ See [Trying it out](#trying-it-out).
 - [x] M2.8a: refresh on demand after edits, dashed rapids
 - [x] M2.8b: opening and saving through the desktop's file dialogs, the machine folder, wrap-up
 
+### M3 – A Dependable Backplotter (complete)
+
+- [x] Real programs without false alarms: ignorable codes noted, not errors; moves never hidden
+- [x] Tool marker with hover info, measuring between two points, orbiting about a point on the toolpath
+- [x] Subprograms (M98/M99 within the file)
+- [x] Statistics per tool with a simple time estimate; G95 feed per revolution
+- [x] Programs of a million blocks open in a second or two on the owner's desktop
+- [x] Along the way: resizable and maximisable panes, a colour key, the machine folder seeded with examples
+- On hold, left to the community: coordinate shifts and program coordinates, canned cycles
+
 ### Later Milestones
 
-- **M3 – A dependable backplotter:** real programs without false alarms (ignorable codes noted, not errors; moves never hidden), subprograms, per-tool statistics with a simple time estimate, large programs. Backplot tools: a tool marker, hover info, measuring, orbiting around a point on the toolpath.
 - **M4 – Code transformations:** translate, scale and rotate a selected part of the program.
 - **M5 – Mobile:** the same app on Android; iOS later.
 - **M6 – Machine state and accuracy:** tool table, cutter radius compensation, cycle-time estimation with acceleration, the dog-leg rapid path, limits checking.
@@ -303,7 +314,7 @@ The project is in active development. Architectural decisions and development co
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture and technical design (the source of truth).
 - [CLAUDE.md](CLAUDE.md): development rules, including for AI-assisted development.
 - [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md): where the project stands, the decisions made so far, open issues and lessons learned. Start here when picking up work.
-- [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md) (finishing) and [M3](docs/plans/M3_PLAN.md) (next).
+- [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md) and [M3](docs/plans/M3_PLAN.md), both complete; the M4 plan comes next.
 - [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
 - [docs/WISHLIST.md](docs/WISHLIST.md): ideas kept for later, not yet planned.
 - [docs/machine-definition.md](docs/machine-definition.md): the machine definition file format.

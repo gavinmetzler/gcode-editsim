@@ -1,14 +1,14 @@
 # Development status
 
 A hand-over document for anyone, human or AI agent, continuing this project:
-fixing bugs, finishing M2, or starting later milestones. Read it
+fixing bugs or starting later milestones. Read it
 after `CLAUDE.md` and `ARCHITECTURE.md`; it records *what exists and why*,
 the decisions made along the way, and what is still open.
 
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M3.0 (real-program corpus, lenient handling of ignorable codes).
+Last updated: M3.10 (M3 wrap-up, 2026-11-01).
 M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
@@ -18,21 +18,26 @@ ARCHITECTURE.md §13.
 ## 1. Where things stand
 
 **M1 (core skeleton) is complete, with known limitations** (section 6).
-**M2 (render buffer and minimal desktop UI) is complete** (M2.8b, the
-last step, adds opening and saving through the native dialogs and the
-machine folder). **Next: M3, a dependable backplotter**
-(`docs/plans/M3_PLAN.md`); M3.1 and M3.2 are already done.
+**M2 (render buffer and minimal desktop UI) is complete.**
+**M3 (a dependable backplotter) is complete** (`docs/plans/M3_PLAN.md`):
+the owner's real Fanuc and Osai programs draw with no errors and every gap
+explained; tool marker, hover, measuring and orbiting about a node;
+subprograms; statistics per tool with a simple time estimate; a million
+blocks opens in a second or two on the owner's desktop. Coordinate shifts
+and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left
+to the community. **Next: M4, code transformations**: write
+`docs/plans/M4_PLAN.md` and agree it with the owner first.
 
 The app is usable today as an editor beside a synced 3D backplot of Fanuc
-milling programs, with diagnostics and statistics, that opens and saves
-files.
+(and, as a stub, Osai 10 Series) milling programs, with diagnostics,
+statistics and a time estimate, that opens and saves files.
 
 | Area | Status |
 |---|---|
 | Tests | 542 pass (`cargo test --workspace`); 12 in the app shell (`cd app/shell && cargo test`); 108 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
-| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
-| Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
+| UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7), with per-tool times and a time estimate (M3.8); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
+| Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. The machine folder is created on first start with the example mill and router files; the window reports the app id, so the desktop shows its icon. Windows and macOS: build from source |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
 | Licence | AGPL-3.0-only (`LICENSE`; `license` field in every Cargo manifest) |
 
@@ -43,8 +48,12 @@ Series stub covers a small subset). That covers:
 - work offsets G54–G59
 - G28 and G53
 - exact arcs: I/J/K, R, full circles and helices
+- subprograms (M98/M99 within the file)
+- feed per minute and per revolution (G94/G95)
 - travel-limit checks, including arc bulges
-- a diagnostic for everything unsupported
+- an estimated time per segment (no acceleration)
+- a diagnostic for everything unsupported, and machine-specific codes
+  noted once and skipped
 
 Try it:
 ```bash
@@ -58,7 +67,7 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
 - **The owner** (GitHub `gavinmetzler`) reviews and merges every PR. Work
   arrives one step at a time ("do step N only").
 - **Branch:** all work happens on the session's designated branch (M1:
-  `claude/hopeful-euler-b7gaff`; M2: `claude/affectionate-goodall-mi4cum`). After a PR merges, restart the branch from
+  `claude/hopeful-euler-b7gaff`; M2 and M3: `claude/affectionate-goodall-mi4cum`). After a PR merges, restart the branch from
   `origin/main` (`git checkout -B <branch> origin/main`) and open a **new**
   PR. Never stack on merged history.
 - **Force-push is blocked by the environment.** Fix mistakes with a new
@@ -97,12 +106,12 @@ in ARCHITECTURE.md §5).
 | Crate | What it does | Key items |
 |---|---|---|
 | `core/gcode-syntax` | Bytes to blocks (one per non-blank line). Knows no G-code meaning. | `parse(&[u8]) -> Program`; `Block { line, block_skip, sequence_number, words, assignments, comments, program_delimiter, errors }`; `Expr` tree (never evaluated); `MAX_DEPTH` = 64. Fuzz target in `fuzz/` |
-| `core/ir` | The neutral output data model | `Pos = [f64; 9]`; `SegKind` (values fixed for the render buffer); `Segment`; `ArcGeom { center, plane: ArcPlane { first, second }, radius, turns }`; `DiagCode` (u16 values fixed); `Diagnostics`; `segments_for_line`; `bounding_box`; `tessellate`; `render::encode_render_buffer` + `render::layout`; `serde` feature |
-| `core/dialect-api` | What every dialect shares | `Dialect` trait (`initial_state`, `interpret_block(block, &BlockContext { axes, src }, state, out, diag)`); `Command`; `ModalState` (incl. `motion_blockers`, `first_report`); `CodeTable` (TOML); `AxisSet`; `CodeKey` (G1 = G01 = G1.0) |
+| `core/ir` | The neutral output data model | `Pos = [f64; 9]`; `SegKind` (values fixed for the render buffer); `Segment`; `ArcGeom { center, plane: ArcPlane { first, second }, radius, turns }`; `DiagCode` (u16 values fixed); `Diagnostics`; `Segment::time` (estimated seconds, M3.8); `segments_for_line`; `bounding_box`; `tessellate`; `path_length`; `render::encode_render_buffer` + `render::layout`; `serde` feature |
+| `core/dialect-api` | What every dialect shares | `Dialect` trait (`initial_state`, `interpret_block(block, &BlockContext { axes, src }, state, out, diag)`); `Command`; `ModalState` (incl. `feed_mode`, `first_report`); `CodeTable` (TOML); `AxisSet`; `CodeKey` (G1 = G01 = G1.0) |
 | `core/dialect-osai` | Osai 10 Series milling **stub** (M2.2) | `data/osai.toml`; `src/block.rs`; three-letter commands in `src/three_letter.rs`; notes in `docs/dialect-notes/osai.md` |
 | `core/dialect-fanuc` | Fanuc milling | `data/fanuc.toml` (75 codes with handlers); `src/block.rs` (all block logic); `FanucOptions { decimal_input }` |
 | `core/machine-api` | Machine trait and definition-file loader | `MachineDef::from_toml_str` (rejects unknown settings); `AxisDef` (letter, kind, travel, arc_offset_letter, direction, rapid_rate, reference, diameter_mode); `Machine` trait; `check_limits`; `work_offset(id)` |
-| `core/machine-mill` | 3-axis mill | `Mill::new(def)`, `Mill::generic()`; example file `data/generic_3axis_mill.toml` |
+| `core/machine-mill` | 3-axis mill | `Mill::new(def)`, `Mill::generic()`; example files `data/generic_3axis_mill.toml` and `data/generic_3axis_router.toml` (no travel limits, every work offset at zero) |
 | `core/machine-lathe` | 2-axis lathe **stub** (M2.2) | `Lathe::new(def)`, `Lathe::generic()`; X diameter → radius in `normalize_axis_value`; example file `data/generic_2axis_lathe.toml` |
 | `core/interpreter` | Dialect + machine to IR | `interpret(source, file, &dyn Dialect, &dyn Machine, Options) -> ir::Program`; `examples/summary.rs` |
 | `core/testkit` | Golden helpers (no file access) | `summary(&Program, letters)`: compact JSON rounded to 1e-6; `compare`; `UPDATE_GOLDEN` |
@@ -238,7 +247,11 @@ Changing any of these is a deliberate, documented change.
   a setting (`docs/WISHLIST.md`).
 - Statistics are worked out in the UI from the render buffer, only when
   the user asks (a dialog, owner's request: on demand, all in one view); the units
-  the program used are not in the buffer, so they are not shown.
+  the program used are not in the buffer, so they are not shown. Times
+  come from the core: the interpreter sets each segment's estimated time
+  (feed moves at their feed capped at `max_feed`, rapids at the slowest
+  axis's rapid rate, dwells, the machine's `tool_change_time`), carried in
+  the render buffer (v2, M3.8); the UI only adds them up.
 - Files are opened and saved through `tauri-plugin-dialog` (M2.8b): the
   UI gets a real path from the native dialog and the app's own
   `load_file`/`save_file` commands do the reading and writing. Saving
@@ -278,9 +291,10 @@ self-review: the same agent wrote the code.
 | Minor: no warning for a feed move with the spindle stopped | Open (feature) |
 | Minor: undefined work offset uses `InvalidValue`; "after program end" uses `NotYetSimulated`; limit summary points at line 0 | Open |
 
-**The biggest remaining risk:** every test program was written by the
-agent. No real CAM output has been run through the pipeline yet. The owner
-was asked to try a few real programs with the `summary` example.
+**Real programs (M3.0, again at M3.10):** the owner's private corpus
+(four Fanuc router programs, two Osai 10 Series programs) draws with no
+errors; every warning or note names a real gap. Run it with
+`tools/corpus`; the programs stay out of this repository.
 
 ---
 
@@ -289,7 +303,12 @@ was asked to try a few real programs with the `summary` example.
 - G43 is not applied, and Z limit checks ignore the tool length (by
   design: height and wear compensation are not planned).
 - Rapids are straight lines.
-- Speed limits are unused.
+- Speed limits are not checked (max feed and rapid rates are used only by
+  the time estimate); the time estimate has no acceleration (M6).
+- Fanuc G04 (dwell) is an error and adds no time (owner decision,
+  M3.8); Osai dwells have no time (`DWT` is not read).
+- A million blocks needs about 715 MB in the core (850 MB in the app);
+  to be reduced before mobile (ARCHITECTURE.md §8.5).
 - Not supported:
   - macros beyond literals (wishlist)
   - subprograms in other files (calls within the file work, M3.7)
@@ -412,8 +431,22 @@ Decided (2026-10-31), after M3.0:
 - **G codes that carry coordinates are implemented, never ignored.**
   Ignoring one leaves its axis words behind to be read as a move (found
   with `ignore_codes`, which therefore takes M codes only). G92 is the one
-  such code not implemented yet: until M3.5 it is skipped with a warning,
-  its axis words consumed as data so they are never a move.
+  such code not implemented yet: with M3.5 on hold it is skipped with a
+  warning, its axis words consumed as data so they are never a move.
+
+Decided (2026-10-31 to 2026-11-01), M3.7 to M3.10:
+- **Subprograms** within the file are followed; macro variables are on
+  the wishlist (the owner's programs do not use them).
+- **Machine files:** the examples are packaged in the app and copied
+  into the user's machine folder on first start; once the folder has
+  files, only they are listed (the lathe stub is not copied).
+- **Time estimate:** one PR; Fanuc G04 stays an error for now; tool
+  changes take an optional `tool_change_time` from the machine file.
+- **Large programs:** fast enough on the owner's desktop; memory is left
+  for M5.
+- **UI:** panes are resizable and maximisable (double-click the view or
+  the diagnostics, a button on the editor); the editor margin follows the
+  diagnostics filters; remembering the layout is on the wishlist.
 
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their
@@ -422,5 +455,5 @@ Still open:
    `gcode-editsim-manuals` (not in this one, for copyright reasons).
    Items marked *(unverified)* in `docs/dialect-notes/osai.md` need a
    real control.
-3. A private corpus of the owner's real Fanuc and Osai programs (M3.0),
-   and the exact `(UAO,n)` message the owner saw.
+3. More real programs are welcome in the private corpus, especially
+   from other CAM systems and controls.

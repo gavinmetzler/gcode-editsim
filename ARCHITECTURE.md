@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-Status: **living document**, kept in step with the code. M1 (core skeleton) and M2 (render buffer and minimal desktop UI) are complete; M3 is next (§13). Where this file describes something not built yet, it says which milestone brings it. Interfaces marked *provisional* were checked against a stub second dialect (Osai 10 Series) and a stub second machine type (lathe) in M2.2 (findings in §7.2 and §9); they may still change when those become real (M8).
+Status: **living document**, kept in step with the code. M1 (core skeleton), M2 (render buffer and minimal desktop UI) and M3 (a dependable backplotter) are complete; M4 is next (§13). Where this file describes something not built yet, it says which milestone brings it. Interfaces marked *provisional* were checked against a stub second dialect (Osai 10 Series) and a stub second machine type (lathe) in M2.2 (findings in §7.2 and §9); they may still change when those become real (M8).
 
 ## 1. Goals
 
@@ -33,7 +33,7 @@ G-code text
   → dialect        : Blocks → Commands (machine-neutral intents), tracks modal state,
                      emits Diagnostics; will expand canned cycles (M3.6, §7.3)
   → interpreter    : applies Commands to a Machine model → Segments (IR), per channel
-  → consumers      : render buffer → backplot and statistics (built); cycle time (M3.8, M6),
+  → consumers      : render buffer → backplot and statistics (built); time estimate (built, M3.8; with acceleration, M6),
                      material removal (M7)
 ```
 
@@ -582,12 +582,12 @@ Not started; planned for M7, after tool geometry (M6). Dexels are the leading ca
 
 ## 13. Milestones
 
-Status: M1 and M2 done; M3 next.
+Status: M1, M2 and M3 done; M4 next.
 
 1. **M1: Core skeleton** *(done)*. Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
 2. **M2: Render buffer + minimal UI** *(done)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), CI jobs that run only when their files change, refresh on demand after edits, and the tool marker with hover readout (M3.1/M3.2 brought forward). See `docs/plans/M2_PLAN.md`.
-3. **M3: A dependable backplotter.** Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; codes that change later moves are ignored with a warning, never hiding moves; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community. See `docs/plans/M3_PLAN.md`.
-4. **M4: Code transformations.** Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
+3. **M3: A dependable backplotter** *(done)*. Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; codes that change later moves are ignored with a warning, never hiding moves; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community; macro variables are on the wishlist. Added along the way: resizable and maximisable panes, a colour key, the machine folder seeded with the examples, the window's app id for the desktop icon. See `docs/plans/M3_PLAN.md`.
+4. **M4: Code transformations** *(next; plan to be agreed)*. Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
 5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later. Reduce the core's memory for large programs first (§8.5: about 715 MB for a million blocks).
 6. **M6: Machine state and accuracy.** Tool table and tool geometry, cutter radius compensation, time estimation with an acceleration model, the dog-leg rapid path, speed-limit checks.
 7. **M7: Material removal (mill).**
