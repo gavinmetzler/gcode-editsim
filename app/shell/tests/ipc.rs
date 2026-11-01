@@ -486,3 +486,25 @@ fn reset_layout_forgets_the_layout_and_the_window_but_not_the_choice() {
     assert_eq!(value.get("layout"), None);
     assert_eq!(value.get("window"), None);
 }
+
+#[test]
+fn the_legend_and_diagnostics_filters_are_remembered() {
+    let (_dir, machines, settings) = config_with_router("legend");
+    let layout = serde_json::json!({
+        "editor": 0.4,
+        "legend_folded": true,
+        "hidden_diagnostics": ["info"]
+    });
+    {
+        let w = window_with(machines.clone(), settings.clone());
+        json(
+            &w,
+            "remember_layout",
+            serde_json::json!({ "layout": layout }),
+        )
+        .expect("saved");
+    }
+    let w = window_with(machines, settings);
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+    assert_eq!(r["layout"], layout);
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { layoutToSave, paneName, restoredShare, splitFraction, toggleMaximised } from "../src/layout/panes";
+import { layoutToSave, paneName, restoredShare, shownSeverities, splitFraction, toggleMaximised } from "../src/layout/panes";
 
 describe("splitFraction", () => {
   it("follows the pointer between the minimums", () => {
@@ -61,9 +61,31 @@ describe("paneName", () => {
 });
 
 describe("layoutToSave", () => {
+  const ALL = new Set(["error", "warning", "info"] as const);
+  const base = { editor: null, panel: null, maximised: null, legendFolded: false, shown: ALL };
+
   it("leaves out what is at its default", () => {
-    expect(layoutToSave(null, null, null)).toEqual({});
-    expect(layoutToSave(0.3, null, "panel")).toEqual({ editor: 0.3, maximised: "panel" });
-    expect(layoutToSave(null, 0.25, null)).toEqual({ panel: 0.25 });
+    expect(layoutToSave(base)).toEqual({});
+    expect(layoutToSave({ ...base, editor: 0.3, maximised: "panel" })).toEqual({ editor: 0.3, maximised: "panel" });
+    expect(layoutToSave({ ...base, panel: 0.25 })).toEqual({ panel: 0.25 });
+  });
+
+  it("keeps a folded colour key and unticked filters, in a fixed order", () => {
+    expect(layoutToSave({ ...base, legendFolded: true, shown: new Set(["warning"] as const) })).toEqual({
+      legend_folded: true,
+      hidden_diagnostics: ["error", "info"],
+    });
+  });
+});
+
+describe("shownSeverities", () => {
+  it("shows everything not hidden", () => {
+    expect(shownSeverities(undefined)).toEqual(new Set(["error", "warning", "info"]));
+    expect(shownSeverities([])).toEqual(new Set(["error", "warning", "info"]));
+    expect(shownSeverities(["info", "warning"])).toEqual(new Set(["error"]));
+  });
+
+  it("ignores names it does not know", () => {
+    expect(shownSeverities(["notes", "Error", "info"])).toEqual(new Set(["error", "warning"]));
   });
 });

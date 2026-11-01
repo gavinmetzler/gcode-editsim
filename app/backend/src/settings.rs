@@ -104,7 +104,8 @@ fn is_machine_file_name(name: &str) -> bool {
             .is_some_and(|x| x.eq_ignore_ascii_case("toml"))
 }
 
-/// The panes' sizes and the maximised pane, as the UI last left them.
+/// The panes' sizes, the maximised pane, the colour key and the
+/// diagnostics filters, as the UI last left them.
 /// The UI gives the names and meanings; this only keeps them sensible.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PaneLayout {
@@ -119,6 +120,14 @@ pub struct PaneLayout {
     /// The maximised pane's name, or `None` for the normal layout.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub maximised: Option<String>,
+    /// Whether the colour key in the view is folded (M4.2a); `None` for
+    /// the default (open).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legend_folded: Option<bool>,
+    /// The diagnostics severities whose filter box is unticked (M4.2a),
+    /// by the UI's names; `None` for the default (all shown).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden_diagnostics: Option<Vec<String>>,
 }
 
 impl PaneLayout {
@@ -432,10 +441,30 @@ fn read_layout(fields: &Map<String, Value>, problems: &mut Vec<String>) -> PaneL
             None
         }
     };
+    let legend_folded = match fields.get("legend_folded") {
+        None | Some(Value::Null) => None,
+        Some(Value::Bool(b)) => Some(*b),
+        Some(_) => {
+            problems.push("the colour key setting is not true or false".to_owned());
+            None
+        }
+    };
+    let hidden_diagnostics = match fields.get("hidden_diagnostics") {
+        None | Some(Value::Null) => None,
+        Some(v) => match serde_json::from_value::<Vec<String>>(v.clone()) {
+            Ok(names) => Some(names),
+            Err(_) => {
+                problems.push("the diagnostics filters setting is not a list of names".to_owned());
+                None
+            }
+        },
+    };
     PaneLayout {
         editor,
         panel,
         maximised,
+        legend_folded,
+        hidden_diagnostics,
     }
 }
 
