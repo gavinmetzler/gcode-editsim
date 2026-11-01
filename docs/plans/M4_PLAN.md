@@ -229,7 +229,7 @@ DEVELOPMENT_STATUS.md point to it.
 - **Reset layout** sets them back to the defaults too (the key open,
   every box ticked).
 
-### M4.3: The editor selection in the 3D view (UI)
+### M4.3: The editor selection in the 3D view (UI) *(done)*
 - Selecting lines in the editor colours all their segments **bright
   yellow** in the view (every run of a subprogram line, from the line
   index); a single cursor line is the one-line case of the same thing,

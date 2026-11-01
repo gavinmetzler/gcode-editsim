@@ -10,6 +10,7 @@ import {
   LEGEND,
   PALETTE,
   buildToolpath,
+  highlightGeometry,
   cssColor,
   segmentColor,
   srgbToLinear,
@@ -97,5 +98,42 @@ describe("legend", () => {
 
   it("says out-of-limits is about the travel limits", () => {
     expect(LEGEND.find((e) => e.color === cssColor(PALETTE.outOfLimits))?.label).toBe("Outside travel limits");
+  });
+});
+
+describe("highlightGeometry", () => {
+  it("joins each highlighted segment's own vertices and marks its events", () => {
+    // Rapid (0-1), spindle event (2), arc (5-7).
+    const g = highlightGeometry(tp, [0, 1, 3]);
+    expect(Array.from(g.pairs)).toEqual([0, 1, 5, 6, 6, 7]);
+    expect(Array.from(g.points)).toEqual(Array.from(rb.positions.subarray(6, 9)));
+  });
+
+  it("takes a typed array of segments and skips ones that do not exist", () => {
+    const g = highlightGeometry(tp, Uint32Array.from([2, 99]));
+    expect(Array.from(g.pairs)).toEqual([3, 4]);
+    expect(g.points).toHaveLength(0);
+  });
+
+  it("is empty for no segments", () => {
+    const g = highlightGeometry(tp, []);
+    expect(g.pairs).toHaveLength(0);
+    expect(g.points).toHaveLength(0);
+  });
+});
+
+describe("selected colour", () => {
+  it("is bright yellow and in the colour key", () => {
+    expect(cssColor(PALETTE.selected)).toBe("rgb(255 255 0)");
+    expect(LEGEND.find((e) => e.color === cssColor(PALETTE.selected))?.label).toBe("Selected");
+  });
+
+  it("is not a colour any segment is drawn in", () => {
+    const kinds = Object.values(SEG_KIND);
+    for (const k of kinds) {
+      for (const f of [0, SEG_FLAG.OUT_OF_LIMITS, SEG_FLAG.POSITION_UNKNOWN]) {
+        expect(cssColor(segmentColor(k, f))).not.toBe(cssColor(PALETTE.selected));
+      }
+    }
   });
 });

@@ -28,7 +28,7 @@ import { MARKER, markerShape } from "./marker";
 import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
-import type { Toolpath } from "./toolpath";
+import { PALETTE, highlightGeometry, srgbToLinear, type Toolpath } from "./toolpath";
 import { VIEWS, fitOrtho, orbitAbout, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
 
@@ -262,32 +262,27 @@ export class Viewport {
     else this.requestRender();
   }
 
-  /** Highlights `segments` (indices) on top of the toolpath, replacing any
-   *  earlier highlight; an empty list clears it. */
-  highlight(segments: readonly number[]): void {
+  /** Highlights `segments` (indices) in bright yellow on top of the
+   *  toolpath, replacing any earlier highlight; an empty list clears it.
+   *  Takes a typed array, so a highlight as large as the program is not
+   *  copied into a list first. */
+  highlight(segments: ArrayLike<number>): void {
     this.clearHighlight();
     const toolpath = this.toolpath;
     if (!toolpath || segments.length === 0) {
       this.requestRender();
       return;
     }
-    const pairs: number[] = [];
-    const points: number[] = [];
-    for (const s of segments) {
-      const range = toolpath.segmentVertices(s);
-      if (!range) continue;
-      if (range.count === 1) {
-        points.push(...toolpath.positions.subarray(range.first * 3, range.first * 3 + 3));
-      }
-      for (let v = range.first; v + 1 < range.first + range.count; v += 1) pairs.push(v, v + 1);
-    }
+    const { pairs, points } = highlightGeometry(toolpath, segments);
+    const [r, g, b] = PALETTE.selected.map(srgbToLinear);
+    const color = new Color().setRGB(r ?? 1, g ?? 1, b ?? 0);
     const lineGeometry = new BufferGeometry();
     lineGeometry.setAttribute("position", new BufferAttribute(toolpath.positions, 3));
-    lineGeometry.setIndex(new BufferAttribute(Uint32Array.from(pairs), 1));
-    const lineMaterial = new LineBasicMaterial({ color: 0xffffff, depthTest: false });
+    lineGeometry.setIndex(new BufferAttribute(pairs, 1));
+    const lineMaterial = new LineBasicMaterial({ color, depthTest: false });
     const pointGeometry = new BufferGeometry();
-    pointGeometry.setAttribute("position", new BufferAttribute(Float32Array.from(points), 3));
-    const pointMaterial = new PointsMaterial({ color: 0xffffff, size: 11, sizeAttenuation: false, depthTest: false });
+    pointGeometry.setAttribute("position", new BufferAttribute(points, 3));
+    const pointMaterial = new PointsMaterial({ color, size: 11, sizeAttenuation: false, depthTest: false });
     const lines = new LineSegments(lineGeometry, lineMaterial);
     const marks = new Points(pointGeometry, pointMaterial);
     lines.renderOrder = 10;

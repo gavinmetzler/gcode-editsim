@@ -18,7 +18,7 @@ import {
 import { tags } from "@lezer/highlight";
 
 import { gcodeLanguage } from "./gcode-language";
-import type { LineMark } from "./lines";
+import { selectedLines as wholeLines, type LineMark, type LineRange } from "./lines";
 
 const highlight = HighlightStyle.define([
   { tag: tags.comment, color: "#7f8c8d", fontStyle: "italic" },
@@ -52,6 +52,10 @@ export class GcodeEditor {
   onChange: () => void = () => undefined;
   /** Called when the cursor moves to another line (1-based). */
   onCursorLine: (line: number) => void = () => undefined;
+  /** Called when the selected lines change: whole lines, the cursor's
+   *  own line when nothing is selected (M4.3). */
+  onSelectedLines: (range: LineRange) => void = () => undefined;
+  private selected: LineRange = { first: 0, last: 0 };
 
   constructor(parent: HTMLElement, text: string) {
     this.extensions = [
@@ -74,6 +78,11 @@ export class GcodeEditor {
                 this.cursorLine = line;
                 this.onCursorLine(line);
               }
+              const range = this.selectedLines();
+              if (range.first !== this.selected.first || range.last !== this.selected.last) {
+                this.selected = range;
+                this.onSelectedLines(range);
+              }
             }
           }),
     ];
@@ -89,7 +98,17 @@ export class GcodeEditor {
   /** Replaces the whole text (a newly opened file), clearing undo history. */
   setText(text: string): void {
     this.cursorLine = 0;
+    this.selected = { first: 0, last: 0 };
     this.view.setState(EditorState.create({ doc: text, extensions: this.extensions }));
+  }
+
+  /** The whole lines the main selection covers (the cursor's line when
+   *  nothing is selected). */
+  selectedLines(): LineRange {
+    const { doc, selection } = this.view.state;
+    const { from, to } = selection.main;
+    const end = doc.lineAt(to);
+    return wholeLines(doc.lineAt(from).number, end.number, to === end.from);
   }
 
   /** The 1-based line the cursor is on. */
