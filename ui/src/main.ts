@@ -20,6 +20,7 @@ import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from
 import { Freshness } from "./freshness";
 import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark } from "./editor/lines";
 import { addSplitter, dblclickToggles, Maximiser } from "./layout/layout";
+import { layoutToSave, paneName, restoredShare, type PaneLayout } from "./layout/panes";
 import {
   inApp,
   interpret,
@@ -28,7 +29,9 @@ import {
   loadFile,
   machineFolder,
   rememberChoice,
+  rememberLayout,
   rememberedSettings,
+  resetLayout,
   saveFile,
   selectMachine,
   setRunOptions,
@@ -88,6 +91,11 @@ async function main(app: HTMLElement): Promise<void> {
     el("button", { type: "button", textContent: VIEWS[name].label, className: "view" }),
   );
   const fitButton = el("button", { type: "button", textContent: "Fit" });
+  const resetLayoutButton = el("button", {
+    type: "button",
+    textContent: "Reset layout",
+    title: "Default pane sizes and window size",
+  });
   const statsButton = el("button", { type: "button", textContent: "Statistics…", disabled: true });
   const measureButton = el("button", {
     type: "button",
@@ -117,6 +125,7 @@ async function main(app: HTMLElement): Promise<void> {
       fileLabel,
       statsButton,
       measureButton,
+      resetLayoutButton,
       // The view buttons wrap to the next row together, kept to the right.
       el("span", { className: "views" }, ...viewButtons, fitButton),
     ),
@@ -172,13 +181,35 @@ async function main(app: HTMLElement): Promise<void> {
   viewportBox.append(readout, staleBar, legend);
   const panel = new DiagnosticsPanel(panelBox);
 
-  // Resizing: drag the borders between the panes.
-  addSplitter(mainBox, rightBox, "x", (share) => {
-    editorBox.style.flexBasis = `${(share * 100).toFixed(2)}%`;
-  });
-  addSplitter(rightBox, panelBox, "y", (share) => {
-    panelBox.style.flexBasis = `${((1 - share) * 100).toFixed(2)}%`;
-  });
+  // Resizing: drag the borders between the panes. The shares are null at
+  // the default layout; they are remembered when a drag ends (M4.2).
+  let editorShare: number | null = null;
+  let panelShare: number | null = null;
+  const showEditorShare = (share: number | null): void => {
+    editorShare = share;
+    editorBox.style.flexBasis = share === null ? "" : `${(share * 100).toFixed(2)}%`;
+  };
+  const showPanelShare = (share: number | null): void => {
+    panelShare = share;
+    panelBox.style.flexBasis = share === null ? "" : `${(share * 100).toFixed(2)}%`;
+  };
+  /** False until the remembered layout is restored, and while restoring. */
+  let saveLayoutChanges = false;
+  const saveLayout = (): void => {
+    if (!saveLayoutChanges) return;
+    // Losing a layout change is not worth interrupting the user for.
+    rememberLayout(layoutToSave(editorShare, panelShare, maximiser.maximised)).catch(() => undefined);
+  };
+  addSplitter(mainBox, rightBox, "x", showEditorShare, saveLayout);
+  addSplitter(
+    rightBox,
+    panelBox,
+    "y",
+    (share) => {
+      showPanelShare(1 - share);
+    },
+    saveLayout,
+  );
   // Maximising: double-click the view or the diagnostics list; the editor
   // has a button instead, so double-click still selects a word there.
   const maximiser = new Maximiser(mainBox);
@@ -193,7 +224,22 @@ async function main(app: HTMLElement): Promise<void> {
     editorMax.classList.toggle("on", on);
   };
   showEditorMax();
-  maximiser.onChange = showEditorMax;
+  maximiser.onChange = () => {
+    showEditorMax();
+    saveLayout();
+  };
+  /** Shows a remembered layout, fitted to the window as it is now. */
+  const restoreLayout = (layout: PaneLayout | null): void => {
+    showEditorShare(restoredShare(layout?.editor, mainBox.getBoundingClientRect().width));
+    showPanelShare(restoredShare(layout?.panel, rightBox.getBoundingClientRect().height));
+    maximiser.set(paneName(layout?.maximised));
+  };
+  resetLayoutButton.addEventListener("click", () => {
+    saveLayoutChanges = false;
+    restoreLayout(null);
+    saveLayoutChanges = true;
+    void resetLayout();
+  });
   editorMax.addEventListener("click", () => {
     maximiser.toggle("editor");
   });
@@ -480,15 +526,15 @@ async function main(app: HTMLElement): Promise<void> {
   await fillMachines();
   // Start with the machine and dialect of the last session, if they can
   // still be used.
-  const start = startChoice(
-    listed,
-    dialects,
-    await rememberedSettings().catch((e: unknown) => ({
-      machine: null,
-      dialect: null,
-      problem: String(e),
-    })),
-  );
+  const remembered = await rememberedSettings().catch((e: unknown) => ({
+    machine: null,
+    dialect: null,
+    layout: null,
+    problem: String(e),
+  }));
+  restoreLayout(remembered.layout);
+  saveLayoutChanges = true;
+  const start = startChoice(listed, dialects, remembered);
   if (start.machine >= 0) machineSelect.value = String(start.machine);
   dialectSelect.value = start.dialect;
   notice = start.note;

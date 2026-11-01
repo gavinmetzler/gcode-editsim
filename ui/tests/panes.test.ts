@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitFraction, toggleMaximised } from "../src/layout/panes";
+import { layoutToSave, paneName, restoredShare, splitFraction, toggleMaximised } from "../src/layout/panes";
 
 describe("splitFraction", () => {
   it("follows the pointer between the minimums", () => {
@@ -30,5 +30,40 @@ describe("toggleMaximised", () => {
 
   it("switches straight to another pane", () => {
     expect(toggleMaximised("editor", "panel")).toBe("panel");
+  });
+});
+
+describe("restoredShare", () => {
+  it("gives back a remembered share that still fits", () => {
+    expect(restoredShare(0.35, 1000, 100)).toBeCloseTo(0.35);
+  });
+
+  it("clamps a share that would make a pane too small in a smaller window", () => {
+    // Saved on a wide screen: 5 % was 96 px of 1920; on 800 px that is 40.
+    expect(restoredShare(0.05, 800, 100)).toBeCloseTo(0.125);
+    expect(restoredShare(0.97, 800, 100)).toBeCloseTo(0.875);
+  });
+
+  it("gives the default (null) for nothing or nonsense", () => {
+    for (const bad of [undefined, null, 0, 1, -0.5, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(restoredShare(bad, 1000, 100)).toBeNull();
+    }
+  });
+});
+
+describe("paneName", () => {
+  it("accepts the pane names and nothing else", () => {
+    expect(paneName("editor")).toBe("editor");
+    expect(paneName("viewport")).toBe("viewport");
+    expect(paneName("panel")).toBe("panel");
+    for (const bad of [undefined, null, "", "toolbar", "Editor"]) expect(paneName(bad)).toBeNull();
+  });
+});
+
+describe("layoutToSave", () => {
+  it("leaves out what is at its default", () => {
+    expect(layoutToSave(null, null, null)).toEqual({});
+    expect(layoutToSave(0.3, null, "panel")).toEqual({ editor: 0.3, maximised: "panel" });
+    expect(layoutToSave(null, 0.25, null)).toEqual({ panel: 0.25 });
   });
 });
