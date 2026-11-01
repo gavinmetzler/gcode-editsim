@@ -81,7 +81,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 to 3.4, 3.7 and 3.8 are done):
+**M3: A dependable backplotter** (see `ARCHITECTURE.md` §13 and `docs/plans/M3_PLAN.md`). M1 and M2 are complete. Steps, in order (3.1 to 3.4 and 3.7 to 3.9 are done):
 
 0. Real-program corpus (private, run locally) and lenient handling of ignorable codes
 1. Tool marker *(done)*
@@ -92,7 +92,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 6. Canned cycles *(on hold, left to the community)*
 7. Subprograms *(done; macro variables on the wishlist)*
 8. Statistics, extended (per tool, simple time estimate) *(done)*
-9. Large programs
+9. Large programs *(done)*
 10. Wrap-up
 
 Desktop only. The lathe and Osai crates stay stubs; full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.

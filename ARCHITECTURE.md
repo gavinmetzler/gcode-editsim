@@ -474,7 +474,9 @@ The window shows the UI built from `ui/` into `ui/dist`, which Tauri embeds at c
 
 ### 8.5 Large programs
 
-Interpretation runs off the UI thread (Rust thread on desktop/mobile; Web Worker if the core is ever compiled to WASM). Results stream in chunks (`RenderBuffer` per chunk) for programs of millions of blocks, with progress events. Chunking is a later optimisation but the header's `flags` reserve a bit for "partial / more follows".
+Interpretation runs off the UI thread (Rust thread on desktop/mobile; Web Worker if the core is ever compiled to WASM). Results could stream in chunks (`RenderBuffer` per chunk) with progress events; the header's `flags` reserve a bit for "partial / more follows".
+
+**Measured in M3.9** (`cargo run --release -p bench`, a generated program of 1 000 000 blocks, 24 MB): interpretation about 2 s and the render buffer 0.3 s (61 MB) in the cloud test container; on the owner's desktop (Flatpak) the file opens in 1–2 s, orbiting and zooming are smooth, line clicks answer at once and the editor stays smooth. **Chunking is not needed** for that size, so it stays unbuilt. **Memory is the weak point:** the core peaks at about 715 MB while interpreting (the owner's app used about 850 MB in all): the syntax tree of every line (about 400 MB, kept because subprogram calls jump around the file) and the segments (about 300 bytes each). That is acceptable on a desktop; before mobile (M5) the likely fixes are a smaller syntax tree (numbers stored inline rather than as a full expression per word) and a struct-of-arrays segment list (§6.6).
 
 ### 8.6 The UI (as built in M2)
 
@@ -586,7 +588,7 @@ Status: M1 and M2 done; M3 next.
 2. **M2: Render buffer + minimal UI** *(done)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), CI jobs that run only when their files change, refresh on demand after edits, and the tool marker with hover readout (M3.1/M3.2 brought forward). See `docs/plans/M2_PLAN.md`.
 3. **M3: A dependable backplotter.** Real programs draw without false alarms: ignorable codes (tool height and wear compensation, machine-specific codes) give an info note instead of an error; codes that change later moves are ignored with a warning, never hiding moves; subprograms and simple macro variables; per-tool statistics and a simple time estimate; large programs. Backplot tools: tool marker, hover info on the nearest endpoint, measuring between two points, orbit around a snapped point. Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community. See `docs/plans/M3_PLAN.md`.
 4. **M4: Code transformations.** Translate, scale and rotate a selected range of program lines; the core rewrites the text (keeping comments and number style) and the editor applies it as one undoable edit. Non-uniform scaling of arcs is refused. Notes in `docs/plans/M3_PLAN.md` §5.
-5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later.
+5. **M5: Mobile.** The desktop app on Android (the M2.3 spike passed); decide on the mobile layout. iOS later. Reduce the core's memory for large programs first (§8.5: about 715 MB for a million blocks).
 6. **M6: Machine state and accuracy.** Tool table and tool geometry, cutter radius compensation, time estimation with an acceleration model, the dog-leg rapid path, speed-limit checks.
 7. **M7: Material removal (mill).**
 8. **M8+: Additional dialects (Haas, then others), the full Osai 10 Series, and machine types (lathe, mill-turn).**

@@ -18,6 +18,7 @@ members = [
     "tools/depcheck",
     "tools/gen-ts",
     "tools/corpus",
+    "tools/bench",
     "app/backend",
 ]
 

@@ -29,7 +29,7 @@ files.
 
 | Area | Status |
 |---|---|
-| Tests | 538 pass (`cargo test --workspace`); 12 in the app shell (`cd app/shell && cargo test`); 108 in the UI (`cd ui && npm test`) |
+| Tests | 542 pass (`cargo test --workspace`); 12 in the app shell (`cd app/shell && cargo test`); 108 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build) and a Flatpak build (artifact kept 30 days); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. Windows and macOS: build from source |
@@ -112,6 +112,7 @@ in ARCHITECTURE.md §5).
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
 | `ui/` | TypeScript UI (M2.4–M2.7; ARCHITECTURE.md §8.6) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test); `src/viewport/` (three.js viewport); `src/editor/` (CodeMirror editor, line ↔ segment mapping); `src/panels/` (diagnostics panel, statistics dialog, M2.7); `src/dom.ts` (element helper); `src/ipc/backend.ts` (typed calls to the app's commands) |
 | `packaging/flatpak` | Flatpak packaging (single `.flatpak` file, installed by users; not on Flathub) | `build.sh`; manifest builds offline (UI built and crates vendored beforehand); sandbox: window and GPU only, files via the portal; **placeholder icon** |
+| `tools/bench` | Times interpretation and the render buffer on a generated large program (default 1 000 000 blocks) or a given file, with peak memory (M3.9) | `cargo run --release -p bench -- [--blocks N] [--write FILE] [PROGRAM]` |
 | `tools/corpus` | Runs real programs (kept private) through the pipeline and reports diagnostics per file (M3.0) | `cargo run -p corpus -- --dialect fanuc FILE...` |
 | `tools/ci` | Which CI jobs a pull request needs | `changed-areas.sh` (rules), `test-changed-areas.sh` (its tests, run in CI first). Unknown paths run everything; docs-only changes run nothing; pushes to `main` run everything |
 | `tools/depcheck` | The dependency-rule checker | `cargo run -p depcheck` |
