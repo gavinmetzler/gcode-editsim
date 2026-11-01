@@ -10,10 +10,13 @@
 //!   bytes (ARCHITECTURE.md §8), never JSON.
 //! - [`files`]: reading and saving programs and listing machine files.
 //!   Unlike `core/`, this crate may use the file system.
+//! - [`settings`]: what the app remembers between sessions (the machine
+//!   and dialect chosen last), in a small JSON file.
 
 #![forbid(unsafe_code)]
 
 pub mod files;
+pub mod settings;
 
 use dialect_api::Dialect;
 use dialect_fanuc::Fanuc;

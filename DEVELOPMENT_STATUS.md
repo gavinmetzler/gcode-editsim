@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M3.10 (M3 wrap-up, 2026-11-01).
+Last updated: M4.1 (remembering the machine and dialect, 2026-11-01).
 M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
@@ -34,7 +34,7 @@ statistics and a time estimate, that opens and saves files.
 
 | Area | Status |
 |---|---|
-| Tests | 553 pass (`cargo test --workspace`); 12 in the app shell (`cd app/shell && cargo test`); 108 in the UI (`cd ui && npm test`) |
+| Tests | 565 pass (`cargo test --workspace`); 18 in the app shell (`cd app/shell && cargo test`); 117 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build), a Flatpak build (artifact kept 30 days) and a dependency audit (`cargo audit` on the three Rust lock files, `npm audit` on the UI; on pull requests only when a lock file changes); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7), with per-tool times and a time estimate (M3.8); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. The machine folder is created on first start with the example mill and router files; the window reports the app id, so the desktop shows its icon. Windows and macOS: build from source |
@@ -126,7 +126,7 @@ in ARCHITECTURE.md §5).
 | `core/interpreter` | Dialect + machine to IR | `interpret(source, file, &dyn Dialect, &dyn Machine, Options) -> ir::Program`; `examples/summary.rs` |
 | `core/testkit` | Golden helpers (no file access) | `summary(&Program, letters)`: compact JSON rounded to 1e-6; `compare`; `UPDATE_GOLDEN` |
 | `core/sim` | Empty placeholder (M7) | |
-| `app/backend` | The app's behaviour without Tauri (M2.3a) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, seed_machine_folder, list_machine_files}` |
+| `app/backend` | The app's behaviour without Tauri (M2.3a) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, seed_machine_folder, list_machine_files}`, `settings::{load, save, update, RememberedMachine}` (the remembered machine and dialect, M4.1) |
 | `app/shell` | The Tauri 2 desktop shell (M2.3b), **its own Cargo workspace** | Commands in `src/lib.rs` (`interpret` raw body → raw render buffer, `load_file`, `save_file`, machine and dialect choice); IPC tests on Tauri's mock runtime in `tests/ipc.rs`; the UI (`ui/dist`) embedded at compile time |
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
 | `ui/` | TypeScript UI (M2.4–M2.7; ARCHITECTURE.md §8.6) | Vite 8, TypeScript 6 (`strict`), ESLint 10 + typescript-eslint strict type-checked, Vitest 5; `src/buffer/decode.ts` (render buffer decoder); `tests/decode.test.ts` (cross-boundary fixture test); `src/viewport/` (three.js viewport); `src/editor/` (CodeMirror editor, line ↔ segment mapping); `src/panels/` (diagnostics panel, statistics dialog, M2.7); `src/dom.ts` (element helper); `src/ipc/backend.ts` (typed calls to the app's commands) |
@@ -270,6 +270,13 @@ Changing any of these is a deliberate, documented change.
   symlinks and keeps the file's permissions (M3 review).
 - The drawing has a vertex budget (10 million): past it, arcs are drawn
   coarser, with a `DrawingSimplified` note (M3 review).
+- **Remembered settings (M4.1):** `settings.json` next to the machine
+  folder holds the machine (a shipped id, or a file *name* in the machine
+  folder, never a path) and the dialect. Saved only when the user picks
+  one (`remember_choice`), so a fallback at start-up never overwrites
+  it. Reading never fails; settings a later version adds are kept on
+  save. The start-up choice and its status-line note are worked out in
+  `ui/src/remembered.ts`. M4.2 adds the window layout to the same file.
 - Flatpak: single file, offline build, `WEBKIT_DISABLE_DMABUF_RENDERER=1`
   (fixes a Wayland protocol error on NVIDIA, confirmed by the owner).
 

@@ -20,6 +20,10 @@
 //! `set_run_options` and kept in [`AppState`], so each `interpret` call
 //! carries only the program. Interpretation and file reads run on a
 //! worker thread, never on the UI thread (§8.5).
+//!
+//! The machine and dialect the user chose last are remembered in the
+//! settings file (`app_backend::settings`): `remember_choice` saves them
+//! when the user picks one, `remembered_settings` reads them at start-up.
 
 #![forbid(unsafe_code)]
 
@@ -27,6 +31,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use app_backend::files::{self, MachineSource};
+use app_backend::settings::{self, RememberedMachine};
 use app_backend::{BackendError, RunOptions};
 use serde::{Deserialize, Serialize};
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -46,12 +51,15 @@ struct Settings {
 pub struct AppState {
     settings: Mutex<Settings>,
     machine_dir: PathBuf,
+    /// The settings file, and a lock so two saves never interleave.
+    settings_file: Mutex<PathBuf>,
 }
 
 impl AppState {
     /// Starts with the Fanuc dialect, default options, no machine selected,
-    /// and `machine_dir` as the user's machine folder.
-    pub fn new(machine_dir: PathBuf) -> Self {
+    /// `machine_dir` as the user's machine folder and `settings_file` as
+    /// the file of remembered settings.
+    pub fn new(machine_dir: PathBuf, settings_file: PathBuf) -> Self {
         Self {
             settings: Mutex::new(Settings {
                 machine_toml: None,
@@ -59,6 +67,7 @@ impl AppState {
                 options: RunOptions::default(),
             }),
             machine_dir,
+            settings_file: Mutex::new(settings_file),
         }
     }
 
@@ -177,6 +186,82 @@ fn select_machine(source: MachineRef, state: State<'_, AppState>) -> Result<Stri
         .to_owned();
     state.update(|s| s.machine_toml = Some(text));
     Ok(name)
+}
+
+/// What the app remembers from the last session.
+#[derive(Debug, Serialize)]
+pub struct Remembered {
+    /// The machine chosen last, as `list_machines` names it (it may no
+    /// longer be listed, or have a problem: the UI checks).
+    machine: Option<MachineRef>,
+    /// The dialect chosen last (it may no longer exist: the UI checks).
+    dialect: Option<String>,
+    /// Why some or all of the settings could not be used.
+    problem: Option<String>,
+}
+
+/// The machine and dialect the user chose last. Never an error: a missing
+/// or damaged settings file gives nothing remembered, with a problem
+/// saying why when the file was damaged.
+#[tauri::command]
+fn remembered_settings(state: State<'_, AppState>) -> Remembered {
+    let loaded = match state.settings_file.lock() {
+        Ok(path) => settings::load(&path),
+        Err(poisoned) => settings::load(&poisoned.into_inner()),
+    };
+    let mut problems: Vec<String> = loaded.problem.into_iter().collect();
+    let machine = loaded
+        .settings
+        .machine
+        .and_then(|m| match m.to_source(&state.machine_dir) {
+            Some(MachineSource::Shipped(id)) => Some(MachineRef::Shipped(id.to_owned())),
+            Some(MachineSource::User(path)) => Some(MachineRef::User(path.display().to_string())),
+            None => {
+                problems.push(format!(
+                    "the remembered machine {:?} is not a machine file this app can use",
+                    m.label()
+                ));
+                None
+            }
+        });
+    Remembered {
+        machine,
+        dialect: loaded.settings.dialect,
+        problem: (!problems.is_empty()).then(|| problems.join("; ")),
+    }
+}
+
+/// Remembers the machine and dialect the user chose, for the next session.
+/// The machine must be one `list_machines` offers (a shipped example, or a
+/// file directly in the machine folder) and the dialect one the app has.
+#[tauri::command]
+fn remember_choice(
+    machine: MachineRef,
+    dialect: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    app_backend::load_dialect(&dialect).map_err(message)?;
+    let source = match &machine {
+        MachineRef::Shipped(id) => files::SHIPPED_MACHINES
+            .iter()
+            .find(|(i, _)| i == id)
+            .map(|(i, _)| MachineSource::Shipped(i))
+            .ok_or_else(|| format!("no shipped machine {id:?}"))?,
+        MachineRef::User(path) => MachineSource::User(PathBuf::from(path)),
+    };
+    let remembered = RememberedMachine::from_source(&source, &state.machine_dir)
+        .ok_or_else(|| format!("{machine:?} is not in the machine folder"))?;
+    let save = |path: &Path| {
+        settings::update(path, |s| {
+            s.machine = Some(remembered);
+            s.dialect = Some(dialect);
+        })
+    };
+    match state.settings_file.lock() {
+        Ok(path) => save(&path),
+        Err(poisoned) => save(&poisoned.into_inner()),
+    }
+    .map_err(message)
 }
 
 /// Sets the dialect and run options for later runs. `tolerance` is the
@@ -302,6 +387,8 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
         machine_folder,
         select_machine,
         set_run_options,
+        remembered_settings,
+        remember_choice,
         interpret,
         load_file,
         save_file,
@@ -325,7 +412,8 @@ pub fn set_window_app_id(id: &str) {
 
 /// Runs the desktop app. The user's machine folder is `machines` in the
 /// app's configuration folder; on start it gets the shipped examples if it
-/// has no machine files yet.
+/// has no machine files yet. The remembered settings are `settings.json`
+/// in the same folder.
 pub fn run() -> Result<(), tauri::Error> {
     let context = tauri::generate_context!();
     set_window_app_id(&context.config().identifier);
@@ -334,13 +422,14 @@ pub fn run() -> Result<(), tauri::Error> {
         // them; files are still read and written by this app's commands).
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let dir = app.path().app_config_dir()?.join("machines");
+            let config = app.path().app_config_dir()?;
+            let dir = config.join("machines");
             // Not fatal: the shipped examples are listed when the folder
             // has no files, so the app still has machines to choose.
             if let Err(e) = files::seed_machine_folder(&dir) {
                 eprintln!("could not set up the machine folder: {e}");
             }
-            app.manage(AppState::new(dir));
+            app.manage(AppState::new(dir, config.join(settings::SETTINGS_FILE)));
             Ok(())
         })
         .run(context)

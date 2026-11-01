@@ -35,8 +35,13 @@ impl Drop for TempDir {
 }
 
 fn window(machine_dir: PathBuf) -> WebviewWindow<MockRuntime> {
+    let settings = machine_dir.with_file_name("settings.json");
+    window_with(machine_dir, settings)
+}
+
+fn window_with(machine_dir: PathBuf, settings_file: PathBuf) -> WebviewWindow<MockRuntime> {
     let app = with_commands(mock_builder())
-        .manage(AppState::new(machine_dir))
+        .manage(AppState::new(machine_dir, settings_file))
         .build(mock_context(noop_assets()))
         .expect("app builds");
     WebviewWindowBuilder::new(&app, "main", Default::default())
@@ -280,4 +285,128 @@ fn a_remote_page_cannot_call_the_commands() {
     )
     .expect_err("refused");
     assert!(err.to_string().contains("not allowed"), "{err}");
+}
+
+/// A config folder with a machine folder holding the router example, and
+/// the paths a window uses there.
+fn config_with_router(name: &str) -> (TempDir, PathBuf, PathBuf) {
+    let dir = TempDir::new(name);
+    let machines = dir.0.join("machines");
+    std::fs::create_dir_all(&machines).expect("machines");
+    std::fs::write(
+        machines.join("router.toml"),
+        app_backend::files::shipped_machine("generic_3axis_router").expect("shipped"),
+    )
+    .expect("write");
+    let settings = dir.0.join("settings.json");
+    (dir, machines, settings)
+}
+
+#[test]
+fn nothing_is_remembered_on_the_first_start() {
+    let (_dir, machines, settings) = config_with_router("first");
+    let w = window_with(machines, settings.clone());
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+    assert_eq!(
+        r,
+        serde_json::json!({ "machine": null, "dialect": null, "problem": null })
+    );
+    assert!(!settings.exists(), "reading does not create the file");
+}
+
+#[test]
+fn the_choice_is_remembered_for_the_next_session() {
+    let (_dir, machines, settings) = config_with_router("remember");
+    let router = machines.join("router.toml").display().to_string();
+    {
+        let w = window_with(machines.clone(), settings.clone());
+        // The UI passes back the source exactly as list_machines gave it.
+        let list = json(&w, "list_machines", serde_json::json!({})).expect("list");
+        assert_eq!(list[0]["source"]["id"], router.as_str());
+        json(
+            &w,
+            "remember_choice",
+            serde_json::json!({ "machine": list[0]["source"], "dialect": "osai" }),
+        )
+        .expect("remembered");
+    }
+    // A new session: a new app over the same folders.
+    let w = window_with(machines, settings.clone());
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+    assert_eq!(
+        r["machine"],
+        serde_json::json!({ "kind": "user", "id": router })
+    );
+    assert_eq!(r["dialect"], "osai");
+    assert_eq!(r["problem"], serde_json::Value::Null);
+    // Kept by file name only.
+    let text = std::fs::read_to_string(&settings).expect("saved");
+    assert!(text.contains("\"router.toml\""), "{text}");
+    assert!(!text.contains("machines/router.toml"), "{text}");
+}
+
+#[test]
+fn a_shipped_machine_is_remembered_too() {
+    let (_dir, machines, settings) = config_with_router("shipped");
+    let w = window_with(machines, settings);
+    json(
+        &w,
+        "remember_choice",
+        serde_json::json!({
+            "machine": { "kind": "shipped", "id": "generic_3axis_mill" },
+            "dialect": "fanuc"
+        }),
+    )
+    .expect("remembered");
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+    assert_eq!(
+        r["machine"],
+        serde_json::json!({ "kind": "shipped", "id": "generic_3axis_mill" })
+    );
+}
+
+#[test]
+fn a_damaged_settings_file_is_reported_not_an_error() {
+    let (_dir, machines, settings) = config_with_router("damaged");
+    std::fs::write(&settings, b"{ damaged").expect("write");
+    let w = window_with(machines, settings);
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("never an error");
+    assert_eq!(r["machine"], serde_json::Value::Null);
+    assert_eq!(r["dialect"], serde_json::Value::Null);
+    let problem = r["problem"].as_str().expect("a problem");
+    assert!(problem.contains("settings.json"), "{problem}");
+}
+
+#[test]
+fn a_crafted_file_name_is_not_followed_out_of_the_machine_folder() {
+    let (_dir, machines, settings) = config_with_router("crafted");
+    std::fs::write(
+        &settings,
+        br#"{"machine": {"kind": "user", "file": "../secret.toml"}, "dialect": "fanuc"}"#,
+    )
+    .expect("write");
+    let w = window_with(machines, settings);
+    let r = json(&w, "remembered_settings", serde_json::json!({})).expect("ok");
+    assert_eq!(r["machine"], serde_json::Value::Null);
+    assert_eq!(r["dialect"], "fanuc");
+    let problem = r["problem"].as_str().expect("a problem");
+    assert!(problem.contains("../secret.toml"), "{problem}");
+}
+
+#[test]
+fn only_real_choices_are_remembered() {
+    let (_dir, machines, settings) = config_with_router("bad");
+    let w = window_with(machines.clone(), settings.clone());
+    for bad in [
+        // Not in the machine folder.
+        serde_json::json!({ "machine": { "kind": "user", "id": "/tmp/router.toml" }, "dialect": "fanuc" }),
+        serde_json::json!({ "machine": { "kind": "shipped", "id": "nope" }, "dialect": "fanuc" }),
+        serde_json::json!({
+            "machine": { "kind": "user", "id": machines.join("router.toml").display().to_string() },
+            "dialect": "haas"
+        }),
+    ] {
+        assert!(json(&w, "remember_choice", bad.clone()).is_err(), "{bad}");
+    }
+    assert!(!settings.exists(), "nothing was written");
 }

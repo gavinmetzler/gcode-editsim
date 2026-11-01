@@ -86,7 +86,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 **Next: M4, code transformations** (`ARCHITECTURE.md` §13 and `docs/plans/M4_PLAN.md`, agreed 2026-11-01). Steps, in order:
 
 0. Plan *(done)*
-1. Remember the machine and dialect
+1. Remember the machine and dialect *(done)*
 2. Remember the window layout
 3. Editor selection shown bright yellow in the 3D view
 4. Exact rewriting (core)

@@ -59,6 +59,8 @@ dependencies = [
  "machine-api",
  "machine-lathe",
  "machine-mill",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
 ]
 
