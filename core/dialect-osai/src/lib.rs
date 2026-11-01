@@ -2,14 +2,17 @@
 //!
 //! A deliberately small subset, written in M2 to check that the dialect
 //! interfaces suit a controller other than Fanuc (ARCHITECTURE.md §12):
-//! G00-G03, G17-G19, G70/G71, G90/G91, G79, G04, G94, `(UAO,n)` origins,
-//! F/S/T and the standard M codes. Codes are declared in `data/osai.toml`.
+//! G00-G03, G17-G19, G70/G71, G90/G91, G79, G04, G94/G95, `(UAO,n)`
+//! origins, F/S/T and the standard M codes. Codes are declared in
+//! `data/osai.toml`.
 //!
 //! Every behaviour is taken from the Osai "10 Series CNC Programming
 //! Manual" and cited in `docs/dialect-notes/osai.md`; what the manual
 //! leaves open is marked *unverified* there. Anything outside the subset
-//! produces a diagnostic, and anything that could move the machine in a
-//! way not simulated hides the motion rather than drawing it wrongly.
+//! produces a diagnostic. A code that would change later moves but is not
+//! simulated (origins, presetting) gets one warning, and the moves after
+//! it are still drawn, as programmed: moves are never hidden (owner
+//! decision, 2026-10-31).
 
 #![forbid(unsafe_code)]
 

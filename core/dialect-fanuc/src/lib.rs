@@ -1,12 +1,15 @@
 //! Fanuc milling dialect (0i-M style).
 //!
 //! Turns parsed G-code blocks into [`dialect_api::Command`]s following
-//! Fanuc rules for the M1 subset: G0–G3, G17–G19, G20/G21, G90/G91,
-//! G54–G59, G94, F/S/T, and the common M codes (M0, M1, M2, M3, M4, M5, M6,
-//! M8, M9, M30). Codes are declared in `data/fanuc.toml`; this crate holds
-//! the behaviour behind them.
+//! Fanuc rules: G0–G3, G17–G19, G20/G21, G28/G30, G53, G54–G59, G90/G91,
+//! G94/G95, F/S/T, the common M codes (M0, M1, M2, M3, M4, M5, M6, M8,
+//! M9, M30) and subprogram calls (M98/M99). Canned cycles draw their hole
+//! positions only; tool length compensation is noted, never simulated; a
+//! few codes that would shift later moves (G92, G52, G10, ...) are ignored
+//! with a warning. Codes are declared in `data/fanuc.toml`; this crate
+//! holds the behaviour behind them.
 //!
-//! Anything outside that subset produces a diagnostic. Behaviour that
+//! Anything else produces a diagnostic. Behaviour that
 //! differs between Fanuc controls or machine builders follows the common
 //! documented default and is listed in `docs/dialect-notes/fanuc.md`.
 

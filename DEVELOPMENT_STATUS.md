@@ -413,11 +413,13 @@ Decided (2026-10-31), roadmap revision:
   arrowhead, deliberately unlike the M7 tool with size and shape), hover
   info on the nearest endpoint (position, tool, feed), measuring between
   two points, and orbiting around a snapped point.
-- **Agent proposals the owner did not object to:** G92, G52, G10 and Osai
-  origins are implemented rather than ignored (ignoring a shift misplaces
-  later moves); still-unsupported coordinate changes are drawn
-  approximate instead of hidden; program coordinates are the default
-  display.
+- **Agent proposals the owner did not object to** (all three superseded
+  later the same day, see "after M3.4" below): G92, G52, G10 and Osai
+  origins implemented rather than ignored; still-unsupported coordinate
+  changes drawn approximate instead of hidden; program coordinates as the
+  default display. What was built: these codes are ignored with a
+  warning, later moves are drawn as programmed (not dimmed), and
+  positions are machine coordinates.
 - **Flatpak:** distributed as a single `.flatpak` file; Flathub is not
   planned.
 

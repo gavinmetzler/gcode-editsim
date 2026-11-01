@@ -50,15 +50,18 @@ owner decided (2026-10-31) to mature it before code transformations
    Osai. The agent proposed, and the owner did not object, to implement
    these properly rather than ignore them, because ignoring a shift draws
    the following moves in the wrong place (or stacks repeated parts on
-   top of each other).
+   top of each other). *Superseded:* coordinate shifts (M3.5) were put on
+   hold, left to the community; G92 is ignored with a warning, `(UAO,n)`
+   is not simulated (warning).
 3. **Never hidden** (revised 2026-10-31; originally "approximate rather
    than hidden"). A coordinate change that is not implemented no longer
    hides the moves after it (the M1 motion blocker, ARCHITECTURE.md
-   §7.3a). The moves are drawn, marked
-   approximate (dimmed), with one warning where the code appears. To be
-   designed in M3.5; ARCHITECTURE.md §7.3a changes in the same PR.
+   §7.3a). The moves are drawn as programmed, with one warning where the
+   code appears. (The plan first said "marked approximate (dimmed)"; that
+   was not built: a warning is enough, owner decision with M3.5 on hold.)
 4. **Program coordinates by default.** Hover, measure and statistics show
    program (work) coordinates; machine coordinates are an option.
+   *Superseded:* on hold with M3.5; positions are machine coordinates.
 5. **Backplot tools in M3:** tool marker, hover info, measuring, orbit
    around a snapped point (M3.1–M3.4).
 6. **Statistics and code transformations come before mobile and
@@ -290,7 +293,7 @@ a limit at both ends named the axis twice in its warning.
 | Risk | Mitigation |
 |---|---|
 | "Ignoring" a code hides a real problem | Every ignored code gives a diagnostic where it appears; its words are data, never a move (owner rule) |
-| Approximate drawing is mistaken for the real path | Dimmed and flagged; one warning at the code; never described as verified (CLAUDE.md) |
+| A drawing without an unsupported code's effect is mistaken for the real path | One warning at the code; never described as verified (CLAUDE.md). (Dimming was planned, not built.) |
 | Real programs cannot be shared publicly | Private corpus run locally; only agreed excerpts become goldens |
 | Layout v2 breaks the boundary | The existing version check, shared fixture and generated constants (§8.4) |
 | Subprograms break line ↔ segment order | A line index, built in the same PR as subprograms |
