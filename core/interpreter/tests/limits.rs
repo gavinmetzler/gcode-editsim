@@ -53,3 +53,34 @@ fn reports_are_capped_but_every_segment_is_flagged() {
         .message
         .contains("10 more moves"));
 }
+
+#[test]
+fn each_axis_is_named_once_with_its_furthest_point() {
+    // From machine X+20 to X+30: both ends are past the X <= 0 limit. The
+    // warning names X once, at the furthest point (30), not once per end.
+    let p = run("G0 X400. Y0\nG0 X410.\n");
+    let d = p
+        .diagnostics
+        .iter()
+        .find(|d| d.src.line == 2)
+        .expect("line 2 reported");
+    assert_eq!(
+        d.message,
+        "move goes outside the travel limits: X reaches 30.000 (travel -760.000 to 0.000)"
+    );
+}
+
+#[test]
+fn a_move_past_both_ends_of_an_axis_names_the_axis_once() {
+    // From machine X+20 to X-1000 crosses the whole X travel: past the top
+    // at the start and past the bottom at the end. Named once, at the point
+    // furthest outside (1000 - 760 = 240 below, versus 20 above).
+    let p = run("G0 X400. Y0\nG0 X-620.\n");
+    let d = p
+        .diagnostics
+        .iter()
+        .find(|d| d.src.line == 2)
+        .expect("line 2 reported");
+    assert_eq!(d.message.matches("X reaches").count(), 1, "{}", d.message);
+    assert!(d.message.contains("X reaches -1000.000"), "{}", d.message);
+}

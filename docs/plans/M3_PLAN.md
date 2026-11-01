@@ -262,7 +262,15 @@ now (a dwell needs its time); tool changes take an optional
 - Fix the G95 feed (per revolution) stored as mm/min, which the estimate
   needs.
 
-### M3.9: Large programs
+### M3.9: Large programs — *done*
+
+*Done (2026-11-01).* Measured with `tools/bench` (a generated program of
+1 000 000 blocks): about 2 s to interpret, 0.3 s for the render buffer.
+On the owner's desktop the file opens in 1–2 s, and orbiting, line clicks
+and editing stay smooth, so nothing needed speeding up and chunked
+buffers were not built. Peak memory (about 715 MB in the core, 850 MB for
+the app) is left for M5 (ARCHITECTURE.md §8.5). Also fixed: a move past
+a limit at both ends named the axis twice in its warning.
 
 - Measure with a generated program of about a million blocks.
 - Fix what is slow; if needed, chunked buffers (§8.5), which the header

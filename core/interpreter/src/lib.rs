@@ -31,7 +31,7 @@ use ir::{
     Diagnostics, LengthUnit, Pos, Program, ProgramMeta, SegFlags, SegKind, Segment, SourceRef,
     WorkOffsetId, MAX_AXES,
 };
-use machine_api::{AxisKind, Machine};
+use machine_api::{AxisKind, LimitViolation, Machine};
 
 use crate::arc::{ArcProblem, RADIUS_TOLERANCE, SAME_POINT};
 
@@ -1002,8 +1002,22 @@ impl<'m> Executor<'m> {
         let Some(bbox) = bounding_box(std::slice::from_ref(&*segment)) else {
             return;
         };
-        let mut violations = self.machine.check_limits(&bbox.min);
-        violations.extend(self.machine.check_limits(&bbox.max));
+        // Both corners can be past a limit on the same axis: keep, per
+        // axis, the point furthest outside its travel.
+        let mut violations: Vec<LimitViolation> = Vec::new();
+        for v in self
+            .machine
+            .check_limits(&bbox.min)
+            .into_iter()
+            .chain(self.machine.check_limits(&bbox.max))
+        {
+            let outside = |v: &LimitViolation| (v.min - v.value).max(v.value - v.max);
+            match violations.iter_mut().find(|w| w.axis == v.axis) {
+                Some(w) if outside(&v) > outside(w) => *w = v,
+                Some(_) => {}
+                None => violations.push(v),
+            }
+        }
         if violations.is_empty() {
             return;
         }
