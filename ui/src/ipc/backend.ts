@@ -25,6 +25,15 @@ export interface MachineEntry {
   readonly problem: string | null;
 }
 
+/** What the app remembers from the last session (M4.1). The machine or
+ *  dialect may no longer be available: `startChoice` checks. */
+export interface Remembered {
+  readonly machine: MachineRef | null;
+  readonly dialect: string | null;
+  /** Why some or all of the saved settings could not be used. */
+  readonly problem: string | null;
+}
+
 /** `true` inside the desktop app; `false` in a plain browser (`npm run dev`). */
 export function inApp(): boolean {
   return isTauri();
@@ -57,6 +66,17 @@ export function setRunOptions(dialect: string, blockDelete: boolean, tolerance?:
     blockDelete,
     ...(tolerance === undefined ? {} : { tolerance }),
   });
+}
+
+/** The machine and dialect chosen in the last session. Never fails on a
+ *  missing or damaged settings file (`problem` says so instead). */
+export function rememberedSettings(): Promise<Remembered> {
+  return invoke<Remembered>("remembered_settings");
+}
+
+/** Remembers the user's choice of machine and dialect for the next session. */
+export function rememberChoice(machine: MachineRef, dialect: string): Promise<void> {
+  return invoke<undefined>("remember_choice", { machine, dialect });
 }
 
 /** Interprets `program` (raw bytes) and returns the render buffer. */

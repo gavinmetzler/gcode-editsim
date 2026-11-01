@@ -470,6 +470,9 @@ The Tauri shell (`app/shell`) forwards to `app-backend` and holds no G-code logi
 - `interpret`: the program is the raw request body; the reply is the render buffer as raw bytes (`tauri::ipc::Response`). The machine, dialect and options are chosen beforehand (`select_machine`, `set_run_options`) and kept in the app's state, so a run carries only the program.
 - `load_file` replies with the file's raw bytes; `save_file` takes them as the raw body, with the path in an `x-path` header (percent-encoded UTF-8, as `encodeURIComponent` writes it, since header values cannot carry arbitrary text).
 - `list_dialects`, `list_machines`, `machine_folder` and the two setters are small JSON.
+- `remembered_settings` and `remember_choice` (M4.1) read and save the machine and dialect chosen last, also small JSON.
+
+**Remembered settings (M4.1).** `settings.json` in the app's configuration folder (next to `machines`) holds the machine and dialect the user chose last, read and written by `app_backend::settings`. A user machine is kept by its file name in the machine folder, never a full path, so an edited file cannot point the app at a file elsewhere. Only the user's own choices are saved, not a fallback at start-up. At start-up the UI uses the remembered machine and dialect if they are still listed and usable; otherwise the first usable machine and the first dialect, with a note in the status line. A missing settings file gives the defaults; a damaged one gives what could be read, with a note, never an error. Settings the app does not know (from a later version) are kept when it saves.
 
 The user's machine folder is `machines` in the app's configuration folder. On start, if it has no `*.toml` files, the app copies in the shipped mill and router examples (built into the app, so nothing is downloaded; an existing file is never overwritten). `list_machines` lists only the folder's files; the shipped examples are listed instead only when the folder has none (for example, it could not be written).
 
@@ -496,6 +499,7 @@ Plain TypeScript (no UI framework), built with Vite into `ui/dist`, which the sh
 | `src/layout/` | `panes.ts` (pure): a pane's share of the window when a splitter is dragged, kept above a minimum size, and which pane is maximised; `layout.ts` wires the splitters and maximising to the page (double-click the view or the diagnostics list; a button on the editor, where double-click selects a word) |
 | `src/files.ts` | Decoding files, keeping their line endings, and opening by path without failing silently |
 | `src/machines-dialog.ts` | Shows the user's machine folder and reloads the machine list |
+| `src/remembered.ts` | Which machine and dialect to start with: the remembered ones if still usable, otherwise the first, with a note saying why (M4.1) |
 | `src/ipc/backend.ts` | Typed calls to the shell's commands (§8.4a) |
 | `src/main.ts` | Lays out the toolbar, editor, viewport, panel and status line, and wires them together |
 

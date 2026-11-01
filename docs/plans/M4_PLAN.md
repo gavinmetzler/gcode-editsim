@@ -180,7 +180,7 @@ every later test session quicker.
 Agreed with the owner; ARCHITECTURE.md §13, CLAUDE.md and
 DEVELOPMENT_STATUS.md point to it.
 
-### M4.1: Remember the machine and dialect
+### M4.1: Remember the machine and dialect *(done)*
 *Moved from the wishlist by the owner, 2026-11-01.*
 - The app starts with the machine file and dialect chosen last, instead
   of the first machine in the list (which drew router programs mostly

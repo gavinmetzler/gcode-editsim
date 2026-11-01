@@ -27,6 +27,8 @@ import {
   listMachines,
   loadFile,
   machineFolder,
+  rememberChoice,
+  rememberedSettings,
   saveFile,
   selectMachine,
   setRunOptions,
@@ -34,6 +36,7 @@ import {
 } from "./ipc/backend";
 import { DiagnosticsPanel } from "./panels/panel";
 import { showMachinesDialog } from "./machines-dialog";
+import { startChoice } from "./remembered";
 import { showStatsDialog } from "./panels/stats-dialog";
 import { measurePanel, type Measurement } from "./viewport/measure";
 import {
@@ -233,6 +236,14 @@ async function main(app: HTMLElement): Promise<void> {
   let lineIndex: LineIndex = buildLineIndex(0, () => 0);
   /** Fit the view after the next run (a new program, machine or dialect). */
   let fitNext = true;
+  /** A note for the status line after the next run (why the remembered
+   *  machine or dialect was not used), shown once. */
+  let notice: string | null = null;
+  const withNotice = (text: string): string => {
+    const shown = notice === null ? text : `${notice} ${text}`;
+    notice = null;
+    return shown;
+  };
 
   /** The editor cursor's line, and where the tool is after it has run. */
   let cursorLine = 1;
@@ -327,11 +338,13 @@ async function main(app: HTMLElement): Promise<void> {
       showLine(editor.cursorLineNumber(), true);
       const d = rb.header.diagCount;
       setStatus(
-        `${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to find its line.`,
+        withNotice(
+          `${String(rb.header.segmentCount)} segments, ${String(d)} diagnostic${d === 1 ? "" : "s"}. Click the toolpath to find its line.`,
+        ),
       );
     },
     (e) => {
-      setStatus(`Could not run the program: ${String(e)}`);
+      setStatus(withNotice(`Could not run the program: ${String(e)}`));
       panel.clear(`Could not run the program: ${String(e)}`);
       current = null;
       statsButton.disabled = true;
@@ -440,13 +453,16 @@ async function main(app: HTMLElement): Promise<void> {
   for (const d of dialects) {
     dialectSelect.append(el("option", { value: d.id, textContent: d.name }));
   }
-  /** The machines that can be chosen, in the select's order. */
+  /** Every listed machine file, and those that can be chosen, in the
+   *  select's order. */
+  let listed: MachineEntry[] = [];
   let usable: MachineEntry[] = [];
   /** Fills the machine list, keeping the current choice if it is still
    *  there. Returns a short summary. */
   const fillMachines = async (): Promise<string> => {
     const chosen = usable[Number(machineSelect.value)]?.source;
     const machines = await listMachines();
+    listed = machines;
     usable = machines.filter((m) => m.problem === null);
     machineSelect.replaceChildren(
       ...usable.map((m, i) => el("option", { value: String(i), textContent: m.label })),
@@ -462,6 +478,20 @@ async function main(app: HTMLElement): Promise<void> {
     }.`;
   };
   await fillMachines();
+  // Start with the machine and dialect of the last session, if they can
+  // still be used.
+  const start = startChoice(
+    listed,
+    dialects,
+    await rememberedSettings().catch((e: unknown) => ({
+      machine: null,
+      dialect: null,
+      problem: String(e),
+    })),
+  );
+  if (start.machine >= 0) machineSelect.value = String(start.machine);
+  dialectSelect.value = start.dialect;
+  notice = start.note;
 
   const applySettings = async (): Promise<void> => {
     const machine = usable[Number(machineSelect.value)];
@@ -472,11 +502,23 @@ async function main(app: HTMLElement): Promise<void> {
     fitNext = true;
     void runner.runNow();
   };
+  /** Remembers the user's choice for the next session. Only the user's
+   *  own choices: a fallback at start-up keeps what was remembered, so a
+   *  machine file that is broken for a moment is tried again next time. */
+  const remember = (): void => {
+    const machine = usable[Number(machineSelect.value)];
+    if (!machine) return;
+    rememberChoice(machine.source, dialectSelect.value).catch((e: unknown) => {
+      notice = `Could not remember the machine and dialect: ${String(e)}.`;
+    });
+  };
   machineSelect.addEventListener("change", () => {
     void applySettings().then(rerunFitted);
+    remember();
   });
   dialectSelect.addEventListener("change", () => {
     void applySettings().then(rerunFitted);
+    remember();
   });
   machinesButton.addEventListener("click", () => {
     void machineFolder().then((folder) => {
