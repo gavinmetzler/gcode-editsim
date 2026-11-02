@@ -10,7 +10,7 @@ The long-term goal is to provide a practical environment where CNC programmers c
 
 The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline), 2 (render buffer and minimal desktop UI) and 3 (a dependable backplotter: real programs without false alarms, subprograms, hover, measuring, orbiting, statistics with a time estimate, million-block programs) are complete. Next is Milestone 4: code transformations. On Linux it installs as a Flatpak.
+> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline), 2 (render buffer and minimal desktop UI), 3 (a dependable backplotter: real programs without false alarms, subprograms, hover, measuring, orbiting, statistics with a time estimate, million-block programs) and 4 (code transformations: translate, rotate and scale selected lines) are complete. Next is Milestone 5: everyday-use improvements, Osai level with Fanuc, and installers for every desktop platform ([plan](docs/plans/M5_PLAN.md)). On Linux it installs as a Flatpak.
 
 GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
@@ -128,23 +128,23 @@ These are the project's intended direction. Items marked *(built)* exist today; 
   - common M codes: stops, program end, spindle, tool change, coolant
 - **Done in M3:** machine-specific M codes are noted once and skipped rather than reported as errors (a machine file can list them in `ignore_codes`); tool length compensation is noted, not simulated; G92 is ignored with a warning; M98/M99 subprogram calls within the file, with repeat counts, are followed and drawn; G95 feed per revolution.
 - **On hold, left to the community:** coordinate shifts and canned cycles. They are reported and drawn without their effect, never hiding moves. Macro variables are on the wishlist.
-- **Then (M6):** cutter radius compensation.
+- **Then (M7):** cutter radius compensation.
 - **Not planned:** tool length (height) and wear compensation. The backplot shows the path as programmed and notes these codes.
 - **Later:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.
 
 ### Machine Support
 
 - **Machine types:** 3-axis mills first *(built)*, then lathes, mill-turn, multi-channel machines and 5-axis.
-- **User-defined machines** *(built)*: described in editable text files (TOML) covering axes, travel limits, speeds and work offsets. A tool table (M6) and a graphical editor for these files will come later.
+- **User-defined machines** *(built)*: described in editable text files (TOML) covering axes, travel limits, speeds and work offsets. A tool table (M7) and a graphical editor for these files will come later.
 
 ### Visualisation, Analysis and Simulation
 
 - Interactive 3D toolpath display, with editor line and toolpath segment selection kept in sync *(built)*.
-- Diagnostics panel and statistics dialog *(built)*: path lengths, bounds, feed rates, per-tool figures and a simple time estimate (no acceleration; an acceleration model comes in M6).
+- Diagnostics panel and statistics dialog *(built)*: path lengths, bounds, feed rates, per-tool figures and a simple time estimate (no acceleration; an acceleration model comes in M7).
 - Backplot tools: a tool marker with hover info on the nearest point (position, tool, feed), and measuring between two points *(built)*; orbiting around a point on the toolpath *(built)*.
-- Code transformations (M4): translate, scale and rotate a selected range of lines, applied as an undoable edit.
+- Code transformations *(built, M4)*: translate, scale and rotate a selected range of lines, applied as one undoable edit (Fanuc and Osai programs).
 - Tool movement playback and simulation controls.
-- Travel-limit checking *(built: moves outside the travel are flagged; speed limits are checked in M6)*.
+- Travel-limit checking *(built: moves outside the travel are flagged; speed limits are checked in M7)*.
 - Material removal simulation, milling first.
 
 ---
@@ -196,11 +196,11 @@ See [Trying it out](#trying-it-out).
 **Known limitations**, tracked for later milestones:
 
 - **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length. This is intended: height and wear compensation are not planned, and the path is shown as programmed.
-- **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M6).
-- **Speed limits aren't checked yet.** The machine file's maximum feed and rapid rates are used only by the time estimate; moves are not checked against them, and the maximum spindle speed is unused (M6).
+- **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M7).
+- **Speed limits aren't checked yet.** The machine file's maximum feed and rapid rates are used only by the time estimate; moves are not checked against them, and the maximum spindle speed is unused (M7).
 - **Positions are machine coordinates.** Program (work) coordinates are on hold.
 - **Fanuc G04 (dwell) is reported as an error** and adds no time to the estimate; Osai dwells are drawn without their time.
-- **Memory:** a program of a million blocks needs about 850 MB. Fine on a desktop; to be reduced before mobile (M5).
+- **Memory:** a program of a million blocks needs about 850 MB. Fine on a desktop; to be reduced before mobile (M6).
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 
 ### M2 – Render Buffer and Minimal UI (complete)
@@ -225,13 +225,20 @@ See [Trying it out](#trying-it-out).
 - [x] Along the way: resizable and maximisable panes, a colour key, the machine folder seeded with examples
 - On hold, left to the community: coordinate shifts and program coordinates, canned cycles
 
+### M4 – Code Transformations (complete)
+
+- [x] Translate, rotate and scale (one factor for X and Y) a selected range of lines, for Fanuc and Osai programs; only the words that must change are rewritten, comments and number style kept, and one Undo reverts it
+- [x] The machine, dialect, window layout, colour key and diagnostics filters remembered between sessions
+- [x] The editor selection shown bright yellow in the 3D view
+- [x] A new icon, and `.nc`, `.ngc` and `.tap` files opening in the app from the Linux file manager (Flatpak)
+
 ### Later Milestones
 
-- **M4 – Code transformations:** translate, rotate and scale a selected part of the program; remembering the machine, dialect and window layout; the editor selection shown in the 3D view; a better icon; `.nc` files opening in the app from the Linux file manager.
-- **M5 – Mobile:** the same app on Android; iOS later.
-- **M6 – Machine state and accuracy:** tool table, cutter radius compensation, cycle-time estimation with acceleration, the dog-leg rapid path, limits checking.
-- **M7 – Material removal (mill).**
-- **M8+ – More dialects and machine types:** Haas, then others; the full Osai 10 Series; lathe and mill-turn.
+- **M5 – Everyday use, Osai and packages:** the out-of-date border always visible; smooth Page Up/Down scrolling; Find and Replace easy to find; filtering and colouring the toolpath by tool; every feature working for Osai programs as for Fanuc ones; `.deb`, `.rpm`, Windows and macOS packages with install instructions. See [docs/plans/M5_PLAN.md](docs/plans/M5_PLAN.md).
+- **M6 – Mobile:** the same app on Android; iOS later.
+- **M7 – Machine state and accuracy:** tool table, cutter radius compensation, cycle-time estimation with acceleration, the dog-leg rapid path, limits checking.
+- **M8 – Material removal (mill).**
+- **M9+ – More dialects and machine types:** Haas, then others; the full Osai 10 Series; lathe and mill-turn.
 
 ---
 
@@ -314,7 +321,7 @@ The project is in active development. Architectural decisions and development co
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture and technical design (the source of truth).
 - [CLAUDE.md](CLAUDE.md): development rules, including for AI-assisted development.
 - [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md): where the project stands, the decisions made so far, open issues and lessons learned. Start here when picking up work.
-- [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md) and [M3](docs/plans/M3_PLAN.md), both complete, and [M4](docs/plans/M4_PLAN.md) (next).
+- [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md), [M3](docs/plans/M3_PLAN.md) and [M4](docs/plans/M4_PLAN.md), all complete, and [M5](docs/plans/M5_PLAN.md) (next, draft).
 - [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
 - [docs/WISHLIST.md](docs/WISHLIST.md): ideas kept for later, not yet planned.
 - [docs/machine-definition.md](docs/machine-definition.md): the machine definition file format.

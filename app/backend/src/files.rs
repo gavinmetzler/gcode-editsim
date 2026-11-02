@@ -136,7 +136,7 @@ pub const SHIPPED_MACHINES: &[(&str, &str)] = &[
 ];
 
 /// The shipped examples copied into a new machine folder, by id: the
-/// machine types the app simulates (the lathe is a stub until M8). Their
+/// machine types the app simulates (the lathe is a stub until M9). Their
 /// file names (`<id>.toml`) sort with the mill first, so it is the default.
 pub const SEEDED_MACHINES: &[&str] = &["generic_3axis_mill", "generic_3axis_router"];
 
