@@ -5,7 +5,7 @@ the content of M5 at the end of M4 (2026-11-02) and moved the earlier
 milestones back by one: mobile is now M6, machine state and accuracy M7,
 material removal M8, more dialects and machine types M9+
 (ARCHITECTURE.md §13). The owner agreed the plan and its order when
-starting M5 (2026-11-02); the answers to section 6 are recorded there.
+starting M5 (2026-11-02); their decisions are in section 6.
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (§7, §8.4a, §8.6,
 §8.7, §13), `DEVELOPMENT_STATUS.md` (§2 working agreement, §7 practical
 lessons) and `docs/plans/M4_PLAN.md` (what M4 built and decided).
@@ -92,14 +92,15 @@ canned cycles that are on hold.
   reading T words.
 - **Hidden tools:** their segments are not drawn, cannot be picked or
   snapped to, and the selection highlight leaves them out; the editor is
-  unchanged. Whether the statistics follow the filter is a question
-  (section 6).
+  unchanged. The statistics and time estimate always cover the whole
+  program (section 6 item 2).
 - **Tool colours** must stay distinct from the safety colours: moves
   outside the travel limits stay red and moves from an unknown position
-  stay grey whatever the colouring (proposed, section 6), and the selected
+  stay grey whatever the colouring (section 6 item 3), and the selected
   lines stay bright yellow.
-- **Settings** (the hidden tools, the colouring choice) go in the same
-  settings file as the layout (M4.2), if they are to be remembered.
+- **Settings:** the colouring choice is remembered in the same settings
+  file as the layout (M4.2); the hidden tools are not remembered
+  (section 6 items 2 and 3).
 - **Throttling the view while scrolling:** while the cursor moves faster
   than a few lines a second (keys held), the highlight, marker and status
   update at most about twice a second, and once more right after the last
@@ -122,7 +123,7 @@ session; then the editor and display features; then Osai; packages last,
 so that the packages carry everything else.
 
 ### M5.0: This plan
-The owner agrees the order and answers section 6. ARCHITECTURE.md §13,
+Agreed, with the owner's decisions in section 6 (2026-11-02). ARCHITECTURE.md §13,
 CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
 
 ### M5.1: The out-of-date border always visible (bug)
@@ -141,6 +142,8 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
 ### M5.3: Find and Replace
 - Make CodeMirror's panel easy to find (a **Find…** button, with Ctrl+F
   and Ctrl+H shown in its tooltip) and draw it in the app's dark style.
+- A found match is scrolled to about the middle of the editor, not the
+  bottom edge (owner, section 6 item 4).
 - Check Ctrl+F, Enter, F3, Shift+F3, replace and replace all, also with
   the panel closed (F3 repeats the last search); a replacement marks the
   view out of date like any edit.
@@ -171,7 +174,8 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   (Osai's K pitch is refused), G16 planes by axis name, G79 only with G00,
   and the parser's Fanuc-shaped lexical rules (labels, E parameters,
   lower-case `r` and `t`, quoted strings in parentheses).
-- The owner decides which gaps to close in M5; each fix starts with a
+- The owner's programs use dwells (section 6 item 6), so `DWT` comes
+  first. The owner decides which other gaps to close in M5; each fix starts with a
   failing test, with conformance tests one file per behaviour. This may be
   more than one PR.
 - The owner's Osai programs (private, `tools/corpus`) stay clean.
@@ -180,8 +184,10 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
 - Linux `.deb` and `.rpm` (and AppImage if wanted), a Windows installer
   and a macOS app, built by CI with Tauri's bundler on each system (with
   the owner's approval of the workflow changes).
-- The Flatpak where the owner chose (section 6), and install instructions
-  in the README for every platform.
+- All packages, the Flatpak included, published as a GitHub Release by CI
+  with fixed "latest" download links in the README (section 6 item 5),
+  and install instructions in the README for every platform. Linux
+  first, then Windows, then macOS.
 - Tested: the Linux packages installed in the container; Windows and macOS
   by the owner (or a CI smoke test that the app starts).
 
@@ -198,29 +204,25 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
 | Throttling makes the view feel laggy | Always update right after the last movement; tune with the owner |
 | Osai parity grows large (the lexical profile is a parser change) | Audit first; the owner chooses what is in M5; the rest moves to M9 |
 | Unsigned Windows and macOS builds alarm users | Say so in the README, with the steps to open them; signing only if the owner wants it |
-| Binaries in the repository make it grow with every version | Section 6, question 5 |
+| Binaries in the repository make it grow with every version | A GitHub Release instead (section 6 item 5) |
 
-## 6. Questions for the owner
+## 6. Owner decisions (2026-11-02)
 
-1. **Order:** the bug and the scrolling first (M5.1, M5.2), then Find,
-   the tool filter, colour by tool, Osai and packages. Agreed, or another
-   order?
-2. **Tool filter:** should the statistics and time estimate follow the
-   filter (only the shown tools), or always cover the whole program?
-   Should the hidden tools be remembered between sessions?
-3. **Colour by tool:** keep moves outside the travel limits red and moves
-   from an unknown position grey whatever the colouring (proposed)? Should
-   the choice be remembered (proposed: yes, with the layout)?
-4. **Find:** is CodeMirror's panel at the bottom of the editor fine, made
-   visible and dark (proposed), or would you prefer a separate dialog?
-5. **Packages:** committing the `.flatpak` (and other installers) to the
-   top of the repository adds a new copy to the history with every update
-   (2.5 MB for the Flatpak, more for the others), so the repository grows
-   for good. The alternative is a GitHub Release with fixed "latest"
-   download links in the README: just as easy to find, without the growth,
-   and CI can publish it. Which would you like? Which platforms matter most
-   (Windows and macOS builds need their own CI runners and would be
-   unsigned)?
-6. **Osai:** your two Osai programs already draw cleanly. Do your other
-   Osai programs use subprograms, dwells, helices or labels? That decides
-   which gaps M5.6 closes first.
+1. **Order:** as proposed; reordering is fine if it helps.
+2. **Tool filter:** the statistics and time estimate always cover the
+   whole program, whatever the filter. The hidden tools are **not**
+   remembered: every session (and every file) starts with all tools
+   shown.
+3. **Colour by tool:** moves outside the travel limits stay red and moves
+   from an unknown position stay grey whatever the colouring; the choice
+   between colouring by move and by tool is remembered with the layout.
+4. **Find:** CodeMirror's panel at the bottom of the editor is fine; it
+   needed a button, because it was not clear it existed. **Added:** a
+   found match is scrolled to about the middle of the editor, not the
+   bottom edge (M5.3).
+5. **Packages:** as proposed: a GitHub Release published by CI, with
+   fixed "latest" download links in the README, not binaries committed to
+   the repository. Platforms in order of importance: Linux, Windows,
+   macOS.
+6. **Osai:** the owner's Osai programs use dwells, not subprograms,
+   helices or labels; M5.6 closes the dwell gap (`DWT`) first.
