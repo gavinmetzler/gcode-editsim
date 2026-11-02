@@ -22,6 +22,37 @@ into it (they are packaged in the app, not downloaded). Edit them or add
 your own, then use **Machines… → Reload list**. If you delete every file,
 the examples come back on the next start.
 
+### Opening G-code files from the file manager
+
+The app registers a file type, **CNC G-code program**
+(`text/x-cnc-gcode`), for `*.nc`, `*.ngc` and `*.tap` files (any letter
+case), shown with the app's icon, and says it opens them. Double-clicking
+such a file, or **Open With → GCode EditSim**, starts the app with that
+file instead of the sample.
+
+**Making it the default.** A Flatpak runs nothing when it is installed, so
+it cannot make itself the default app for a file type. Desktops use it
+by default when it is the only app for the type; otherwise choose it once:
+
+- **KDE (Dolphin):** right-click a `.nc` file → **Open With → Other
+  Application…** → choose GCode EditSim and tick **Remember application
+  association for all files of type "CNC G-code program"**. Or **System
+  Settings → Apps & Windows → Default Applications → File Associations**,
+  find `text/x-cnc-gcode` and move GCode EditSim to the top.
+- **GNOME (Files):** right-click a `.nc` file → **Open With…** → choose
+  GCode EditSim and turn on **Always use for this file type**.
+
+If the icon or the type does not show straight after installing, log out
+and in once (desktops cache the file types).
+
+**NetCDF files keep their type.** `*.nc` is also the extension of NetCDF
+scientific data files. They are binary and start with a known signature,
+so the desktop tells them apart by content: G-code text is the G-code
+type, NetCDF files stay NetCDF (and `*.ngc` Neo Geo Pocket Color ROMs stay
+ROMs). `check-mime.sh` checks this with GNOME's GIO and, if PyQt6 is
+installed, KDE's Qt (see the comment in `com.ncsoftbyai.gcodeeditsim.xml`
+for why the package also defines those two types).
+
 ## Building
 
 Needs `flatpak`, `flatpak-builder`, `elfutils` (for `eu-strip`),
@@ -99,6 +130,8 @@ and the setting that fixes it.
 | `com.ncsoftbyai.gcodeeditsim.yml` | Flatpak manifest |
 | `com.ncsoftbyai.gcodeeditsim.desktop` | Desktop entry |
 | `com.ncsoftbyai.gcodeeditsim.metainfo.xml` | AppStream metadata (description, licence, releases) |
+| `com.ncsoftbyai.gcodeeditsim.xml` | The G-code file type (M4.11) |
+| `check-mime.sh` | Checks how GIO and Qt resolve the file types |
 | `../icons/com.ncsoftbyai.gcodeeditsim.svg` | App icon (M4.10): an editor page beside a backplot |
 
 The app's PNG icons (`app/shell/icons/`, embedded by Tauri as the window

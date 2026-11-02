@@ -89,3 +89,58 @@ fn the_app_icons_exist_in_the_sizes_tauri_and_desktops_use() {
         "drawn on a 128-unit grid"
     );
 }
+
+#[test]
+fn g_code_files_are_a_type_the_app_opens_with_its_icon() {
+    // M4.11. How desktops resolve the clash with NetCDF is checked by
+    // packaging/flatpak/check-mime.sh (it needs gio, and PyQt6 for KDE).
+    let id = identifier();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packaging/flatpak");
+    let mime = std::fs::read_to_string(root.join(format!("{id}.xml")))
+        .expect("MIME package named for the identifier");
+    let gcode = mime
+        .split("<mime-type ")
+        .find(|t| t.starts_with("type=\"text/x-cnc-gcode\""))
+        .expect("the G-code type");
+    for needed in [
+        "<sub-class-of type=\"text/plain\"/>".to_owned(),
+        format!("<icon name=\"{id}\"/>"),
+        "<glob pattern=\"*.nc\"/>".to_owned(),
+        "<glob pattern=\"*.ngc\"/>".to_owned(),
+        "<glob pattern=\"*.tap\"/>".to_owned(),
+    ] {
+        assert!(gcode.contains(&needed), "the G-code type needs {needed}");
+    }
+    // The types it shares extensions with are defined here in full (KDE
+    // would otherwise hide them), with signatures to tell them by content.
+    for (other, glob) in [
+        ("application/x-netcdf", "*.nc"),
+        ("application/x-neo-geo-pocket-color-rom", "*.ngc"),
+    ] {
+        let def = mime
+            .split("<mime-type ")
+            .find(|t| t.starts_with(&format!("type=\"{other}\"")))
+            .unwrap_or_else(|| panic!("{other} defined"));
+        assert!(
+            def.contains(&format!("<glob pattern=\"{glob}\"/>")) && def.contains("<magic"),
+            "{other}"
+        );
+    }
+    let desktop =
+        std::fs::read_to_string(root.join(format!("{id}.desktop"))).expect("desktop file");
+    assert!(
+        desktop.lines().any(|l| l == "MimeType=text/x-cnc-gcode;"),
+        "{desktop}"
+    );
+    assert!(
+        desktop.lines().any(|l| l == "Exec=gcode-editsim %f"),
+        "{desktop}"
+    );
+    let manifest = std::fs::read_to_string(root.join(format!("{id}.yml"))).expect("manifest");
+    assert!(
+        manifest.contains(&format!(
+            "packaging/flatpak/{id}.xml /app/share/mime/packages/{id}.xml"
+        )),
+        "the manifest installs the MIME package"
+    );
+}

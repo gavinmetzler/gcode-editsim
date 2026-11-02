@@ -36,6 +36,7 @@ import {
   resetLayout,
   saveFile,
   selectMachine,
+  startupFile,
   setRunOptions,
   transformProgram,
   type MachineEntry,
@@ -797,6 +798,23 @@ async function main(app: HTMLElement): Promise<void> {
   transformButton.addEventListener("click", openTransform);
 
   await applySettings();
+  // A file the app was started with (opened from the file manager, M4.11)
+  // replaces the sample; loading it runs the program.
+  const startup = await startupFile().catch(() => null);
+  if (startup !== null) {
+    const result = await openPath(startup, loadFile);
+    if (result.ok) {
+      load(result.text, {
+        path: startup,
+        name: baseName(startup),
+        ending: detectLineEnding(result.text),
+        notUtf8: result.notUtf8,
+      });
+      if (result.notUtf8) notice = `${baseName(startup)} is not UTF-8 text: some characters are shown as \u{FFFD}.`;
+      return;
+    }
+    notice = `Could not read ${result.path}: ${result.error}`;
+  }
   await runner.runNow();
 }
 

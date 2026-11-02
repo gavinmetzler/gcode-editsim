@@ -30,6 +30,7 @@
   <url type="bugtracker">https://github.com/gavinmetzler/gcode-editsim/issues</url>
   <provides>
     <binary>gcode-editsim</binary>
+    <mediatype>text/x-cnc-gcode</mediatype>
   </provides>
   <supports>
     <control>pointing</control>

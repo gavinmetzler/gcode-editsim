@@ -626,3 +626,33 @@ fn a_picked_point_comes_back_in_program_coordinates() {
         ])
     );
 }
+
+#[test]
+fn the_file_the_app_was_started_with_is_given_once() {
+    let dir = TempDir::new("startup");
+    let app = with_commands(mock_builder())
+        .manage(
+            AppState::new(dir.0.join("machines"), dir.0.join("settings.json"))
+                .with_startup_file(Some("/home/me/part.nc".into())),
+        )
+        .build(mock_context(noop_assets()))
+        .expect("app builds");
+    let w = WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .expect("window builds");
+    assert_eq!(
+        json(&w, "startup_file", serde_json::json!({})).expect("ok"),
+        "/home/me/part.nc"
+    );
+    // Taken: a reload of the page does not open it again.
+    assert_eq!(
+        json(&w, "startup_file", serde_json::json!({})).expect("ok"),
+        serde_json::Value::Null
+    );
+    // Without one, nothing.
+    let w2 = window(dir.0.join("other"));
+    assert_eq!(
+        json(&w2, "startup_file", serde_json::json!({})).expect("ok"),
+        serde_json::Value::Null
+    );
+}

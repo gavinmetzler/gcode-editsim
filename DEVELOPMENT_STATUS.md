@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M4.10 (the app icon, 2026-11-02).
+Last updated: M4.11 (.nc files on the Linux desktop, 2026-11-02).
 M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
@@ -352,6 +352,14 @@ Changing any of these is a deliberate, documented change.
   in `ui/src/transform/edits.ts`. Values are mm (inches: wishlist). The
   centre can be picked in the view (`program_point` gives its program
   coordinates; refused while the view is out of date; Esc cancels).
+- **G-code files on the desktop (M4.11):** MIME type `text/x-cnc-gcode`
+  (`packaging/flatpak/<id>.xml`), `Exec=gcode-editsim %f`; the app opens a
+  file from its command line (`startup_file`). KDE's Qt lets types and
+  globs in Flatpak's exported folder hide those in `/usr/share`, so the
+  package also defines NetCDF and the Neo Geo ROM type in full;
+  `packaging/flatpak/check-mime.sh` checks GIO and Qt (`apt install
+  libglib2.0-bin python3-pyqt6 python3-pyqt6.sip`; PyQt6 is built for the
+  system's python3.12).
 - Flatpak: single file, offline build, `WEBKIT_DISABLE_DMABUF_RENDERER=1`
   (fixes a Wayland protocol error on NVIDIA, confirmed by the owner).
 

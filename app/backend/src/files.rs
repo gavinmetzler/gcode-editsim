@@ -267,3 +267,50 @@ pub fn read_machine_file(source: &MachineSource) -> Result<String, BackendError>
         }
     }
 }
+
+/// The file the app was asked to open, from its command line (`args`,
+/// the program name first): the first argument that is not an option. A
+/// `file://` URI is turned into its path; another URI, or one that does
+/// not decode, is not opened. `None` without one.
+///
+/// The desktop file starts the app as `gcode-editsim %f`, so this is a
+/// local path (inside the Flatpak, one the document portal gives access
+/// to).
+pub fn startup_file<I>(args: I) -> Option<PathBuf>
+where
+    I: IntoIterator<Item = std::ffi::OsString>,
+{
+    let arg = args
+        .into_iter()
+        .skip(1)
+        .find(|a| !a.is_empty() && !a.to_string_lossy().starts_with('-'))?;
+    let text = arg.to_string_lossy();
+    if let Some(rest) = text.strip_prefix("file://") {
+        // file:///path or file://localhost/path.
+        let path = rest.strip_prefix("localhost").unwrap_or(rest);
+        return percent_decode(path).map(PathBuf::from);
+    }
+    if text.contains("://") {
+        return None;
+    }
+    Some(PathBuf::from(arg))
+}
+
+/// `%XX` escapes decoded; `None` if one is malformed or the result is not
+/// UTF-8.
+fn percent_decode(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while let Some(&b) = bytes.get(i) {
+        if b == b'%' {
+            let hex = std::str::from_utf8(bytes.get(i + 1..i + 3)?).ok()?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(b);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}

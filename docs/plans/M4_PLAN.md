@@ -307,7 +307,7 @@ DEVELOPMENT_STATUS.md point to it.
 - The agent proposes two or three designs as images; the owner picks
   (or supplies one). No trademarked logos or look-alikes.
 
-### M4.11: `.nc` files on the Linux desktop (Flatpak)
+### M4.11: `.nc` files on the Linux desktop (Flatpak) *(done)*
 - The Flatpak exports a MIME type for G-code (`*.nc`, `*.ngc`, `*.tap`
   and upper-case forms, in a package file named after the app id) with
   the app's icon, and the desktop file says the app opens it.

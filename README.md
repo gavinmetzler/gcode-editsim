@@ -237,7 +237,7 @@ See [Trying it out](#trying-it-out).
 
 ## Trying it out
 
-On Linux the app can also be installed as a Flatpak from a single `.flatpak` file: see [packaging/flatpak/README.md](packaging/flatpak/README.md) for how to build and install it.
+On Linux the app can also be installed as a Flatpak from a single `.flatpak` file: see [packaging/flatpak/README.md](packaging/flatpak/README.md) for how to build and install it. The Flatpak shows `.nc`, `.ngc` and `.tap` G-code files with the app's icon and opens them from the file manager (the README says how to make it the default app; NetCDF `.nc` files keep their own type).
 
 The desktop app shows a program in an editor beside its 3D toolpath with a diagnostics list and toolpath statistics under the view. On Linux it needs the WebKit libraries (on Ubuntu 24.04: `sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev`); then:
 

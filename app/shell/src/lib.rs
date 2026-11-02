@@ -62,6 +62,8 @@ pub struct AppState {
     /// The window's normal size and place and whether it is maximised, as
     /// last seen; saved when the window closes.
     window: Mutex<Option<WindowGeometry>>,
+    /// The file the app was started with (M4.11), until the UI takes it.
+    startup_file: Mutex<Option<String>>,
 }
 
 impl AppState {
@@ -78,6 +80,15 @@ impl AppState {
             machine_dir,
             settings_file: Mutex::new(settings_file),
             window: Mutex::new(None),
+            startup_file: Mutex::new(None),
+        }
+    }
+
+    /// The file to open once the window is up (the command line's, M4.11).
+    pub fn with_startup_file(self, path: Option<String>) -> Self {
+        Self {
+            startup_file: Mutex::new(path),
+            ..self
         }
     }
 
@@ -613,6 +624,16 @@ async fn program_point(
         .collect())
 }
 
+/// The file the app was started with (from the file manager, M4.11), or
+/// null. Given once: a reload of the page does not open it again.
+#[tauri::command]
+fn startup_file(state: State<'_, AppState>) -> Option<String> {
+    match state.startup_file.lock() {
+        Ok(mut f) => f.take(),
+        Err(poisoned) => poisoned.into_inner().take(),
+    }
+}
+
 /// Reads a program file and returns its raw bytes.
 #[tauri::command]
 async fn load_file(path: String) -> Result<Response, String> {
@@ -651,6 +672,7 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
         interpret,
         transform,
         program_point,
+        startup_file,
         load_file,
         save_file,
     ])
@@ -690,7 +712,12 @@ pub fn run() -> Result<(), tauri::Error> {
             if let Err(e) = files::seed_machine_folder(&dir) {
                 eprintln!("could not set up the machine folder: {e}");
             }
-            app.manage(AppState::new(dir, config.join(settings::SETTINGS_FILE)));
+            // The desktop starts the app as `gcode-editsim %f` to open a
+            // file (in the Flatpak, a path the document portal gives).
+            let file = files::startup_file(std::env::args_os()).map(|p| p.display().to_string());
+            app.manage(
+                AppState::new(dir, config.join(settings::SETTINGS_FILE)).with_startup_file(file),
+            );
             // The window starts hidden (tauri.conf.json) so it appears
             // straight away at its remembered size and place.
             if let Some(window) = app.get_webview_window("main") {
