@@ -92,7 +92,10 @@ fn the_app_icons_exist_in_the_sizes_tauri_and_desktops_use() {
     // SVG by its start: `<svg` must come within the first 256 bytes. A long
     // comment before it broke the Flatpak build after M4.10.
     let at = svg.find("<svg").expect("an <svg> element");
-    assert!(at < 256, "<svg starts at byte {at}; move comments inside the element");
+    assert!(
+        at < 256,
+        "<svg starts at byte {at}; move comments inside the element"
+    );
 }
 
 #[test]
