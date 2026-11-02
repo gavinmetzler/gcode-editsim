@@ -9,8 +9,8 @@ ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
 Last updated: M4.12 (M4 wrap-up and the M5 plan, 2026-11-02).
-Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 in
-draft, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
+Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
+and next, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
 
 ---
@@ -34,8 +34,8 @@ remembered; the editor selection shown bright yellow in the view; a new
 icon; `.nc` files opening from the Linux file manager (Flatpak).
 
 **Next: M5, everyday use, Osai level with Fanuc, and packages**
-(`docs/plans/M5_PLAN.md`). **The plan is a draft:** the owner agrees the
-order and answers its section 6 before M5.1 starts. The milestones were
+(`docs/plans/M5_PLAN.md`, agreed 2026-11-02, the owner's answers in its
+section 6). Start with M5.1. The milestones were
 renumbered on 2026-11-02 (section 8): mobile is now M6, machine state
 M7, material removal M8, more dialects and machine types M9+.
 
@@ -152,7 +152,7 @@ in ARCHITECTURE.md §5).
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
-- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (complete), `docs/plans/M5_PLAN.md` (draft, next): milestone plans.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (complete), `docs/plans/M5_PLAN.md` (agreed, next): milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.
@@ -663,8 +663,15 @@ Decided (2026-11-02), at the end of M4:
   install instructions per platform), colouring by tool (rapids a dimmed
   tool colour), the hidden out-of-date border (bug), slow Page Up/Down
   (update the view about twice a second), and **Osai level with Fanuc**
-  (anything that works only for Fanuc must work for Osai). The plan's
-  order and its section 6 questions are for the owner to answer.
+  (anything that works only for Fanuc must work for Osai).
+- **The owner's answers to the M5 plan** (its section 6): any order the
+  agent finds helpful; statistics always cover the whole program and
+  hidden tools are not remembered; safety colours stay under colouring
+  by tool and the colouring is remembered; Find keeps CodeMirror's panel
+  but gets a button, and matches scroll to the middle of the editor;
+  packages on a GitHub Release (the agent's choice), Linux first, then
+  Windows, then macOS; the owner's Osai programs use dwells only (no
+  subprograms, helices or labels), so Osai dwells come first in M5.6.
 - **The scope is now mill with Fanuc and Osai** (CLAUDE.md,
   ARCHITECTURE.md §1); the lathe stays a stub.
 - **Wishlist:** a timeline player (draws the toolpath over time, the
@@ -679,12 +686,6 @@ Still open:
    real control.
 3. More real programs are welcome in the private corpus, especially
    from other CAM systems and controls.
-4. The M5 plan's questions (`docs/plans/M5_PLAN.md` §6): the order;
-   whether statistics follow the tool filter and hidden tools are
-   remembered; the safety colours under colouring by tool; Find as
-   CodeMirror's panel or a dialog; installers committed to the repository
-   or published as a GitHub Release, and which platforms; which Osai
-   features the owner's programs use.
 
 ---
 
@@ -693,10 +694,8 @@ Still open:
 1. Read `CLAUDE.md`, `ARCHITECTURE.md` (§7, §8.4a, §8.6, §8.7, §13),
    this file (§2 working agreement, §7 practical lessons) and
    `docs/plans/M5_PLAN.md`.
-2. **Ask the owner** to agree the M5 order and answer the plan's
-   section 6 if they have not (look for an "agreed" status at the top of
-   the plan). Record the answers in the plan (as M4_PLAN §6 does) in the
-   M5.1 PR or a small PR of its own, and set the plan's status to agreed.
+2. The plan is agreed, with the owner's answers in its section 6. Start
+   with M5.1; check every request against the plan before building.
 3. Work one step per PR, in order, on the session's designated branch;
    after each merge restart it from `origin/main`. Bug fixes and
    features start with a failing test.

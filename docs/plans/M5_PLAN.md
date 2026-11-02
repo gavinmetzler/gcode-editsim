@@ -1,11 +1,11 @@
 # M5 plan: everyday use, Osai level with Fanuc, and packages
 
-**Status: draft, for the owner to agree (2026-11-02).** The owner set the
-content of M5 at the end of M4 (2026-11-02) and moved the earlier
+**Status: agreed with the owner (2026-11-02).** The owner set the
+content of M5 at the end of M4 (2026-11-02) and moved the later
 milestones back by one: mobile is now M6, machine state and accuracy M7,
 material removal M8, more dialects and machine types M9+
-(ARCHITECTURE.md §13). The order of the steps below and the answers to the
-questions in section 6 are to be agreed before M5.1 starts.
+(ARCHITECTURE.md §13). The owner's answers to the questions are in
+section 6; the steps below follow them.
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (§7, §8.4a, §8.6,
 §8.7, §13), `DEVELOPMENT_STATUS.md` (§2 working agreement, §7 practical
 lessons) and `docs/plans/M4_PLAN.md` (what M4 built and decided).
@@ -46,15 +46,17 @@ tool filter (hidden tools are skipped). See `docs/WISHLIST.md`.
 1. the toolpath can be filtered by tool (checkboxes, right-click for one
    tool), and coloured by tool with dimmed rapids, as an alternative to
    colouring by move type;
-2. Find and Replace is easy to find, matches the app's look, and Ctrl+F
-   and F3 (Shift+F3 back) work;
+2. Find and Replace has a button, and a match found is scrolled to about
+   the middle of the editor, not its bottom edge;
 3. the out-of-date border is always visible while the view is out of date;
 4. holding Page Up/Down (with or without Shift) scrolls smoothly and stops
    when the key is released, on the million-block benchmark program;
 5. every feature works for Osai programs as it does for Fanuc ones, or the
    difference is agreed and documented (`docs/dialect-notes/osai.md`);
-6. there are packages for the agreed platforms, with install instructions
-   in the README, and the Flatpak is easy to find.
+   Osai dwells count in the time estimate;
+6. there are packages for Linux, Windows and macOS (in that order of
+   priority) on a GitHub Release with fixed download links in the README,
+   which says how to install each.
 
 **Out of scope for M5:** the timeline player (wishlist), mobile (M6), tool
 geometry, cutter compensation and acceleration (M7), material removal (M8),
@@ -92,14 +94,15 @@ canned cycles that are on hold.
   reading T words.
 - **Hidden tools:** their segments are not drawn, cannot be picked or
   snapped to, and the selection highlight leaves them out; the editor is
-  unchanged. Whether the statistics follow the filter is a question
-  (section 6).
+  unchanged. The statistics and time estimate always cover the whole
+  program. Hidden tools are **not** remembered: every session, and every
+  newly opened program, starts with all tools shown (owner).
 - **Tool colours** must stay distinct from the safety colours: moves
   outside the travel limits stay red and moves from an unknown position
-  stay grey whatever the colouring (proposed, section 6), and the selected
-  lines stay bright yellow.
-- **Settings** (the hidden tools, the colouring choice) go in the same
-  settings file as the layout (M4.2), if they are to be remembered.
+  stay grey whatever the colouring, and the selected lines stay bright
+  yellow (owner).
+- **The colouring choice is remembered** in the same settings file as
+  the layout (M4.2) (owner).
 - **Throttling the view while scrolling:** while the cursor moves faster
   than a few lines a second (keys held), the highlight, marker and status
   update at most about twice a second, and once more right after the last
@@ -121,8 +124,8 @@ The two everyday annoyances first, since they are small and affect every
 session; then the editor and display features; then Osai; packages last,
 so that the packages carry everything else.
 
-### M5.0: This plan
-The owner agrees the order and answers section 6. ARCHITECTURE.md §13,
+### M5.0: This plan *(done)*
+Agreed with the owner, answers in section 6. ARCHITECTURE.md §13,
 CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
 
 ### M5.1: The out-of-date border always visible (bug)
@@ -139,11 +142,14 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   3); pure, tested throttling logic, wired into `main.ts`.
 
 ### M5.3: Find and Replace
-- Make CodeMirror's panel easy to find (a **Find…** button, with Ctrl+F
-  and Ctrl+H shown in its tooltip) and draw it in the app's dark style.
-- Check Ctrl+F, Enter, F3, Shift+F3, replace and replace all, also with
-  the panel closed (F3 repeats the last search); a replacement marks the
-  view out of date like any edit.
+- CodeMirror's panel stays (the owner finds it works); it gets a
+  **Find…** button (Ctrl+F in its tooltip), since it was not clear it
+  existed.
+- A match is scrolled to about the middle of the editor instead of its
+  bottom edge (the search extension's `scrollToMatch` option, centring).
+- Drawing the panel in the app's dark style, if it is a small change.
+- Check Ctrl+F, Enter, F3, Shift+F3, replace and replace all; a
+  replacement marks the view out of date like any edit.
 
 ### M5.4: Filter the toolpath by tool
 - A **Tools ▾** dropdown in the toolbar (or the view): one checkbox per
@@ -151,7 +157,8 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   **None**; right-clicking a tool shows only that one.
 - Hidden tools' segments are left out of drawing, picking, snapping and the
   selection highlight; the drawing is rebuilt from index lists, so it stays
-  fast on large programs.
+  fast on large programs. The statistics are unchanged, and the filter is
+  not remembered (all tools shown at start and on opening a program).
 - Unit tests for the pure parts (tool list, filtered index lists), and a
   browser check.
 
@@ -160,6 +167,8 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   tool gets its own colour from a palette chosen to be told apart on the
   dark background (and by colour-blind users as far as possible); its
   rapids are a dimmed version; the key lists the tools with their colours.
+  Out-of-limits red, unknown-position grey and the selection's yellow
+  stay. The choice is remembered with the layout.
 - Unit tests for the palette (distinct, readable, dimmed rapids) and the
   colouring; a browser check.
 
@@ -171,17 +180,38 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   (Osai's K pitch is refused), G16 planes by axis name, G79 only with G00,
   and the parser's Fanuc-shaped lexical rules (labels, E parameters,
   lower-case `r` and `t`, quoted strings in parentheses).
-- The owner decides which gaps to close in M5; each fix starts with a
-  failing test, with conformance tests one file per behaviour. This may be
-  more than one PR.
+- **Dwells first:** the owner's Osai programs use dwells (no
+  subprograms, helices or labels), so Osai dwell times are read and added
+  to the time estimate. Today G04 is drawn with a warning and no time,
+  because its time is set by `DWT=…`, an assignment the Fanuc-shaped
+  parser cannot read (`docs/dialect-notes/osai.md`, p. 2-83); reading it
+  may need a small part of the per-dialect lexical profile.
+  The two Osai programs in the private corpus have no dwells, so M5.6
+  starts by asking the owner for a program (or a few lines) with dwells
+  as their programs write them.
+- The audit then covers every app feature; app-level gaps are fixed in
+  M5, while dialect features the owner's programs do not use
+  (subprograms, helices, labels and the lexical profile) stay for M9
+  unless the owner asks. Each fix starts with a failing test, with
+  conformance tests one file per behaviour.
 - The owner's Osai programs (private, `tools/corpus`) stay clean.
 
 ### M5.7: Packages
-- Linux `.deb` and `.rpm` (and AppImage if wanted), a Windows installer
-  and a macOS app, built by CI with Tauri's bundler on each system (with
-  the owner's approval of the workflow changes).
-- The Flatpak where the owner chose (section 6), and install instructions
-  in the README for every platform.
+- **A GitHub Release** (owner left the choice to the agent): CI builds
+  the packages and publishes them as a release, and the README links to
+  each file with fixed "latest" links
+  (`releases/latest/download/<file>`), so they are as easy to find as a
+  file at the top of the repository without the repository growing with
+  every version. The Flatpak goes there too.
+- **Platforms, in order:** Linux (`.deb`, `.rpm`, the Flatpak), then
+  Windows (an installer), then macOS (an app in a `.dmg`), built with
+  Tauri's bundler on each system's CI runner. Windows and macOS builds
+  are unsigned; the README says how to open them anyway. Possibly one PR
+  per platform.
+- Changing `.github/workflows/` needs the owner's approval at this step
+  (CLAUDE.md rule 9), as does how a release is made (on a version tag
+  is proposed).
+- Install instructions in the README for every platform.
 - Tested: the Linux packages installed in the container; Windows and macOS
   by the owner (or a CI smoke test that the app starts).
 
@@ -198,29 +228,20 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
 | Throttling makes the view feel laggy | Always update right after the last movement; tune with the owner |
 | Osai parity grows large (the lexical profile is a parser change) | Audit first; the owner chooses what is in M5; the rest moves to M9 |
 | Unsigned Windows and macOS builds alarm users | Say so in the README, with the steps to open them; signing only if the owner wants it |
-| Binaries in the repository make it grow with every version | Section 6, question 5 |
+| Releases need CI to write to the repository | Only the release job gets write permission, only on a version tag; the owner approves the workflow |
 
-## 6. Questions for the owner
+## 6. The owner's answers (2026-11-02)
 
-1. **Order:** the bug and the scrolling first (M5.1, M5.2), then Find,
-   the tool filter, colour by tool, Osai and packages. Agreed, or another
-   order?
-2. **Tool filter:** should the statistics and time estimate follow the
-   filter (only the shown tools), or always cover the whole program?
-   Should the hidden tools be remembered between sessions?
-3. **Colour by tool:** keep moves outside the travel limits red and moves
-   from an unknown position grey whatever the colouring (proposed)? Should
-   the choice be remembered (proposed: yes, with the layout)?
-4. **Find:** is CodeMirror's panel at the bottom of the editor fine, made
-   visible and dark (proposed), or would you prefer a separate dialog?
-5. **Packages:** committing the `.flatpak` (and other installers) to the
-   top of the repository adds a new copy to the history with every update
-   (2.5 MB for the Flatpak, more for the others), so the repository grows
-   for good. The alternative is a GitHub Release with fixed "latest"
-   download links in the README: just as easy to find, without the growth,
-   and CI can publish it. Which would you like? Which platforms matter most
-   (Windows and macOS builds need their own CI runners and would be
-   unsigned)?
-6. **Osai:** your two Osai programs already draw cleanly. Do your other
-   Osai programs use subprograms, dwells, helices or labels? That decides
-   which gaps M5.6 closes first.
+1. **Order:** it does not matter; the agent may reorder if it helps. The
+   proposed order stands.
+2. **Tool filter:** the statistics and time estimate cover the whole
+   program; hidden tools are not carried over to new sessions.
+3. **Colour by tool:** yes, out-of-limits moves stay red and moves from
+   an unknown position stay grey; yes, the choice is remembered.
+4. **Find:** CodeMirror's panel works; it needs a button, because it was
+   not clear it existed. A match should be scrolled to about the middle
+   of the editor, not its bottom edge.
+5. **Packages:** the agent's choice (a GitHub Release, M5.7); platforms
+   in order Linux, Windows, macOS.
+6. **Osai:** the owner's current Osai programs use dwells, but no
+   subprograms, helices or labels.

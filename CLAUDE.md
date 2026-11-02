@@ -85,16 +85,16 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 **Milestones renumbered (owner, 2026-11-02):** a new M5 comes before mobile, so mobile is now M6, machine state and accuracy M7, material removal M8, more dialects and machine types M9+.
 
-**Next: M5, everyday use, Osai level with Fanuc, and packages** (`ARCHITECTURE.md` §13 and `docs/plans/M5_PLAN.md`, **draft: the owner agrees the order and answers its §6 questions before M5.1 starts**). Proposed steps, in order:
+**Next: M5, everyday use, Osai level with Fanuc, and packages** (`ARCHITECTURE.md` §13 and `docs/plans/M5_PLAN.md`, agreed 2026-11-02; the owner's answers are in its §6). Steps, in order:
 
-0. Plan *(draft)*
+0. Plan *(done)*
 1. The out-of-date border always visible (bug)
 2. Smooth scrolling with Page Up/Down (performance)
-3. Find and Replace (CodeMirror's panel, made visible and dark)
+3. Find and Replace: a button, and matches scrolled to the middle
 4. Filter the toolpath by tool
 5. Colour by tool
-6. Osai level with Fanuc (audit first, then fixes)
-7. Packages (`.deb`, `.rpm`, Windows, macOS; workflow changes need the owner's approval)
+6. Osai level with Fanuc (dwells first, then an audit of every feature)
+7. Packages on a GitHub Release: Linux, then Windows, then macOS (workflow changes need the owner's approval)
 8. Wrap-up
 
 Desktop only. The lathe crate stays a stub; full Osai support is M9, but every app feature must work for Osai programs in M5. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md` (the timeline player is there).
