@@ -2,6 +2,8 @@
 //! words that must change are rewritten, and the rest of the program is
 //! unchanged (M4_PLAN §3).
 
+mod common;
+
 use dialect_fanuc::Fanuc;
 use interpreter::Options;
 use ir::{Pos, Severity, MAX_AXES};
@@ -185,11 +187,11 @@ fn an_unknown_position_is_refused() {
 
 #[test]
 fn a_dialect_that_cannot_rewrite_is_refused() {
-    let osai = dialect_osai::Osai::new().expect("dialect");
+    let none = common::NoRewrite::new();
     let mill = Mill::generic().expect("machine");
     let r = transform(
-        b"G71\nX10 Y20\n",
-        &osai,
+        b"G0 X1\nX10 Y20\n",
+        &none,
         &mill,
         Options::default(),
         1..=2,
@@ -287,5 +289,26 @@ fn the_connecting_moves_are_named() {
             .iter()
             .any(|n| n.line == 4 && n.severity == Severity::Info),
         "{notes:?}"
+    );
+}
+
+#[test]
+fn a_move_after_the_selection_that_runs_more_than_once_is_not_adjusted() {
+    // Found on a real program (M4.9a): the first move after an incremental
+    // selection was inside a subprogram called twice. Adjusting it would
+    // change every call and shift the rest of the program; refuse instead.
+    let src = "G21 G90 G17 G54 G0 X0. Y0. Z5.\n\
+               G91 G1 X10. F100.\n\
+               M98 P20010\n\
+               G0 X10.\n\
+               M30\n\
+               O10\n\
+               G1 Y1.\n\
+               M99\n";
+    let (line, why) = refused(src, 2, 2, &offset(5.0, 0.0, 0.0));
+    assert_eq!(line, 7, "{why}");
+    assert!(
+        why.contains("after the selection") && why.contains("2 times"),
+        "{why}"
     );
 }

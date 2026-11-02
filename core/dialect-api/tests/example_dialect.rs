@@ -254,3 +254,43 @@ fn trait_objects_work() {
     assert_eq!(dialect.id(), "example");
     assert_eq!(dialect.code_table().len(), 6);
 }
+
+#[test]
+fn a_dialect_that_does_not_implement_rewriting_says_so() {
+    // The defaults of the rewriting methods (M4.4-M4.9a): no reading or
+    // writing of numbers, no radius letter, the machine's centre letters,
+    // no refusals of its own.
+    let d = Example::new();
+    let n = gcode_syntax::Number {
+        value: 1.0,
+        decimal_point: true,
+    };
+    let style = gcode_syntax::NumberStyle::of(b"1.").expect("literal");
+    assert_eq!(
+        d.read_value(&n, dialect_api::ValueKind::Length, ir::LengthUnit::Metric),
+        None
+    );
+    assert_eq!(
+        d.format_value(
+            1.0,
+            dialect_api::ValueKind::Length,
+            ir::LengthUnit::Metric,
+            &style
+        ),
+        None
+    );
+    assert_eq!(d.arc_radius_letter(), None);
+    let plane = ir::ArcPlane {
+        first: 0,
+        second: 1,
+    };
+    assert_eq!(
+        d.arc_centre_letters(plane, [Some('I'), None]),
+        [Some('I'), None]
+    );
+    let program = parse_str("G0 X1\n");
+    assert_eq!(
+        d.transform_refusal(&program.blocks[0], &ModalState::default()),
+        None
+    );
+}

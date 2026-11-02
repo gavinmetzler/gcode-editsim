@@ -1,6 +1,8 @@
 //! Rewriting one word's number (M4.4): only the number changes, in the
 //! program's style, and only if its value really changes.
 
+mod common;
+
 use dialect_api::{Dialect, ValueKind};
 use dialect_fanuc::Fanuc;
 use gcode_syntax::parse;
@@ -99,9 +101,9 @@ fn refuses_a_word_that_is_not_a_plain_number() {
 
 #[test]
 fn refuses_when_the_dialect_does_not_rewrite() {
-    let osai = dialect_osai::Osai::new().expect("dialect");
+    let none = common::NoRewrite::new();
     assert_eq!(
-        rewritten("G1 X10.", 1, 1.0, &osai),
+        rewritten("G1 X10.", 1, 1.0, &none),
         Err(RewriteError::CannotWrite {
             line: 1,
             letter: 'X'

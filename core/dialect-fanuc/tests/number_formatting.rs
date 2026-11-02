@@ -3,7 +3,7 @@
 
 use dialect_api::{Dialect, ValueKind};
 use dialect_fanuc::{DecimalInput, Fanuc, FanucOptions};
-use gcode_syntax::{Expr, Number, NumberStyle};
+use gcode_syntax::{Expr, NumberStyle};
 use ir::LengthUnit;
 use proptest::prelude::*;
 
@@ -105,17 +105,6 @@ fn refuses_what_it_cannot_write() {
     let d = fanuc();
     assert_eq!(d.format_value(f64::NAN, LEN, MM, &style("1.")), None);
     assert_eq!(d.format_value(f64::INFINITY, LEN, MM, &style("1")), None);
-}
-
-#[test]
-fn other_dialects_do_not_rewrite_unless_they_say_so() {
-    let osai = dialect_osai::Osai::new().expect("dialect");
-    let n = Number {
-        value: 1.0,
-        decimal_point: true,
-    };
-    assert_eq!(osai.format_value(1.0, LEN, MM, &style("1.")), None);
-    assert_eq!(osai.read_value(&n, LEN, MM), None);
 }
 
 /// Every option and unit the tests below try.

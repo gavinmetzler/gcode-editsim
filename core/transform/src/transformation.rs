@@ -535,7 +535,7 @@ impl Job<'_> {
             .find(|t| moves_position(t));
         let last_state = trace.get(end).map(|t| t.state.distance);
         match after {
-            Some(t) if far(&pos, &t.before) => self.after_selection(t, &pos, &mut out)?,
+            Some(t) if far(&pos, &t.before) => self.after_selection(t, trace, &pos, &mut out)?,
             Some(_) => {}
             None if cut_short && last_state == Some(DistanceMode::Incremental) => out.notes.push(Note {
                 severity: Severity::Warning,
@@ -552,6 +552,7 @@ impl Job<'_> {
     fn after_selection(
         &self,
         t: &BlockTrace,
+        trace: &[BlockTrace],
         pos: &Pos,
         out: &mut Transformed,
     ) -> Result<(), TransformError> {
@@ -588,6 +589,18 @@ impl Job<'_> {
         if t.state.distance == DistanceMode::Incremental {
             let mut edits = Vec::new();
             self.rewrite(t, pos, None, &t.after, false, &mut edits)?;
+            // Its text runs every time the block runs (a subprogram): an
+            // adjustment for this run would shift the others.
+            let runs = trace.iter().filter(|e| e.block == t.block).count();
+            if !edits.is_empty() && runs > 1 {
+                return Err(refuse(
+                    t.line,
+                    format!(
+                        "the move after the selection runs {runs} times (a subprogram), so it cannot be adjusted to \
+                         keep the rest of the program where it was; end the selection somewhere else"
+                    ),
+                ));
+            }
             if !edits.is_empty() {
                 out.edits.extend(edits);
                 out.notes.push(Note {
@@ -940,7 +953,8 @@ impl Job<'_> {
     }
 
     /// Rewrites an arc's centre offsets (I/J/K, letters from the machine
-    /// file) as the transformation turns or scales them; offsets that were
+    /// file, or as the dialect names them) or centre coordinates as the
+    /// transformation moves, turns or scales them; offsets that were
     /// not written but are no longer zero go to `insert`. A radius (R) is
     /// scaled by a scale and otherwise left as it is.
     #[allow(clippy::too_many_arguments)]
@@ -954,33 +968,54 @@ impl Job<'_> {
         edits: &mut Vec<TextEdit>,
         insert: &mut Vec<(char, f64)>,
     ) -> Result<(), TransformError> {
-        let offsets = match center {
+        let mut old: Pos = [0.0; MAX_AXES];
+        let new = match center {
             ArcCenter::Radius(r) => return self.scale_radius(t, block, line_text, *r, edits),
-            ArcCenter::Offset(offsets) => offsets,
-            ArcCenter::Position(_) => {
-                return Err(refuse(
-                    t.line,
-                    "an arc centre given as a position cannot be transformed yet",
-                ))
+            // Offsets from the start (Fanuc I/J/K): a distance.
+            ArcCenter::Offset(offsets) => {
+                for o in offsets {
+                    if let Some(slot) = old.get_mut(o.axis) {
+                        *slot = o.value;
+                    }
+                }
+                self.transformation.apply_vector(&old)
+            }
+            // A centre given as coordinates (Osai I/J): in absolute mode a
+            // point, moved like an end point; in incremental mode a
+            // distance from the start.
+            ArcCenter::Position(words) => {
+                for w in words {
+                    if let Some(slot) = old.get_mut(w.axis) {
+                        *slot = w.value;
+                    }
+                }
+                if words.iter().all(|w| !w.incremental) {
+                    self.transformation.apply(&old)
+                } else if words.iter().all(|w| w.incremental) {
+                    self.transformation.apply_vector(&old)
+                } else {
+                    return Err(refuse(
+                        t.line,
+                        "the arc centre mixes absolute and incremental values",
+                    ));
+                }
             }
         };
-        let mut old: Pos = [0.0; MAX_AXES];
-        for o in offsets {
-            if let Some(slot) = old.get_mut(o.axis) {
-                *slot = o.value;
-            }
-        }
-        let new = self.transformation.apply_vector(&old);
+        let machine_letters = [plane.first, plane.second].map(|a| {
+            self.machine
+                .axes()
+                .get(usize::from(a))
+                .and_then(|x| x.arc_offset_letter)
+        });
+        let letters = self.dialect.arc_centre_letters(plane, machine_letters);
         let units = t.state.units;
-        for axis in [usize::from(plane.first), usize::from(plane.second)] {
+        for (axis, letter) in [usize::from(plane.first), usize::from(plane.second)]
+            .into_iter()
+            .zip(letters)
+        {
             let (Some(&was), Some(&now)) = (old.get(axis), new.get(axis)) else {
                 continue;
             };
-            let letter = self
-                .machine
-                .axes()
-                .get(axis)
-                .and_then(|a| a.arc_offset_letter);
             let words: Vec<&Word> = letter
                 .map(|l| block.words.iter().filter(|w| w.letter == l).collect())
                 .unwrap_or_default();
@@ -990,7 +1025,7 @@ impl Job<'_> {
                 (None, _) => {
                     return Err(refuse(
                         t.line,
-                        "the machine file gives this axis no arc-centre letter",
+                        "the arc centre's letter for this axis is not known (the machine file gives none)",
                     ))
                 }
                 (Some(_), [word]) => {

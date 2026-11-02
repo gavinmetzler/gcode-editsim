@@ -1,7 +1,7 @@
 //! The dialect trait.
 
 use gcode_syntax::{Block, Number, NumberStyle};
-use ir::{Diagnostics, LengthUnit, SourceRef};
+use ir::{ArcPlane, Diagnostics, LengthUnit, SourceRef};
 
 use crate::axes::AxisSet;
 use crate::command::Command;
@@ -81,6 +81,17 @@ pub trait Dialect {
     /// default is `None`: such arcs cannot be scaled.
     fn arc_radius_letter(&self) -> Option<char> {
         None
+    }
+
+    /// The letters of an arc centre's two coordinates in `plane` (first
+    /// axis, second axis), so a transformation can find and write them.
+    /// `machine` holds the machine file's arc-offset letters of the two
+    /// axes. The default returns them (Fanuc: I, J, K by axis); a control
+    /// that names centres by plane position instead (the 10 Series: I and
+    /// J in any plane) overrides it.
+    fn arc_centre_letters(&self, plane: ArcPlane, machine: [Option<char>; 2]) -> [Option<char>; 2] {
+        let _ = plane;
+        machine
     }
 
     /// The value of a number literal as this controller reads it, in
