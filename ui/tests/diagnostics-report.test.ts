@@ -76,6 +76,7 @@ const full: DiagnosticsInfo = {
     { label: "3D draw (JavaScript)", summary: null },
   ],
   heldBack: 12,
+  lastHold: { presses: 90, keyboardMs: 3000, handledMs: 25_000 },
 };
 
 describe("formatReport", () => {
@@ -97,6 +98,11 @@ describe("formatReport", () => {
     if (!full.system) throw new Error("the sample has system facts");
     const none = formatReport({ ...full, system: { ...full.system, gpus: [], nvidiaDriver: null } });
     expect(none).toContain("Graphics cards (system): none found");
+  });
+
+  it("compares the keyboard's time for the last held key with the page's", () => {
+    expect(text).toContain("Last held key: 90 presses, sent by the keyboard over 3.0 s, handled by the page over 25.0 s");
+    expect(formatReport({ ...full, lastHold: null })).toContain("Last held key: none yet");
   });
 
   it("counts the frames the highlight waited for the editor to catch up", () => {
