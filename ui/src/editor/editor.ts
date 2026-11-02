@@ -19,7 +19,7 @@ import {
 } from "@codemirror/commands";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { lintGutter, setDiagnostics, type Diagnostic as LintDiagnostic } from "@codemirror/lint";
-import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { highlightSelectionMatches, openSearchPanel, search, searchKeymap } from "@codemirror/search";
 import { EditorSelection, EditorState, Prec, type Extension } from "@codemirror/state";
 import {
   EditorView,
@@ -32,6 +32,7 @@ import { tags } from "@lezer/highlight";
 
 import { gcodeLanguage } from "./gcode-language";
 import { PacedKeys, type PacedKey } from "./paced-keys";
+import { SEARCH_PHRASES, centerMatch, findKeymap, findThemeSpec } from "./find";
 import { markSelectedLines } from "./selected-lines";
 import type { LineChange } from "../transform/edits";
 import { selectedLines as wholeLines, type LineMark, type LineRange } from "./lines";
@@ -132,7 +133,17 @@ export class GcodeEditor {
           gcodeLanguage,
           syntaxHighlighting(highlight),
           theme,
-          keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+          // Find and Replace (M5.3): CodeMirror's panel, matches centred.
+          search({ scrollToMatch: centerMatch }),
+          EditorState.phrases.of(SEARCH_PHRASES),
+          EditorView.theme(findThemeSpec, { dark: true }),
+          keymap.of([
+            ...findKeymap((replace) => this.openFind(replace)),
+            ...defaultKeymap,
+            ...historyKeymap,
+            ...searchKeymap,
+            indentWithTab,
+          ]),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) this.onChange();
             if (update.docChanged || update.selectionSet) {
@@ -150,6 +161,18 @@ export class GcodeEditor {
           }),
     ];
     this.view = new EditorView({ parent, state: EditorState.create({ doc: text, extensions: this.extensions }) });
+  }
+
+  /** Opens the Find and Replace panel (M5.3), with the cursor in the Find
+   *  field, or in the Replace field when `replace`. */
+  openFind(replace = false): boolean {
+    openSearchPanel(this.view);
+    if (replace) {
+      const field = this.view.dom.querySelector<HTMLInputElement>(".cm-search input[name=replace]");
+      field?.focus();
+      field?.select();
+    }
+    return true;
   }
 
   /** The text, with lines joined by "\n" whatever the original line endings

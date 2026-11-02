@@ -17,6 +17,7 @@ import sample from "../../tests/golden/basic_mill.nc?raw";
 import { decodeRenderBuffer, type RenderBuffer } from "./buffer/decode";
 import { el } from "./dom";
 import { GcodeEditor } from "./editor/editor";
+import { FIND_TOOLTIP } from "./editor/find";
 import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from "./files";
 import { Freshness } from "./freshness";
 import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark, type LineRange } from "./editor/lines";
@@ -109,6 +110,7 @@ async function main(app: HTMLElement): Promise<void> {
     textContent: "Reset layout",
     title: "Default pane sizes and window size",
   });
+  const findButton = el("button", { type: "button", textContent: "Find…", title: FIND_TOOLTIP });
   const statsButton = el("button", { type: "button", textContent: "Statistics…", disabled: true });
   const transformButton = el("button", {
     type: "button",
@@ -141,6 +143,7 @@ async function main(app: HTMLElement): Promise<void> {
       saveAsButton,
       sampleButton,
       fileLabel,
+      findButton,
       statsButton,
       transformButton,
       measureButton,
@@ -551,6 +554,9 @@ async function main(app: HTMLElement): Promise<void> {
     showMarker();
   };
   refreshButton.addEventListener("click", refresh);
+  findButton.addEventListener("click", () => {
+    editor.openFind();
+  });
   window.addEventListener("keydown", (e) => {
     if (e.key === "F5") {
       // Also stops the web view from reloading the page.
@@ -572,6 +578,11 @@ async function main(app: HTMLElement): Promise<void> {
     } else if (key === "d" && e.shiftKey) {
       e.preventDefault();
       toggleDiagnostics();
+    } else if ((key === "f" || key === "h") && !e.shiftKey && !e.defaultPrevented) {
+      // Find and Replace from anywhere in the window (M5.3); the editor
+      // handles these keys itself when it has the focus.
+      e.preventDefault();
+      editor.openFind(key === "h");
     }
   });
   /** The diagnostics panel (Ctrl+Shift+D, M5.2), and the app side's
