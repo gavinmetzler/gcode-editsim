@@ -762,6 +762,16 @@ Decided (2026-11-02), during M5.2 (slow Page Up/Down):
   owner would drop macOS and Android if a different display stack were
   ever needed for NVIDIA users on Linux; with this result the roadmap is
   unchanged.
+- **Newer WebKitGTK did not help (owner, 2026-11-02, after #73):** with
+  `WEBKIT_DISABLE_DMABUF_RENDERER=0`, `WEBKIT_USE_SKIA_FOR_COMPOSITION=0`
+  and `__NV_DISABLE_EXPLICIT_SYNC=1` (from NC1107/sink#78, WebKitGTK
+  2.54 on KWin) the app started on the direct path and was fast for a
+  second or two, then froze (explicit sync off); without the NVIDIA
+  setting, Wayland error 71. The follow-ups suggested (pacing off with
+  those settings, a newer NVIDIA driver, GNOME's nightly runtime with
+  newer WebKitGTK) "didn't work" (owner; which of them were tried is not
+  recorded). Building WebKitGTK ourselves was ruled out (hours of build,
+  a large download, and WebKit's security updates would be ours).
 - **Meanwhile:** the shader highlight (#70), pacing of held cursor keys
   (#72) and the diagnostics panel (Ctrl+Shift+D) stay; pacing and half
   resolution are switches in the panel.
@@ -775,8 +785,9 @@ Still open:
    real control.
 3. More real programs are welcome in the private corpus, especially
    from other CAM systems and controls.
-4. Does pacing (#72) make held Page Up/Down acceptable in the owner's
-   Flatpak, with or without half resolution? (The M5 plan's §6
+4. Held Page Up/Down in the owner's Flatpak: pacing (#72) helped a
+   little but it is still not acceptable (2026-11-02); left until
+   WebKitGTK or Tauri's Chromium runtime changes. (The M5 plan's §6
    questions were answered on 2026-11-02.)
 
 ---
