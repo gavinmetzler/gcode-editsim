@@ -552,6 +552,22 @@ export class Viewport {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Draws the view at half the screen's resolution (true) or at full
+   *  resolution (false, the default). On a high-DPI screen half resolution
+   *  has a quarter of the pixels, which matters when every frame is copied
+   *  through the CPU (M5.2: a switch in the diagnostics panel). */
+  setHalfResolution(half: boolean): void {
+    this.renderer.setPixelRatio(window.devicePixelRatio * (half ? 0.5 : 1));
+    this.highlighted?.setPointSize(11 * this.renderer.getPixelRatio());
+    this.resize();
+    this.requestRender();
+  }
+
+  /** True when the view is drawn at half resolution. */
+  get halfResolution(): boolean {
+    return this.renderer.getPixelRatio() < window.devicePixelRatio;
+  }
+
   /** Called after each draw with the time it took in JavaScript (ms). */
   onRender: (ms: number) => void = () => undefined;
 

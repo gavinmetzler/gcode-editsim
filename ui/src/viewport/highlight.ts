@@ -116,6 +116,12 @@ export class LineHighlight {
     for (const o of this.objects) o.visible = range !== null;
   }
 
+  /** Sets the dots' size in device pixels (after the pixel ratio changes). */
+  setPointSize(pointSize: number): void {
+    const u = this.pointMaterial.uniforms.hlPointSize;
+    if (u) u.value = pointSize;
+  }
+
   /** Releases what this highlight owns (not the shared line geometries). */
   dispose(): void {
     this.lineMaterial.dispose();

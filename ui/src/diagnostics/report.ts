@@ -73,6 +73,8 @@ export interface DiagnosticsInfo {
     readonly keyboardMs: number;
     readonly handledMs: number;
   } | null;
+  /** The panel's switches and whether each is on. */
+  readonly switches: readonly { readonly label: string; readonly on: boolean }[];
 }
 
 const count = (n: number): string => Math.round(n).toLocaleString("en-US");
@@ -139,6 +141,7 @@ export function formatReport(d: DiagnosticsInfo): string {
       `Last frame: ${count(g.calls)} draw calls, ${count(g.lines)} lines, ${count(g.points)} points; ${count(g.geometries)} geometries, ${count(g.textures)} textures on the GPU`,
     );
   }
+  out.push(`Switches: ${d.switches.map((w) => `${w.label} ${w.on ? "on" : "off"}`).join(", ")}`);
   out.push("Timings:");
   for (const t of d.timings) out.push(timing(t.label, t.summary));
   out.push(`Highlight held back while the editor caught up: ${count(d.heldBack)} frames`);
@@ -148,5 +151,10 @@ export function formatReport(d: DiagnosticsInfo): string {
       ? `Last held key: ${count(h.presses)} presses, sent by the keyboard over ${(h.keyboardMs / 1000).toFixed(1)} s, handled by the page over ${(h.handledMs / 1000).toFixed(1)} s`
       : "Last held key: none yet",
   );
+  if (h && h.presses > 1 && h.keyboardMs === 0) {
+    out.push(
+      'Note: the keyboard\'s repeated key events all carry the first press\'s timestamp here, so "Key press waiting" and "Keyboard repeat interval" are not real measurements.',
+    );
+  }
   return out.join("\n");
 }

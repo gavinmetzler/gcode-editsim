@@ -26,9 +26,21 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+/** A setting to try while looking for a problem (not remembered). */
+export interface Switch {
+  readonly label: string;
+  get(): boolean;
+  set(on: boolean): void;
+}
+
 /** Shows the panel; `gather` collects the facts each time it refreshes.
  *  Returns a function that closes it. */
-export function showDiagnostics(gather: () => DiagnosticsInfo, perf: Perf, onClosed: () => void): () => void {
+export function showDiagnostics(
+  gather: () => DiagnosticsInfo,
+  perf: Perf,
+  onClosed: () => void,
+  switches: readonly Switch[] = [],
+): () => void {
   const report = el("pre", { className: "diagnostics-report" });
   const status = el("span", { className: "note" });
   const copy = el("button", { type: "button", textContent: "Copy" });
@@ -44,6 +56,18 @@ export function showDiagnostics(gather: () => DiagnosticsInfo, perf: Perf, onClo
         "Timings, graphics and system facts to help find problems. Nothing personal is included. " +
         "Copy it and paste it into the chat or an issue.",
     }),
+    el(
+      "div",
+      { className: "switches" },
+      ...switches.map((w) => {
+        const box = el("input", { type: "checkbox", checked: w.get() });
+        box.addEventListener("change", () => {
+          w.set(box.checked);
+          refresh();
+        });
+        return el("label", {}, box, ` ${w.label}`);
+      }),
+    ),
     report,
     el("div", { className: "buttons" }, status, reset, copy, close),
   );
@@ -67,7 +91,16 @@ export function showDiagnostics(gather: () => DiagnosticsInfo, perf: Perf, onClo
     });
   });
   reset.addEventListener("click", () => {
-    for (const s of [perf.inputDelay, perf.keyRepeat, perf.keyHandling, perf.follow, perf.render, perf.frame]) s.reset();
+    for (const s of [
+      perf.inputDelay,
+      perf.keyRepeat,
+      perf.keyArrival,
+      perf.keyHandling,
+      perf.pacedStep,
+      perf.follow,
+      perf.render,
+      perf.frame,
+    ]) s.reset();
     perf.heldBack = 0;
     lastFrame = 0;
     refresh();

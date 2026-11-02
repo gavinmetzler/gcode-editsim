@@ -3,9 +3,11 @@
 // more than a tenth of a second and the 3D draws are expensive (software
 // rendering), redrawing the view only adds to the queue, so the highlight
 // waits until the late key presses stop and updates once. When the draws
-// are cheap, the delay is elsewhere (on the owner's machine, before the
-// page: keys 20 s late with 1-2 ms draws), and holding the view back would
-// only hide the selection, so it follows every frame.
+// are cheap (1-2 ms on the owner's machine), holding the view back would
+// only hide the selection, so it follows every frame. Under Wayland, GTK
+// gives a held key's repeats the first press's timestamp, so their
+// waiting time is not real; held cursor keys are paced by the editor
+// instead (paced-keys.ts).
 
 /** The limits, in milliseconds. */
 export const CATCH_UP = {

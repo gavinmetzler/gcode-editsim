@@ -565,16 +565,25 @@ errors; every warning or note names a real gap. Run it with
   Xvfb, and `xclip -o -selection clipboard` reads what Copy put there.
 - **What the owner's reports showed (M5.2, 2026-11-02):** KDE Wayland, an
   RTX 4090 beside an Intel iGPU, device pixel ratio 2, Flatpak runtime
-  GNOME 51, NVIDIA 580 with its Flatpak GL extension. Holding Page Down,
-  key presses reached the page 4 to 26 s late while following the
-  cursor took 0.3 ms, a 3D draw 1 to 3 ms and frames came every 16 to
-  23 ms; hiding the 3D view or shrinking the window did not help. So the
-  queue is before the page (WebKit's UI process sends key events one at
-  a time and waits for each to be handled). `WEBKIT_DISABLE_DMABUF_RENDERER=0`
+  GNOME 51, NVIDIA 580 with its Flatpak GL extension. **Under Wayland,
+  GTK gives every repeat of a held key the first press's timestamp**, so
+  "Key press waiting" there was only the time since the key went down
+  (it misled M5.2d into "the queue is before the page"). The real
+  figures: 99 presses sent in about 3 s reached the page over 23.3 s
+  (one every 235 ms) while the page spent 24 ms on each, and a held Down
+  arrow was much better with the 3D view hidden. So each key event costs
+  about 200 ms to get on screen outside the page's code (frames copied
+  through the CPU at device pixel ratio 2); M5.2e paces held cursor keys
+  in the app instead. `WEBKIT_DISABLE_DMABUF_RENDERER=0`
   still closes the window (Wayland error 71). `GDK_BACKEND=x11` alone fails
   ("Failed to initialize GTK"), because the manifest only allows X11 as a
   fallback: test X11 with `flatpak run --nosocket=wayland --socket=x11
-  --env=GDK_BACKEND=x11 com.ncsoftbyai.gcodeeditsim`.
+  --env=GDK_BACKEND=x11 com.ncsoftbyai.gcodeeditsim`: it runs but is as
+  slow; adding `WEBKIT_DISABLE_DMABUF_RENDERER=0` there gives a white
+  window ("Failed to create GBM buffer").
+- **Time key handling by the page's clock, not the event's:** keep
+  `performance.now()` deltas between presses reaching the page; an
+  event's `timeStamp` is not reliable for repeats (above).
 - **Check a drawing change pixel by pixel:** screenshot the view for the
   same selections with the old build and the new one, and compare them
   (`compare -metric AE old.png new.png null:` gives the number of pixels

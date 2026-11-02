@@ -2,11 +2,25 @@
 // search, G-code highlighting, diagnostics in the gutter, and callbacks for
 // edits and for the line the cursor is on.
 
-import { defaultKeymap, history, historyKeymap, indentWithTab, isolateHistory } from "@codemirror/commands";
+import {
+  cursorLineDown,
+  cursorLineUp,
+  cursorPageDown,
+  cursorPageUp,
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+  isolateHistory,
+  selectLineDown,
+  selectLineUp,
+  selectPageDown,
+  selectPageUp,
+} from "@codemirror/commands";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { lintGutter, setDiagnostics, type Diagnostic as LintDiagnostic } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
+import { EditorSelection, EditorState, Prec, type Extension } from "@codemirror/state";
 import {
   EditorView,
   highlightActiveLine,
@@ -17,9 +31,18 @@ import {
 import { tags } from "@lezer/highlight";
 
 import { gcodeLanguage } from "./gcode-language";
+import { PacedKeys, type PacedKey } from "./paced-keys";
 import { markSelectedLines } from "./selected-lines";
 import type { LineChange } from "../transform/edits";
 import { selectedLines as wholeLines, type LineMark, type LineRange } from "./lines";
+
+/** The editor command for each paced key: [move, extend the selection]. */
+const PACED_COMMANDS: Record<PacedKey, readonly [(view: EditorView) => boolean, (view: EditorView) => boolean]> = {
+  ArrowUp: [cursorLineUp, selectLineUp],
+  ArrowDown: [cursorLineDown, selectLineDown],
+  PageUp: [cursorPageUp, selectPageUp],
+  PageDown: [cursorPageDown, selectPageDown],
+};
 
 const highlight = HighlightStyle.define([
   { tag: tags.comment, color: "#7f8c8d", fontStyle: "italic" },
@@ -61,9 +84,44 @@ export class GcodeEditor {
    *  own line when nothing is selected (M4.3). */
   onSelectedLines: (range: LineRange) => void = () => undefined;
   private selected: LineRange = { first: 0, last: 0 };
+  /** Held cursor keys, moved by the app at its own pace (M5.2). */
+  readonly paced = new PacedKeys();
+  /** Called after each paced step (for the diagnostics panel). */
+  onPacedStep: () => void = () => undefined;
+  private pacedFrame = 0;
 
   constructor(parent: HTMLElement, text: string) {
+    const pace = (): void => {
+      this.pacedFrame = 0;
+      const step = this.paced.tick(performance.now());
+      if (step) {
+        const [move, extend] = PACED_COMMANDS[step.key];
+        (step.extend ? extend : move)(this.view);
+        this.onPacedStep();
+      }
+      if (this.paced.active) this.pacedFrame = requestAnimationFrame(pace);
+    };
     this.extensions = [
+          // Before the keymap: held cursor keys are paced by the app.
+          Prec.highest(
+            EditorView.domEventHandlers({
+              keydown: (e) => {
+                const mods = { shift: e.shiftKey, ctrl: e.ctrlKey, alt: e.altKey, meta: e.metaKey };
+                if (!this.paced.keyDown(e.key, mods, e.repeat)) return false;
+                e.preventDefault();
+                if (this.pacedFrame === 0) this.pacedFrame = requestAnimationFrame(pace);
+                return true;
+              },
+              keyup: (e) => {
+                this.paced.keyUp(e.key);
+                return false;
+              },
+              blur: () => {
+                this.paced.stop();
+                return false;
+              },
+            }),
+          ),
           lineNumbers(),
           highlightActiveLineGutter(),
           highlightActiveLine(),
