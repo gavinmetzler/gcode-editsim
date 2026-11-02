@@ -649,13 +649,17 @@ struct SystemReport {
 /// See [`SystemReport`].
 #[tauri::command]
 fn system_info() -> SystemReport {
-    use app_backend::system::{graphics_cards, system_info, SystemFacts};
+    use app_backend::system::{
+        drm_devices, gbm_backends, graphics_cards, system_info, SystemFacts,
+    };
     let flatpak = std::fs::read_to_string("/.flatpak-info").ok();
     let nvidia = std::fs::read_to_string("/proc/driver/nvidia/version").ok();
     let facts = SystemFacts {
         flatpak_info: flatpak.as_deref(),
         gpus: graphics_cards(Path::new("/sys/class/drm")),
         nvidia_proc: nvidia.as_deref(),
+        drm_devices: drm_devices(Path::new("/dev/dri/by-path")),
+        gbm_backends: gbm_backends(Path::new("/usr/lib/x86_64-linux-gnu/GL")),
     };
     SystemReport {
         app_version: env!("CARGO_PKG_VERSION"),

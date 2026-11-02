@@ -28,6 +28,7 @@ pub const DRAWING_ENV: &[&str] = &[
     "__GLX_VENDOR_LIBRARY_NAME",
     "__NV_PRIME_RENDER_OFFLOAD",
     "MESA_LOADER_DRIVER_OVERRIDE",
+    "GBM_BACKENDS_PATH",
 ];
 
 /// The facts, as sent to the UI.
@@ -45,6 +46,10 @@ pub struct SystemInfo {
     pub gpus: Vec<String>,
     /// The NVIDIA driver version, when one is loaded.
     pub nvidia_driver: Option<String>,
+    /// The graphics device files by PCI address ([`drm_devices`]).
+    pub drm_devices: Vec<String>,
+    /// The GBM back ends in the Flatpak's GL extensions ([`gbm_backends`]).
+    pub gbm_backends: Vec<String>,
     /// The variables of [`DRAWING_ENV`] that are set, in that order.
     pub env: Vec<(String, String)>,
 }
@@ -58,6 +63,10 @@ pub struct SystemFacts<'a> {
     pub gpus: Vec<String>,
     /// The contents of `/proc/driver/nvidia/version`, when it exists.
     pub nvidia_proc: Option<&'a str>,
+    /// The graphics device files ([`drm_devices`]).
+    pub drm_devices: Vec<String>,
+    /// The GBM back ends found ([`gbm_backends`]).
+    pub gbm_backends: Vec<String>,
 }
 
 /// The facts from the process environment `vars` and what the shell read
@@ -85,6 +94,8 @@ pub fn system_info(
         flatpak_runtime: facts.flatpak_info.and_then(flatpak_runtime),
         gpus: facts.gpus,
         nvidia_driver: facts.nvidia_proc.and_then(nvidia_driver),
+        drm_devices: facts.drm_devices,
+        gbm_backends: facts.gbm_backends,
         env,
     }
 }
@@ -153,4 +164,52 @@ pub fn nvidia_driver(text: &str) -> Option<String> {
     line.split_whitespace()
         .find(|w| w.contains('.') && w.bytes().all(|b| b.is_ascii_digit() || b == b'.'))
         .map(str::to_string)
+}
+
+/// The links in a `/dev/dri/by-path` folder, sorted, each as
+/// `pci-0000:01:00.0-render -> renderD128`: which device file belongs to
+/// which graphics card. Empty when the folder cannot be read.
+pub fn drm_devices(by_path: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(by_path) else {
+        return Vec::new();
+    };
+    let mut links: Vec<String> = entries
+        .filter_map(|e| {
+            let e = e.ok()?;
+            let name = e.file_name().into_string().ok()?;
+            let target = std::fs::read_link(e.path()).ok()?;
+            let target = target.file_name()?.to_str()?.to_string();
+            Some(format!("{name} -> {target}"))
+        })
+        .collect();
+    links.sort();
+    links
+}
+
+/// The GBM back ends (`*gbm*.so` in `<extension>/lib/gbm/`) in a folder of
+/// Flatpak GL extensions (`/usr/lib/x86_64-linux-gnu/GL` inside the
+/// sandbox), sorted, relative to it. WebKitGTK's direct drawing path needs
+/// the GPU's GBM back end (M5.2: it failed with NVIDIA in the Flatpak).
+pub fn gbm_backends(gl: &Path) -> Vec<String> {
+    let Ok(extensions) = std::fs::read_dir(gl) else {
+        return Vec::new();
+    };
+    let mut found = Vec::new();
+    for ext in extensions.filter_map(Result::ok) {
+        let Ok(ext_name) = ext.file_name().into_string() else {
+            continue;
+        };
+        let Ok(files) = std::fs::read_dir(ext.path().join("lib").join("gbm")) else {
+            continue;
+        };
+        for f in files.filter_map(Result::ok) {
+            if let Ok(name) = f.file_name().into_string() {
+                if name.contains("gbm") && name.ends_with(".so") {
+                    found.push(format!("{ext_name}/lib/gbm/{name}"));
+                }
+            }
+        }
+    }
+    found.sort();
+    found
 }

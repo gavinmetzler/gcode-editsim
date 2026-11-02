@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.2 (smooth Page Up/Down, 2026-11-02).
+Last updated: M5.2 wrap-up (WebKitGTK finding and decision, 2026-11-02).
 Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
 and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
@@ -584,6 +584,19 @@ errors; every warning or note names a real gap. Run it with
 - **Time key handling by the page's clock, not the event's:** keep
   `performance.now()` deltas between presses reaching the page; an
   event's `timeStamp` is not reliable for repeats (above).
+- **The Chrome test page** (M5.2): the real UI in a plain browser, to
+  tell WebKitGTK problems from our own. Build the UI (`npm run build`),
+  copy `ui/dist`, a generated program (`tools/bench --blocks 200000
+  --write test.nc`, never one of the owner's) and its render buffer
+  (the throwaway `interpret_to_buffer` binary, above) into one folder,
+  and add a `mock.js` loaded before the app's script in `index.html`. It
+  sets `globalThis.isTauri = true` and a `window.__TAURI_INTERNALS__`
+  whose `invoke` answers `list_dialects`, `list_machines`,
+  `remembered_settings`, `startup_file` (a path), `load_file` and
+  `interpret` (`fetch` of the two files as `ArrayBuffer`s) and
+  `plugin:event|listen`. The owner serves it with `python3 -m
+  http.server 8765` and opens it in Chrome; Chrome also tells WebGL the
+  real GPU. Zip it and send it; it does not go in the repository.
 - **Check a drawing change pixel by pixel:** screenshot the view for the
   same selections with the old build and the new one, and compare them
   (`compare -metric AE old.png new.png null:` gives the number of pixels
@@ -733,6 +746,26 @@ Decided (2026-11-02), at the end of M4:
 - **Wishlist:** a timeline player (draws the toolpath over time, the
   editor cursor in step, skipping hidden tools).
 
+Decided (2026-11-02), during M5.2 (slow Page Up/Down):
+- **Keep Tauri; move to its Chromium runtime when it is stable.** On the
+  owner's machine (KDE, RTX 4090, NVIDIA 580, Flatpak runtime GNOME 51)
+  WebKitGTK cannot use its direct drawing path: with
+  `WEBKIT_DISABLE_DMABUF_RENDERER=0` the window closes under Wayland
+  (error 71) and stays white under X11 ("Failed to create GBM buffer …
+  Invalid argument"), also with the Intel iGPU disabled and with
+  `nvidia_drm modeset=Y`. So every frame is copied through the CPU,
+  and each key event took about 235 ms to reach the screen. **The same
+  UI in Chrome was "very fast"** (Chrome test page, section 7), so the
+  design is sound and the problem is WebKitGTK on NVIDIA. Tauri's CEF
+  runtime (`tauri-runtime-cef`) was in alpha (3.0.0-alpha.0 to alpha.6,
+  September to October 2026); try it when it is stable (wishlist). The
+  owner would drop macOS and Android if a different display stack were
+  ever needed for NVIDIA users on Linux; with this result the roadmap is
+  unchanged.
+- **Meanwhile:** the shader highlight (#70), pacing of held cursor keys
+  (#72) and the diagnostics panel (Ctrl+Shift+D) stay; pacing and half
+  resolution are switches in the panel.
+
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their
    control's manual?
@@ -742,12 +775,9 @@ Still open:
    real control.
 3. More real programs are welcome in the private corpus, especially
    from other CAM systems and controls.
-4. The M5 plan's questions (`docs/plans/M5_PLAN.md` §6): the order;
-   whether statistics follow the tool filter and hidden tools are
-   remembered; the safety colours under colouring by tool; Find as
-   CodeMirror's panel or a dialog; installers committed to the repository
-   or published as a GitHub Release, and which platforms; which Osai
-   features the owner's programs use.
+4. Does pacing (#72) make held Page Up/Down acceptable in the owner's
+   Flatpak, with or without half resolution? (The M5 plan's §6
+   questions were answered on 2026-11-02.)
 
 ---
 
