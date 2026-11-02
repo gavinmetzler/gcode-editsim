@@ -2,7 +2,9 @@
 
 Behaviour of `core/dialect-osai`, a **stub** written in M2 to check that
 the dialect interfaces suit a controller other than Fanuc. It covers a
-small milling subset; full Osai support is planned for M8 (ARCHITECTURE.md §13).
+small milling subset. Every app feature is to work for Osai programs as for
+Fanuc ones in M5 (`docs/plans/M5_PLAN.md`, M5.6); full Osai support is
+planned for M9 (ARCHITECTURE.md §13).
 
 **Source.** Osai, *10 Series CNC Programming Manual* (2006/2007 edition),
 cited below by page ("p. 2-4" is chapter 2, page 4). The manual is

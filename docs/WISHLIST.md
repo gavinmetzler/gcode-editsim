@@ -115,3 +115,13 @@ inches (G20); the rewritten words are still written in inches. It could
 show and take inches when the selection is in G20. The rotation plane
 starts at XY (G17); it could start at the plane in effect at the start of
 the selection, which needs one more question to the core.
+
+## Timeline player
+
+*Raised by the owner, 2026-11-02 (when M5 was planned).*
+
+Play the program back: draw the toolpath over time, segment by segment,
+with the editor cursor following the line being drawn. Play, pause, step
+and a speed control. It works with the tool filter planned in M5.4:
+hidden tools are skipped. The segments already carry an estimated time
+(M3.8), which could set the pace.

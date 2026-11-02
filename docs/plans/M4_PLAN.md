@@ -1,6 +1,9 @@
 # M4 plan: code transformations
 
-**Status: agreed with the owner (2026-11-01).** The owner's answers to
+**Status: complete (2026-11-02).** Agreed with the owner on 2026-11-01. At the
+end of M4 the owner renumbered the later milestones (a new M5 before
+mobile, so mobile is M6, machine state M7, material removal M8, more
+dialects and machine types M9+); references below use the new numbers. The owner's answers to
 the open questions are in section 6, and the owner added five items:
 remembering the machine and dialect and the window layout (moved from
 the wishlist), the editor selection shown in the 3D view, a better icon,
@@ -58,10 +61,10 @@ which the user can read, edit, undo and save.
 - transforming rotary axes, canned-cycle depths in incremental mode, and
   the codes M3 left on hold (coordinate shifts, macros): refused with a
   message (question 4)
-- the lathe (M8), and the Osai dialect beyond transformations (M8; the
+- the lathe (M9), and the Osai dialect beyond transformations (M9; the
   owner asked for Osai transformations in M4, M4.9a); the design keeps the dialect
   boundary, so they can be added
-- mobile (M5)
+- mobile (M6)
 
 ## 2. How it works, in brief
 
@@ -325,11 +328,25 @@ DEVELOPMENT_STATUS.md point to it.
   Flatpak document portal, `@@ %f @@`) to the UI, which opens it.
 - Tested in the container's Flatpak and by the owner in Dolphin.
 
-### M4.12: Wrap-up
+### M4.12: Wrap-up *(done)*
 - The corpus and goldens: transform each private program with a few
   transformations and check the path (locally); a short public golden
   excerpt if the owner agrees.
 - README, ARCHITECTURE.md, DEVELOPMENT_STATUS.md; a new Flatpak to try.
+- **Done (2026-11-02).** The owner's six programs (four Fanuc, two Osai)
+  went through translate, rotate (30° and 90°) and scale (1.5 and 0.8)
+  locally, on the longest selections the transformations accept (up to
+  about 19 700 lines). Every rewritten path matched the expected shape to
+  within 0.001 mm (the rounding of the rewritten numbers to three
+  decimals), and nothing outside the selection moved, with two expected
+  exceptions, which the owner's decision (section 6, item 7) leaves to
+  the operator: a selection that holds a subprogram's body but not its
+  calls changes every call; and lines at the start of a selection without
+  axis words (a tool change) keep the position from before the
+  selection. The refusals were the expected ones: G92, G28, Osai G79 and
+  `(UAO,1,Z)`, and lines with errors. No public golden was added: the
+  path tests (M4.6-M4.8) already cover these cases with programs of our
+  own.
 
 ## 5. Risks and how to handle them
 

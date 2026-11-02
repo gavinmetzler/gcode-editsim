@@ -8,10 +8,10 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M4.11 (.nc files on the Linux desktop, 2026-11-02).
-M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
-[`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
-ARCHITECTURE.md §13.
+Last updated: M4.12 (M4 wrap-up and the M5 plan, 2026-11-02).
+Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 in
+draft, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
+order is in ARCHITECTURE.md §13.
 
 ---
 
@@ -25,12 +25,24 @@ explained; tool marker, hover, measuring and orbiting about a node;
 subprograms; statistics per tool with a simple time estimate; a million
 blocks opens in a second or two on the owner's desktop. Coordinate shifts
 and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left
-to the community. **Next: M4, code transformations**
-(`docs/plans/M4_PLAN.md`, agreed 2026-11-01).
+to the community.
+**M4 (code transformations) is complete** (`docs/plans/M4_PLAN.md`):
+translate, rotate and scale selected lines of Fanuc and Osai programs,
+rewriting only the words that must change, applied as one undoable edit;
+the machine, dialect, layout, colour key and diagnostics filters
+remembered; the editor selection shown bright yellow in the view; a new
+icon; `.nc` files opening from the Linux file manager (Flatpak).
+
+**Next: M5, everyday use, Osai level with Fanuc, and packages**
+(`docs/plans/M5_PLAN.md`). **The plan is a draft:** the owner agrees the
+order and answers its section 6 before M5.1 starts. The milestones were
+renumbered on 2026-11-02 (section 8): mobile is now M6, machine state
+M7, material removal M8, more dialects and machine types M9+.
 
 The app is usable today as an editor beside a synced 3D backplot of Fanuc
 (and, as a stub, Osai 10 Series) milling programs, with diagnostics,
-statistics and a time estimate, that opens and saves files.
+statistics and a time estimate, that opens and saves files and transforms
+selected lines.
 
 | Area | Status |
 |---|---|
@@ -67,7 +79,7 @@ cargo run -p interpreter --example summary -- tests/golden/basic_mill.nc [machin
 - **The owner** (GitHub `gavinmetzler`) reviews and merges every PR. Work
   arrives one step at a time ("do step N only").
 - **Branch:** all work happens on the session's designated branch (M1:
-  `claude/hopeful-euler-b7gaff`; M2 and M3: `claude/affectionate-goodall-mi4cum`). After a PR merges, restart the branch from
+  `claude/hopeful-euler-b7gaff`; M2 and M3: `claude/affectionate-goodall-mi4cum`; M4: `claude/lucid-tesla-9bjqjk`; a new session gets its own). After a PR merges, restart the branch from
   `origin/main` (`git checkout -B <branch> origin/main`) and open a **new**
   PR. Never stack on merged history.
 - **One open PR at a time.** The designated branch carries one PR; work
@@ -126,7 +138,7 @@ in ARCHITECTURE.md §5).
 | `core/interpreter` | Dialect + machine to IR | `interpret(source, file, &dyn Dialect, &dyn Machine, Options) -> ir::Program`; `interpret_traced(…, lines) -> (Program, Vec<BlockTrace>)` (M4.5: per run of each block in the lines, state after it, commands, errors, position before/after in work coordinates, mm); `examples/summary.rs` |
 | `core/transform` | Rewrites selected lines exactly (M4) | `TextEdit { line, span, text }`; `apply_edits` (every other byte kept); `source_lines` (split as the parser splits); `rewrite_word` (one word's new value in the program's style; no edit if it reads back the same); `transform(…, lines, &Transformation)` (Translate M4.6, Rotate M4.7, Scale M4.8) → `Transformed { edits, notes }` or `TransformError::Refused { line, reason }` (M4.6). Number style: `gcode_syntax::NumberStyle`; meaning: `Dialect::read_value` / `format_value` (Fanuc in `dialect-fanuc/src/numbers.rs`) |
 | `core/testkit` | Golden helpers (no file access) | `summary(&Program, letters)`: compact JSON rounded to 1e-6; `compare`; `UPDATE_GOLDEN` |
-| `core/sim` | Empty placeholder (M7) | |
+| `core/sim` | Empty placeholder (M8) | |
 | `app/backend` | The app's behaviour without Tauri (M2.3a); `transform::{transform_program, program_point, encode_edits, decode_edits}` (M4.9) | `load_machine` (by `family`), `dialects`/`load_dialect`, `interpret_to_buffer`, `files::{read_program, save_program, seed_machine_folder, list_machine_files}`, `settings::{load, save, update, RememberedMachine}` (the remembered machine and dialect, M4.1) |
 | `app/shell` | The Tauri 2 desktop shell (M2.3b), **its own Cargo workspace** | Commands in `src/lib.rs` (`interpret` raw body → raw render buffer, `load_file`, `save_file`, machine and dialect choice); IPC tests on Tauri's mock runtime in `tests/ipc.rs`; the UI (`ui/dist`) embedded at compile time |
 | `tools/gen-ts` | Generates `ui/src/generated/render_buffer.ts` from `core/ir` | `cargo run -p gen-ts`; its test fails if the committed file is stale |
@@ -140,7 +152,7 @@ in ARCHITECTURE.md §5).
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
-- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (agreed, next): milestone plans.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (complete), `docs/plans/M5_PLAN.md` (draft, next): milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.
@@ -264,6 +276,17 @@ Changing any of these is a deliberate, documented change.
   in the selection; outside it only the documented case (an absolute move
   after the selection leaves the axes it does not write moved). Whole-file
   selections are refused at the first G79/G92 line.
+- **Real programs (M4.12, locally):** all six of the owner's programs,
+  translate, rotate 30° and 90°, scale 1.5 and 0.8, on the longest
+  stretches between refusals (up to about 19 700 lines): the path keeps
+  its shape within 0.001 mm and nothing outside the selection moves,
+  except two cases left to the operator (owner, 2026-11-02): selecting a
+  subprogram's body without its calls changes every call, and lines at
+  the start of a selection without axis words (a tool change) keep the
+  position from before the selection. A throwaway test in
+  `core/transform/tests/` (deleted afterwards) did this; comparing in
+  machine coordinates needs a reference point per work offset, since
+  rotating and scaling happen in program coordinates.
 
 **Interpreter**
 - `interpret_traced` (M4.5) traces only the lines asked for; both positions use the work offset in effect *for* the block, so `G55 X10.` has a `before` already in G55 coordinates.
@@ -385,7 +408,7 @@ self-review: the same agent wrote the code.
 | I5: power-on defaults assumed silently | **Fixed** (#9): "assumed" warnings |
 | I8: CI did not enforce the dependency rule; fuzz not in CI; no abs/inc test | **Fixed** (#9, #10) |
 | I2: G43 tool length not applied (Z and Z limits off by the tool length) | Not planned (owner decision 2026-10-31): ignored with an info note, M3.0 |
-| I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, M6 |
+| I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, M7 |
 | I4: IR lacks stop/pause, coolant, spindle direction, program end | **Fixed** (M2.0): event segments |
 | I6: max feed / max rpm / rapid rates loaded but unused | Partly fixed (M3.8): rapid rates and max feed are used by the time estimate; max rpm is still unused |
 | I7: about 19 Fanuc behaviours marked *(unverified)* | Open; needs the owner's control manual |
@@ -407,7 +430,7 @@ errors; every warning or note names a real gap. Run it with
   design: height and wear compensation are not planned).
 - Rapids are straight lines.
 - Speed limits are not checked (max feed and rapid rates are used only by
-  the time estimate); the time estimate has no acceleration (M6).
+  the time estimate); the time estimate has no acceleration (M7).
 - Fanuc G04 (dwell) is an error and adds no time (owner decision,
   M3.8); Osai dwells have no time (`DWT` is not read).
 - A million blocks needs about 715 MB in the core (850 MB in the app);
@@ -564,7 +587,9 @@ Decided (2026-10-31), roadmap revision:
 - **Mature the editor and backplotter before mobile or simulation.** New
   order: M3 a dependable backplotter, M4 code transformations, M5
   mobile, M6 machine state and accuracy, M7 material removal, M8+ more
-  dialects and machine types (ARCHITECTURE.md §13).
+  dialects and machine types (ARCHITECTURE.md §13). *(Renumbered on
+  2026-11-02, below: those later milestones are now M6, M7, M8 and
+  M9+.)*
 - **Ignorable codes:** machine-specific codes, and tool height and wear
   compensation, are ignored with an info note, not an error. Rarely used
   codes (turret switches, some coordinate changes) may be ignored where
@@ -573,7 +598,7 @@ Decided (2026-10-31), roadmap revision:
   rotating a selected part of the program (M4), ahead of mobile and
   simulation.
 - **Backplot tools in M3:** a tool marker (a thick vertical line with an
-  arrowhead, deliberately unlike the M7 tool with size and shape), hover
+  arrowhead, deliberately unlike the M8 tool with size and shape), hover
   info on the nearest endpoint (position, tool, feed), measuring between
   two points, and orbiting around a snapped point.
 - **Agent proposals the owner did not object to** (all three superseded
@@ -611,11 +636,39 @@ Decided (2026-10-31 to 2026-11-01), M3.7 to M3.10:
 - **Time estimate:** one PR; Fanuc G04 stays an error for now; tool
   changes take an optional `tool_change_time` from the machine file.
 - **Large programs:** fast enough on the owner's desktop; memory is left
-  for M5.
+  for mobile (then M5, now M6).
 - **UI:** panes are resizable and maximisable (double-click the view or
   the diagnostics, a button on the editor); the editor margin follows the
   diagnostics filters; remembering the layout, with the machine and
   dialect, moved from the wishlist to the start of M4 (owner, 2026-11-01).
+
+Decided (2026-11-01 to 2026-11-02), M4:
+- **Transformations are an operator's aid,** not a fully featured
+  feature for every edge case: an operator modifies a piece of a
+  program and is responsible for the moves before and after it fitting
+  the rest (M4_PLAN §6 item 7). So the move after the selection and the
+  start of the selection are left as they are where the plan said so.
+- **Osai programs are transformed too** (M4.9a, added by the owner), and
+  the colour key and diagnostics filters are remembered (M4.2a).
+- **The icon:** design B, an editor page beside a backplot (M4.10).
+
+Decided (2026-11-02), at the end of M4:
+- **Milestones renumbered.** A new M5 before mobile; mobile is M6,
+  machine state and accuracy M7, material removal M8, more dialects and
+  machine types M9+. Older plans (M2, M3) keep the old numbers as a
+  record; M4_PLAN and the living documents use the new ones.
+- **M5 holds the owner's list:** a tool filter (a checkbox per tool,
+  right-click for one tool), Find and Replace (plain text, Ctrl+F, F3),
+  packages (`.deb`, `.rpm`, Windows, macOS, the Flatpak easy to find,
+  install instructions per platform), colouring by tool (rapids a dimmed
+  tool colour), the hidden out-of-date border (bug), slow Page Up/Down
+  (update the view about twice a second), and **Osai level with Fanuc**
+  (anything that works only for Fanuc must work for Osai). The plan's
+  order and its section 6 questions are for the owner to answer.
+- **The scope is now mill with Fanuc and Osai** (CLAUDE.md,
+  ARCHITECTURE.md §1); the lathe stays a stub.
+- **Wishlist:** a timeline player (draws the toolpath over time, the
+  editor cursor in step, skipping hidden tools).
 
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their
@@ -626,3 +679,37 @@ Still open:
    real control.
 3. More real programs are welcome in the private corpus, especially
    from other CAM systems and controls.
+4. The M5 plan's questions (`docs/plans/M5_PLAN.md` §6): the order;
+   whether statistics follow the tool filter and hidden tools are
+   remembered; the safety colours under colouring by tool; Find as
+   CodeMirror's panel or a dialog; installers committed to the repository
+   or published as a GitHub Release, and which platforms; which Osai
+   features the owner's programs use.
+
+---
+
+## 9. Starting M5 in a new session
+
+1. Read `CLAUDE.md`, `ARCHITECTURE.md` (§7, §8.4a, §8.6, §8.7, §13),
+   this file (§2 working agreement, §7 practical lessons) and
+   `docs/plans/M5_PLAN.md`.
+2. **Ask the owner** to agree the M5 order and answer the plan's
+   section 6 if they have not (look for an "agreed" status at the top of
+   the plan). Record the answers in the plan (as M4_PLAN §6 does) in the
+   M5.1 PR or a small PR of its own, and set the plan's status to agreed.
+3. Work one step per PR, in order, on the session's designated branch;
+   after each merge restart it from `origin/main`. Bug fixes and
+   features start with a failing test.
+4. Before every push, joined with `&&` and never piped into `grep`:
+   `cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && cargo run -q -p depcheck`;
+   when the UI changes, `cd ui && npm run lint && npm run typecheck && npm test && npm run build`;
+   when the shell changes (or the UI it embeds), the same fmt, clippy
+   and tests in `app/shell` (its own workspace).
+5. UI work: check it in a real browser (Playwright, preinstalled), as
+   §7 describes, and send the owner a screenshot; the owner tests the
+   Flatpak from the CI run on `main` after each merge.
+6. The owner's private programs are in `gavinmetzler/gcode-editsim-manuals`
+   (`Fanuc_examples/`, `Osai10Series_examples/`): clone beside this
+   repository and use them locally (`tools/corpus`, throwaway tests);
+   never copy them in. They matter most for M5.6 (Osai).
+7. M5.7 changes `.github/workflows/`: ask the owner before that step.
