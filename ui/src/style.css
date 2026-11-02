@@ -110,3 +110,4 @@ main[data-maximised="editor"] > .editor, main[data-maximised="panel"] .panel { f
 .diagnostics-dialog .diagnostics-report { font: 11px/1.4 ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; background: #14171c; border: 1px solid #3a404a; border-radius: 4px; padding: 6px 8px; max-height: 50vh; overflow: auto; user-select: text; }
 .diagnostics-dialog .buttons { align-items: center; }
 .diagnostics-dialog .buttons .note { margin-right: auto; }
+.diagnostics-dialog .switches { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 6px; }

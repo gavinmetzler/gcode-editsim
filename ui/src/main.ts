@@ -44,7 +44,7 @@ import {
   type MachineEntry,
 } from "./ipc/backend";
 import { DiagnosticsPanel } from "./panels/panel";
-import { showDiagnostics } from "./diagnostics/panel";
+import { showDiagnostics, type Switch } from "./diagnostics/panel";
 import type { DiagnosticsInfo } from "./diagnostics/report";
 import { newPerf } from "./diagnostics/stats";
 import { KeyHold, behind } from "./catch-up";
@@ -464,6 +464,7 @@ async function main(app: HTMLElement): Promise<void> {
     (e) => {
       const now = performance.now();
       keyStart = now;
+      if (e.repeat) perf.keyArrival.add(now - lastKeyAt);
       lastKeyLag = Math.max(0, now - e.timeStamp);
       lastKeyAt = now;
       perf.inputDelay.add(lastKeyLag);
@@ -608,23 +609,54 @@ async function main(app: HTMLElement): Promise<void> {
       timings: [
         { label: "Key press waiting (input delay)", summary: perf.inputDelay.summary() },
         { label: "Keyboard repeat interval (keyboard's timestamps)", summary: perf.keyRepeat.summary() },
+        { label: "Held key's repeats reaching the page (page's clock)", summary: perf.keyArrival.summary() },
         { label: "Page handling one key press (editor)", summary: perf.keyHandling.summary() },
+        { label: "Paced steps for a held cursor key", summary: perf.pacedStep.summary() },
         { label: "Follow cursor (marker, readout, highlight, status)", summary: perf.follow.summary() },
         { label: "3D draw (JavaScript side)", summary: perf.render.summary() },
         { label: "Frame interval (while this panel is open)", summary: perf.frame.summary() },
       ],
       heldBack: perf.heldBack,
       lastHold: keyHold.last,
+      switches: diagnosticSwitches.map((w) => ({ label: w.label, on: w.get() })),
     };
+  };
+  /** Settings to try from the panel (M5.2), not remembered. */
+  const diagnosticSwitches: Switch[] = [
+    {
+      label: "Pace held cursor keys",
+      get: () => editor.paced.enabled,
+      set: (on) => {
+        editor.paced.enabled = on;
+      },
+    },
+    {
+      label: "3D view at half resolution",
+      get: () => viewport.halfResolution,
+      set: (on) => {
+        viewport.setHalfResolution(on);
+      },
+    },
+  ];
+  let lastPacedStep = Number.NEGATIVE_INFINITY;
+  editor.onPacedStep = () => {
+    const now = performance.now();
+    if (now - lastPacedStep < 1000) perf.pacedStep.add(now - lastPacedStep);
+    lastPacedStep = now;
   };
   const toggleDiagnostics = (): void => {
     if (closeDiagnostics) {
       closeDiagnostics();
       return;
     }
-    closeDiagnostics = showDiagnostics(gatherDiagnostics, perf, () => {
-      closeDiagnostics = null;
-    });
+    closeDiagnostics = showDiagnostics(
+      gatherDiagnostics,
+      perf,
+      () => {
+        closeDiagnostics = null;
+      },
+      diagnosticSwitches,
+    );
     if (!system && inApp()) {
       void systemInfo()
         .then((info) => {

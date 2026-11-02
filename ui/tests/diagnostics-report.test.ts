@@ -77,6 +77,10 @@ const full: DiagnosticsInfo = {
   ],
   heldBack: 12,
   lastHold: { presses: 90, keyboardMs: 3000, handledMs: 25_000 },
+  switches: [
+    { label: "Pace held cursor keys", on: true },
+    { label: "3D view at half resolution", on: false },
+  ],
 };
 
 describe("formatReport", () => {
@@ -103,6 +107,18 @@ describe("formatReport", () => {
   it("compares the keyboard's time for the last held key with the page's", () => {
     expect(text).toContain("Last held key: 90 presses, sent by the keyboard over 3.0 s, handled by the page over 25.0 s");
     expect(formatReport({ ...full, lastHold: null })).toContain("Last held key: none yet");
+  });
+
+  it("says when repeated key events carry the first press's timestamp, so key timings cannot be trusted", () => {
+    const copied = formatReport({ ...full, lastHold: { presses: 99, keyboardMs: 0, handledMs: 23_300 } });
+    expect(copied).toContain(
+      "Note: the keyboard's repeated key events all carry the first press's timestamp here, so \"Key press waiting\" and \"Keyboard repeat interval\" are not real measurements.",
+    );
+    expect(text).not.toContain("are not real measurements");
+  });
+
+  it("lists the switches and their state", () => {
+    expect(text).toContain("Switches: Pace held cursor keys on, 3D view at half resolution off");
   });
 
   it("counts the frames the highlight waited for the editor to catch up", () => {
