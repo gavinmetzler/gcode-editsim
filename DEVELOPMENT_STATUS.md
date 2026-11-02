@@ -8,9 +8,9 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M4.12 (M4 wrap-up and the M5 plan, 2026-11-02).
-Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 in
-draft, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
+Last updated: M5.1 (the out-of-date border, 2026-11-02).
+Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
+and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
 
 ---
@@ -34,8 +34,8 @@ remembered; the editor selection shown bright yellow in the view; a new
 icon; `.nc` files opening from the Linux file manager (Flatpak).
 
 **Next: M5, everyday use, Osai level with Fanuc, and packages**
-(`docs/plans/M5_PLAN.md`). **The plan is a draft:** the owner agrees the
-order and answers its section 6 before M5.1 starts. The milestones were
+(`docs/plans/M5_PLAN.md`). The owner agreed the plan and its order
+(2026-11-02); M5.1 is in progress. The milestones were
 renumbered on 2026-11-02 (section 8): mobile is now M6, machine state
 M7, material removal M8, more dialects and machine types M9+.
 
@@ -152,7 +152,7 @@ in ARCHITECTURE.md §5).
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
-- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (complete), `docs/plans/M5_PLAN.md` (draft, next): milestone plans.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (complete), `docs/plans/M5_PLAN.md` (agreed, in progress): milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.
@@ -528,6 +528,14 @@ errors; every warning or note names a real gap. Run it with
   `plugin:dialog|open`, `load_file` and `interpret` (return the buffer
   as an `ArrayBuffer`). The page root is itself a `<main id="app">`, so
   the pane layout is `main main`.
+- **Headless Chromium is not WebKitGTK** (M5.1): the out-of-date outline
+  was hidden under the WebGL canvas in the app but showed in Chromium. For
+  layering, compositing or anything else that looks right in Chromium but
+  not to the owner, run the real app under Xvfb (below; building the shell
+  needs `libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+  librsvg2-dev`, and `xdotool` drives it) and screenshot it with `import
+  -window root`. Draw things that must sit above the canvas as positioned
+  boxes, not outlines.
 - **Software rendering is slow here:** drawing a million segments takes
   seconds per frame in the container but is smooth on the owner's
   desktop. Judge JavaScript time with the CDP profiler, and rendering on

@@ -1,11 +1,11 @@
 # M5 plan: everyday use, Osai level with Fanuc, and packages
 
-**Status: draft, for the owner to agree (2026-11-02).** The owner set the
-content of M5 at the end of M4 (2026-11-02) and moved the earlier
+**Status: agreed (owner, 2026-11-02); M5.1 in progress.** The owner set
+the content of M5 at the end of M4 (2026-11-02) and moved the earlier
 milestones back by one: mobile is now M6, machine state and accuracy M7,
 material removal M8, more dialects and machine types M9+
-(ARCHITECTURE.md §13). The order of the steps below and the answers to the
-questions in section 6 are to be agreed before M5.1 starts.
+(ARCHITECTURE.md §13). The owner agreed the plan and its order when
+starting M5 (2026-11-02); the answers to section 6 are recorded there.
 **Before starting:** read `CLAUDE.md`, `ARCHITECTURE.md` (§7, §8.4a, §8.6,
 §8.7, §13), `DEVELOPMENT_STATUS.md` (§2 working agreement, §7 practical
 lessons) and `docs/plans/M4_PLAN.md` (what M4 built and decided).
