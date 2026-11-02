@@ -105,3 +105,8 @@ main[data-maximised="editor"] > .editor, main[data-maximised="panel"] .panel { f
 .transform-dialog .row button { margin-left: 8px; }
 .transform-dialog .hint { color: #8a94a3; font-size: 0.9em; }
 .transform-dialog .note { min-height: 1.2em; color: #f2c94c; }
+/* The diagnostics panel floats over the app without blocking it (M5.2). */
+.diagnostics-dialog { position: fixed; inset: auto 12px 30px auto; margin: 0; width: min(620px, 92vw); max-height: 75vh; z-index: 20; box-shadow: 0 6px 24px rgb(0 0 0 / 50%); }
+.diagnostics-dialog .diagnostics-report { font: 11px/1.4 ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; background: #14171c; border: 1px solid #3a404a; border-radius: 4px; padding: 6px 8px; max-height: 50vh; overflow: auto; user-select: text; }
+.diagnostics-dialog .buttons { align-items: center; }
+.diagnostics-dialog .buttons .note { margin-right: auto; }

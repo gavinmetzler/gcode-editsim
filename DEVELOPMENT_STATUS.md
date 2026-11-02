@@ -365,9 +365,9 @@ Changing any of these is a deliberate, documented change.
 - **Editor selection in the view (M4.3):** the selected lines (whole
   lines; the cursor's line otherwise) are drawn bright yellow, replacing
   the white one-line highlight; the range comes from
-  `LineIndex.segmentsInLines` (a view of the index) and the drawing from
-  `highlightGeometry`. Selecting all of a million blocks: about 250 ms
-  of JavaScript in the container, plus drawing.
+  `LineIndex.segmentsInLines` (a view of the index). Since M5.2 a shader
+  draws it from each vertex's line (`ui/src/viewport/highlight.ts`), so
+  any selection costs two numbers and a redraw.
 - **Transform dialog (M4.9):** **Transform…** (Ctrl+T) on the selected
   lines; the core's edits come back as a binary edit list (`GCTE`,
   fixture `tests/golden/transform_edits_v1.bin`) and are applied as one
@@ -555,6 +555,21 @@ errors; every warning or note names a real gap. Run it with
   focus (software rendering), and runs vary two-fold, so repeat each
   measurement three or four times. Chromium did not show the Shift+Page
   Down problem at all.
+- **Ask the owner for the diagnostics report** (M5.2): Ctrl+Shift+D in
+  the app, **Copy**, paste. It shows how long key presses waited (the
+  app falling behind), the cost of following the cursor and of each 3D
+  draw, the frame interval, the graphics cards and drivers, the Flatpak
+  runtime and the WebKitGTK settings. WebKit reports every GPU to WebGL as
+  "Apple GPU", so the real card comes from the app side
+  (`/sys/class/drm`). Open it in the real app here too: it works under
+  Xvfb, and `xclip -o -selection clipboard` reads what Copy put there.
+- **Check a drawing change pixel by pixel:** screenshot the view for the
+  same selections with the old build and the new one, and compare them
+  (`compare -metric AE old.png new.png null:` gives the number of pixels
+  that differ). The M5.2 shader highlight matched the old one exactly.
+- **Before writing a new test file, check the name is free:** `cat >`
+  silently replaced the existing `ui/tests/diagnostics.test.ts` once
+  (M5.2); the test count dropped, which is how it was caught.
 - **Software rendering is slow here:** drawing a million segments takes
   seconds per frame in the container but is smooth on the owner's
   desktop. Judge JavaScript time with the CDP profiler, and rendering on

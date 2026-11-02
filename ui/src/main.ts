@@ -38,13 +38,18 @@ import {
   selectMachine,
   startupFile,
   setRunOptions,
+  systemInfo,
   transformProgram,
+  type AppSystemInfo,
   type MachineEntry,
 } from "./ipc/backend";
 import { DiagnosticsPanel } from "./panels/panel";
+import { showDiagnostics } from "./diagnostics/panel";
+import type { DiagnosticsInfo } from "./diagnostics/report";
+import { newPerf } from "./diagnostics/stats";
+import { behind } from "./catch-up";
 import { showMachinesDialog } from "./machines-dialog";
 import { startChoice } from "./remembered";
-import { Throttle } from "./throttle";
 import { showTransformDialog } from "./transform/dialog";
 import { decodeEdits, editorChanges } from "./transform/edits";
 import { buildRequest } from "./transform/request";
@@ -309,6 +314,13 @@ async function main(app: HTMLElement): Promise<void> {
   }
 
   let current: RenderBuffer | null = null;
+  /** Timings for the diagnostics panel (M5.2). */
+  const perf = newPerf();
+  viewport.onRender = (ms) => {
+    perf.render.add(ms);
+  };
+  /** How long the last run's steps took, and its render buffer's size. */
+  let lastRun: (NonNullable<DiagnosticsInfo["lastRun"]> & { bytes: number }) | null = null;
   /** Which segments each line produced, for the current buffer. */
   let lineIndex: LineIndex = buildLineIndex(0, () => 0);
   /** Fit the view after the next run (a new program, machine or dialect). */
@@ -374,7 +386,7 @@ async function main(app: HTMLElement): Promise<void> {
   const showFreshness = (): void => {
     const stale = freshness.stale && current !== null;
     staleBar.hidden = !stale;
-    if (stale) viewport.highlight([]);
+    if (stale) viewport.highlightLines(null);
     for (const box of [viewportBox, panelBox, editorBox]) box.classList.toggle("stale", stale);
   };
 
@@ -394,12 +406,14 @@ async function main(app: HTMLElement): Promise<void> {
   const showSelection = (quiet = false): void => {
     // Line numbers may have moved since the run: no highlight while out of date.
     if (freshness.stale || !current) {
-      viewport.highlight([]);
+      viewport.highlightLines(null);
       return;
     }
     // Every run of each line: a subprogram line is highlighted in each call.
+    // Both are cheap whatever the size: a view of the line index, and two
+    // numbers for the shader (M5.2).
     const segments = lineIndex.segmentsInLines(selection.first, selection.last);
-    viewport.highlight(segments);
+    viewport.highlightLines(selection);
     // Keep the "click a node" hint while the Transform dialog waits.
     if (quiet || pickForTransform) return;
     const lines =
@@ -410,53 +424,66 @@ async function main(app: HTMLElement): Promise<void> {
     setStatus(n === 0 ? `${lines}: no toolpath` : `${lines}: ${String(n)} segment${n === 1 ? "" : "s"}`);
   };
   /** Follows the editor's cursor and selection in the view, the marker,
-   *  the readout and the status: at once after a pause, about twice a
-   *  second while the cursor keeps moving (a drag), and once more just
-   *  after it stops (M5.2). While a key is held (Page Up/Down, with or
-   *  without Shift), only the marker and readout follow, twice a second:
-   *  the selection highlight redraws the whole toolpath, so it waits until
-   *  the key is released. */
-  const followCursor = new Throttle(() => {
+   *  the readout and the status, once per frame however fast the cursor
+   *  moves (a held Page Up/Down, a drag). Each update is cheap: the
+   *  highlight is two numbers for a shader (M5.2). But when key presses
+   *  arrive late (the app is behind, usually drawing frames), the
+   *  highlight and its redraw wait until they stop, so the editor catches
+   *  up first; the marker and readout still follow. */
+  let followFrame = 0;
+  let lastKeyLag = 0;
+  let lastKeyAt = Number.NEGATIVE_INFINITY;
+  const follow = (): void => {
+    followFrame = 0;
+    const started = performance.now();
     showLine(editor.cursorLineNumber());
-    if (followCursor.held) return;
+    if (behind(lastKeyLag, started - lastKeyAt)) {
+      perf.heldBack += 1;
+      followFrame = requestAnimationFrame(follow);
+      return;
+    }
     selection = editor.selectedLines();
     showSelection();
-  });
-  // A held key repeats: the keyboard's own repeat flag says so, and its
-  // release ends it (captured before the editor moves the cursor).
+    perf.follow.add(performance.now() - started);
+  };
+  const followCursor = (): void => {
+    if (followFrame === 0) followFrame = requestAnimationFrame(follow);
+  };
+  // How long key presses wait before the page handles them: the sign of
+  // the app falling behind (also shown in the diagnostics panel).
   editorBox.addEventListener(
     "keydown",
     (e) => {
-      if (e.repeat) followCursor.setHeld(true);
+      const now = performance.now();
+      lastKeyLag = Math.max(0, now - e.timeStamp);
+      lastKeyAt = now;
+      perf.inputDelay.add(lastKeyLag);
     },
     { capture: true },
   );
-  editorBox.addEventListener(
-    "keyup",
-    () => {
-      followCursor.setHeld(false);
-    },
-    { capture: true },
-  );
-  window.addEventListener("blur", () => {
-    followCursor.setHeld(false);
-  });
 
   const runner = latestOnly(
     async () => {
       const token = freshness.runStarted();
-      const rb = decodeRenderBuffer(await interpret(new TextEncoder().encode(editor.text()), file.name));
-      return { rb, token };
+      const started = performance.now();
+      const bytes = await interpret(new TextEncoder().encode(editor.text()), file.name);
+      const rb = decodeRenderBuffer(bytes);
+      return { rb, token, interpretMs: performance.now() - started, bytes: bytes.byteLength };
     },
-    ({ rb, token }) => {
+    ({ rb, token, interpretMs, bytes }) => {
       current = rb;
       // This result shows the cursor's line and selection itself.
-      followCursor.cancel();
+      cancelAnimationFrame(followFrame);
+      followFrame = 0;
       lineIndex = buildLineIndex(rb.header.segmentCount, (i) => rb.segmentLine(i));
       freshness.resultShown(token);
       showFreshness();
       statsButton.disabled = false;
-      viewport.show(buildToolpath(rb), fitNext);
+      const building = performance.now();
+      const toolpath = buildToolpath(rb);
+      const showing = performance.now();
+      viewport.show(toolpath, fitNext);
+      lastRun = { interpretMs, buildMs: showing - building, showMs: performance.now() - showing, bytes };
       fitNext = false;
       allMarks = lineMarks(rb.diagnostics, editor.lineCount());
       showMarks();
@@ -520,14 +547,70 @@ async function main(app: HTMLElement): Promise<void> {
     } else if (key === "t") {
       e.preventDefault();
       openTransform();
+    } else if (key === "d" && e.shiftKey) {
+      e.preventDefault();
+      toggleDiagnostics();
     }
   });
-  editor.onCursorLine = () => {
-    followCursor.request();
+  /** The diagnostics panel (Ctrl+Shift+D, M5.2), and the app side's
+   *  facts, asked for once when it first opens. */
+  let closeDiagnostics: (() => void) | null = null;
+  let system: AppSystemInfo | null = null;
+  const gatherDiagnostics = (): DiagnosticsInfo => {
+    const graphics = viewport.graphicsInfo();
+    const rb = current;
+    return {
+      generated: new Date().toISOString(),
+      app: { version: system?.appVersion ?? null, uiBuild: typeof __UI_BUILD__ === "string" ? __UI_BUILD__ : "unknown" },
+      system,
+      browser: {
+        userAgent: navigator.userAgent,
+        devicePixelRatio: window.devicePixelRatio,
+        window: [window.innerWidth, window.innerHeight],
+        cpuThreads: navigator.hardwareConcurrency,
+      },
+      webgl: graphics.webgl,
+      program: rb
+        ? {
+            name: file.name,
+            lines: editor.lineCount(),
+            segments: rb.header.segmentCount,
+            vertices: rb.header.vertexCount,
+            bufferBytes: lastRun?.bytes ?? 0,
+            diagnostics: rb.header.diagCount,
+            machine: machineSelect.selectedOptions[0]?.textContent ?? "",
+            dialect: dialectSelect.selectedOptions[0]?.textContent ?? "",
+          }
+        : null,
+      lastRun,
+      gpu: graphics.gpu,
+      timings: [
+        { label: "Key press waiting (input delay)", summary: perf.inputDelay.summary() },
+        { label: "Follow cursor (marker, readout, highlight, status)", summary: perf.follow.summary() },
+        { label: "3D draw (JavaScript side)", summary: perf.render.summary() },
+        { label: "Frame interval (while this panel is open)", summary: perf.frame.summary() },
+      ],
+      heldBack: perf.heldBack,
+    };
   };
-  editor.onSelectedLines = () => {
-    followCursor.request();
+  const toggleDiagnostics = (): void => {
+    if (closeDiagnostics) {
+      closeDiagnostics();
+      return;
+    }
+    closeDiagnostics = showDiagnostics(gatherDiagnostics, perf, () => {
+      closeDiagnostics = null;
+    });
+    if (!system && inApp()) {
+      void systemInfo()
+        .then((info) => {
+          system = info;
+        })
+        .catch(() => undefined);
+    }
   };
+  editor.onCursorLine = followCursor;
+  editor.onSelectedLines = followCursor;
   viewport.onHover = (p) => {
     hovered = p && current ? preferArrivingMove(current, p) : null;
     showMarker();

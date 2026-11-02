@@ -5,6 +5,7 @@
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
+import type { SystemInfo } from "../diagnostics/report";
 import type { PaneLayout } from "../layout/panes";
 
 /** A dialect the user can choose. */
@@ -136,6 +137,16 @@ export async function interpret(program: Uint8Array, fileName: string): Promise<
  *  null. Given once. */
 export function startupFile(): Promise<string | null> {
   return invoke<string | null>("startup_file");
+}
+
+/** What the app side knows for the diagnostics panel (M5.2). */
+export interface AppSystemInfo extends SystemInfo {
+  readonly appVersion: string;
+}
+
+/** The app version, system and drawing environment (M5.2). */
+export function systemInfo(): Promise<AppSystemInfo> {
+  return invoke<AppSystemInfo>("system_info");
 }
 
 /** Reads the file at `path` and returns its raw bytes. */

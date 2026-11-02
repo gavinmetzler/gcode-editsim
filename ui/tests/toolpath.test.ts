@@ -10,7 +10,6 @@ import {
   LEGEND,
   PALETTE,
   buildToolpath,
-  highlightGeometry,
   cssColor,
   segmentColor,
   srgbToLinear,
@@ -101,24 +100,28 @@ describe("legend", () => {
   });
 });
 
-describe("highlightGeometry", () => {
-  it("joins each highlighted segment's own vertices and marks its events", () => {
-    // Rapid (0-1), spindle event (2), arc (5-7).
-    const g = highlightGeometry(tp, [0, 1, 3]);
-    expect(Array.from(g.pairs)).toEqual([0, 1, 5, 6, 6, 7]);
-    expect(Array.from(g.points)).toEqual(Array.from(rb.positions.subarray(6, 9)));
+describe("highlight data (M5.2)", () => {
+  // The view highlights a range of program lines with a shader, from data
+  // built once per run: every vertex's line, and the single-vertex
+  // segments (events) as points with their lines.
+  const lineOfSegment = (i: number): number => rb.segment(i).srcLine;
+
+  it("gives every vertex its segment's program line", () => {
+    expect(tp.vertexLine).toHaveLength(rb.header.vertexCount);
+    expect(Array.from(tp.vertexLine)).toEqual(Array.from(tp.vertexSegment, lineOfSegment));
   });
 
-  it("takes a typed array of segments and skips ones that do not exist", () => {
-    const g = highlightGeometry(tp, Uint32Array.from([2, 99]));
-    expect(Array.from(g.pairs)).toEqual([3, 4]);
-    expect(g.points).toHaveLength(0);
+  it("lists the single-vertex segments as points, with their lines", () => {
+    // Spindle event (vertex 2, segment 1) and program end (vertex 8, segment 4).
+    expect(Array.from(tp.singlePoints.positions)).toEqual(
+      close([...rb.positions.subarray(6, 9), ...rb.positions.subarray(24, 27)]),
+    );
+    expect(Array.from(tp.singlePoints.lines)).toEqual([lineOfSegment(1), lineOfSegment(4)]);
   });
 
-  it("is empty for no segments", () => {
-    const g = highlightGeometry(tp, []);
-    expect(g.pairs).toHaveLength(0);
-    expect(g.points).toHaveLength(0);
+  it("keeps line numbers exact as 32-bit floats up to 16 million lines", () => {
+    expect(Math.fround(16_777_216)).toBe(16_777_216);
+    expect(Math.fround(16_777_215)).toBe(16_777_215);
   });
 });
 

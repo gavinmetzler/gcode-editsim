@@ -127,6 +127,17 @@ fn dialects_are_listed() {
 }
 
 #[test]
+fn system_info_reports_the_app_version_and_the_drawing_environment() {
+    let dir = TempDir::new("system-info");
+    let w = window(dir.0.clone());
+    let info = json(&w, "system_info", serde_json::json!({})).expect("ok");
+    assert_eq!(info["appVersion"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(info["os"], std::env::consts::OS);
+    assert!(info["env"].is_array(), "{info}");
+    assert!(info.get("flatpakRuntime").is_some(), "{info}");
+}
+
+#[test]
 fn interpret_returns_the_render_buffer_as_raw_bytes() {
     let dir = TempDir::new("interpret");
     let w = window(dir.0.clone());

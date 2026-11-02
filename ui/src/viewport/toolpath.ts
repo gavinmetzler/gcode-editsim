@@ -111,6 +111,12 @@ export interface Toolpath {
   readonly eventSegment: Uint32Array;
   /** The segment each vertex belongs to. */
   readonly vertexSegment: Uint32Array;
+  /** The program line of each vertex's segment, for highlighting lines in
+   *  a shader (M5.2). Exact as 32-bit floats up to 16,777,216 lines. */
+  readonly vertexLine: Float32Array;
+  /** The single-vertex segments (events), highlighted as dots: their
+   *  positions (x, y, z relative to `origin`) and program lines. */
+  readonly singlePoints: { readonly positions: Float32Array; readonly lines: Float32Array };
   /** Where vertex coordinates are measured from (machine coordinates, mm). */
   readonly origin: readonly [number, number, number];
   /** The vertices of segment `index`, or null if there is no such segment. */
@@ -130,6 +136,8 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
   const { vertexCount, segmentCount } = rb.header;
   const colors = new Float32Array(vertexCount * 3);
   const vertexSegment = new Uint32Array(vertexCount);
+  const vertexLine = new Float32Array(vertexCount);
+  const singles: number[] = [];
   const feed: number[] = [];
   const rapid: number[] = [];
   const events: number[] = [];
@@ -142,8 +150,10 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     const end = seg.firstVertex + seg.vertexCount;
     for (let v = seg.firstVertex; v < end; v += 1) {
       vertexSegment[v] = s;
+      vertexLine[v] = seg.srcLine;
       colors.set(color, v * 3);
     }
+    if (seg.vertexCount === 1) singles.push(s);
     if (!MOTION_KINDS.has(seg.kind)) {
       if (seg.vertexCount > 0) events.push(s);
       continue;
@@ -171,6 +181,14 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     eventColors.set(linear(segmentColor(seg.kind, seg.flags)), i * 3);
   });
 
+  const singlePositions = new Float32Array(singles.length * 3);
+  const singleLines = new Float32Array(singles.length);
+  singles.forEach((s, i) => {
+    const seg = rb.segment(s);
+    singlePositions.set(rb.positions.subarray(seg.firstVertex * 3, seg.firstVertex * 3 + 3), i * 3);
+    singleLines[i] = seg.srcLine;
+  });
+
   const hasBounds = min.every((m) => Number.isFinite(m));
   return {
     positions: rb.positions,
@@ -181,6 +199,8 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     eventColors,
     eventSegment: Uint32Array.from(events),
     vertexSegment,
+    vertexLine,
+    singlePoints: { positions: singlePositions, lines: singleLines },
     origin: rb.header.origin,
     endpoints: moveEndpoints(rb),
     segmentVertices: (index: number) => {
@@ -195,50 +215,4 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
         }
       : null,
   };
-}
-
-/** Index pairs and event points to draw a set of segments on top. */
-export interface HighlightGeometry {
-  /** Vertex index pairs (into the toolpath's positions) for line segments. */
-  readonly pairs: Uint32Array;
-  /** Positions (x, y, z) of the events among them, drawn as dots. */
-  readonly points: Float32Array;
-}
-
-/**
- * What to draw to highlight `segments` (indices; ones the toolpath does
- * not have are skipped): each segment's own vertices joined, and a dot for
- * each event. Two passes over typed arrays, so a highlight as large as
- * the program needs no temporary lists.
- */
-export function highlightGeometry(
-  toolpath: Pick<Toolpath, "positions" | "segmentVertices">,
-  segments: ArrayLike<number>,
-): HighlightGeometry {
-  let pairCount = 0;
-  let pointCount = 0;
-  for (let i = 0; i < segments.length; i += 1) {
-    const range = toolpath.segmentVertices(segments[i] ?? -1);
-    if (!range) continue;
-    if (range.count === 1) pointCount += 1;
-    else pairCount += range.count - 1;
-  }
-  const pairs = new Uint32Array(pairCount * 2);
-  const points = new Float32Array(pointCount * 3);
-  let p = 0;
-  let q = 0;
-  for (let i = 0; i < segments.length; i += 1) {
-    const range = toolpath.segmentVertices(segments[i] ?? -1);
-    if (!range) continue;
-    if (range.count === 1) {
-      points.set(toolpath.positions.subarray(range.first * 3, range.first * 3 + 3), q);
-      q += 3;
-    }
-    for (let v = range.first; v + 1 < range.first + range.count; v += 1) {
-      pairs[p] = v;
-      pairs[p + 1] = v + 1;
-      p += 2;
-    }
-  }
-  return { pairs, points };
 }

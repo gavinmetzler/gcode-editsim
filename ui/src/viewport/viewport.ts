@@ -18,6 +18,7 @@ import {
   OrthographicCamera,
   Points,
   PointsMaterial,
+  REVISION,
   Scene,
   WebGLRenderer,
 } from "three";
@@ -28,7 +29,11 @@ import { MARKER, markerShape } from "./marker";
 import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
-import { PALETTE, highlightGeometry, srgbToLinear, type Toolpath } from "./toolpath";
+import type { DiagnosticsInfo } from "../diagnostics/report";
+import { LINE_ATTRIBUTE, LineHighlight, type LineRange } from "./highlight";
+
+type GraphicsInfo = { webgl: NonNullable<DiagnosticsInfo["webgl"]>; gpu: NonNullable<DiagnosticsInfo["gpu"]> };
+import { PALETTE, srgbToLinear, type Toolpath } from "./toolpath";
 import { VIEWS, fitOrtho, orbitAbout, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
 
@@ -56,7 +61,8 @@ export class Viewport {
   /** GPU resources of what is shown, released by clear(). */
   private disposables: { dispose(): void }[] = [];
   private axes: AxesHelper | null = null;
-  private highlighted: { objects: (LineSegments | Points)[]; resources: { dispose(): void }[] } | null = null;
+  /** The selected lines in yellow, built once per toolpath (M5.2). */
+  private highlighted: LineHighlight | null = null;
   private view: ViewName = "iso";
   private readonly resizeObserver: ResizeObserver;
   private frame = 0;
@@ -222,10 +228,13 @@ export class Viewport {
 
     const position = new BufferAttribute(toolpath.positions, 3);
     const color = new BufferAttribute(toolpath.colors, 3);
+    // Each vertex's program line, read only by the highlight's shader.
+    const lineNo = new BufferAttribute(toolpath.vertexLine, 1);
     const lines = (index: Uint32Array): BufferGeometry => {
       const g = new BufferGeometry();
       g.setAttribute("position", position);
       g.setAttribute("color", color);
+      g.setAttribute(LINE_ATTRIBUTE, lineNo);
       g.setIndex(new BufferAttribute(index, 1));
       return g;
     };
@@ -241,6 +250,14 @@ export class Viewport {
     markerGeometry.setAttribute("color", new BufferAttribute(toolpath.eventColors, 3));
     this.markers = new Points(markerGeometry, markerMaterial);
     this.group.add(this.feed, this.rapid, this.markers);
+    const [hr, hg, hb] = PALETTE.selected.map(srgbToLinear);
+    this.highlighted = new LineHighlight(
+      [this.feed.geometry, this.rapid.geometry],
+      toolpath.singlePoints,
+      new Color().setRGB(hr ?? 1, hg ?? 1, hb ?? 0),
+      11 * this.renderer.getPixelRatio(),
+    );
+    this.group.add(...this.highlighted.objects);
     this.disposables.push(
       this.feed.geometry,
       feedMaterial,
@@ -262,40 +279,19 @@ export class Viewport {
     else this.requestRender();
   }
 
-  /** Highlights `segments` (indices) in bright yellow on top of the
-   *  toolpath, replacing any earlier highlight; an empty list clears it.
-   *  Takes a typed array, so a highlight as large as the program is not
-   *  copied into a list first. */
-  highlight(segments: ArrayLike<number>): void {
-    this.clearHighlight();
-    const toolpath = this.toolpath;
-    if (!toolpath || segments.length === 0) {
-      this.requestRender();
-      return;
-    }
-    const { pairs, points } = highlightGeometry(toolpath, segments);
-    const [r, g, b] = PALETTE.selected.map(srgbToLinear);
-    const color = new Color().setRGB(r ?? 1, g ?? 1, b ?? 0);
-    const lineGeometry = new BufferGeometry();
-    lineGeometry.setAttribute("position", new BufferAttribute(toolpath.positions, 3));
-    lineGeometry.setIndex(new BufferAttribute(pairs, 1));
-    const lineMaterial = new LineBasicMaterial({ color, depthTest: false });
-    const pointGeometry = new BufferGeometry();
-    pointGeometry.setAttribute("position", new BufferAttribute(points, 3));
-    const pointMaterial = new PointsMaterial({ color, size: 11, sizeAttenuation: false, depthTest: false });
-    const lines = new LineSegments(lineGeometry, lineMaterial);
-    const marks = new Points(pointGeometry, pointMaterial);
-    lines.renderOrder = 10;
-    marks.renderOrder = 10;
-    this.group.add(lines, marks);
-    this.highlighted = { objects: [lines, marks], resources: [lineGeometry, lineMaterial, pointGeometry, pointMaterial] };
+  /** Highlights the program lines `range.first` to `range.last` in bright
+   *  yellow on top of the toolpath (every run of each line), or nothing
+   *  for null. Costs the same for one line or the whole program: the
+   *  shader picks the lines from data already on the graphics card. */
+  highlightLines(range: LineRange | null): void {
+    this.highlighted?.set(range);
     this.requestRender();
   }
 
   private clearHighlight(): void {
     if (!this.highlighted) return;
     for (const o of this.highlighted.objects) this.group.remove(o);
-    for (const r of this.highlighted.resources) r.dispose();
+    this.highlighted.dispose();
     this.highlighted = null;
   }
 
@@ -556,11 +552,49 @@ export class Viewport {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Called after each draw with the time it took in JavaScript (ms). */
+  onRender: (ms: number) => void = () => undefined;
+
+  /** The graphics setup and the last frame's counts, for the diagnostics
+   *  panel (M5.2). */
+  graphicsInfo(): { webgl: GraphicsInfo["webgl"]; gpu: GraphicsInfo["gpu"] } {
+    const gl = this.renderer.getContext();
+    const debug = gl.getExtension("WEBGL_debug_renderer_info");
+    const text = (p: number): string => {
+      const v: unknown = gl.getParameter(p);
+      return typeof v === "string" ? v : String(v);
+    };
+    const canvas = this.renderer.domElement;
+    const info = this.renderer.info;
+    return {
+      webgl: {
+        version: text(gl.VERSION),
+        shadingLanguage: text(gl.SHADING_LANGUAGE_VERSION),
+        renderer: debug ? text(debug.UNMASKED_RENDERER_WEBGL) : text(gl.RENDERER),
+        vendor: debug ? text(debug.UNMASKED_VENDOR_WEBGL) : text(gl.VENDOR),
+        maxTextureSize: Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)),
+        antialias: gl.getContextAttributes()?.antialias ?? false,
+        canvas: [canvas.clientWidth, canvas.clientHeight],
+        drawingBuffer: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+        threeRevision: REVISION,
+      },
+      gpu: {
+        geometries: info.memory.geometries,
+        textures: info.memory.textures,
+        calls: info.render.calls,
+        lines: info.render.lines,
+        points: info.render.points,
+      },
+    };
+  }
+
   private requestRender(): void {
     if (this.frame !== 0) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = 0;
+      const started = performance.now();
       this.renderer.render(this.scene, this.camera);
+      this.onRender(performance.now() - started);
       // The camera may have moved: put the marker where the point now is.
       this.drawOverlay();
     });
