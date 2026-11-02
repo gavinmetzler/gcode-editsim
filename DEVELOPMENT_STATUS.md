@@ -545,6 +545,16 @@ errors; every warning or note names a real gap. Run it with
   canvas in software makes every frame slow here whatever the code does,
   so also run with `.viewport canvas { display: none }` to see the
   JavaScript and editor cost alone.
+- **Holding a key in the real app** (M5.2): `xdotool key --repeat` sends
+  separate presses and releases, not a held key (the page sees no repeat
+  flag). Use `xdotool keydown Next; sleep 3; xdotool keyup Next` (with
+  `keydown Shift_L` around it for Shift): the X server repeats the key as
+  a keyboard does. Time what the user sees: screenshot the gutter and
+  status bar (`import -window root -crop …`) until they stop changing. CPU
+  use is no guide here: the idle app uses about 100% while the editor has
+  focus (software rendering), and runs vary two-fold, so repeat each
+  measurement three or four times. Chromium did not show the Shift+Page
+  Down problem at all.
 - **Software rendering is slow here:** drawing a million segments takes
   seconds per frame in the container but is smooth on the owner's
   desktop. Judge JavaScript time with the CDP profiler, and rendering on

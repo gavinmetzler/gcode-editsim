@@ -411,12 +411,35 @@ async function main(app: HTMLElement): Promise<void> {
   };
   /** Follows the editor's cursor and selection in the view, the marker,
    *  the readout and the status: at once after a pause, about twice a
-   *  second while the cursor keeps moving (a held Page Up/Down, a drag),
-   *  and once more just after it stops (M5.2). */
+   *  second while the cursor keeps moving (a drag), and once more just
+   *  after it stops (M5.2). While a key is held (Page Up/Down, with or
+   *  without Shift), only the marker and readout follow, twice a second:
+   *  the selection highlight redraws the whole toolpath, so it waits until
+   *  the key is released. */
   const followCursor = new Throttle(() => {
     showLine(editor.cursorLineNumber());
+    if (followCursor.held) return;
     selection = editor.selectedLines();
     showSelection();
+  });
+  // A held key repeats: the keyboard's own repeat flag says so, and its
+  // release ends it (captured before the editor moves the cursor).
+  editorBox.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.repeat) followCursor.setHeld(true);
+    },
+    { capture: true },
+  );
+  editorBox.addEventListener(
+    "keyup",
+    () => {
+      followCursor.setHeld(false);
+    },
+    { capture: true },
+  );
+  window.addEventListener("blur", () => {
+    followCursor.setHeld(false);
   });
 
   const runner = latestOnly(
