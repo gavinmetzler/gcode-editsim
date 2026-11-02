@@ -44,6 +44,7 @@ import {
 import { DiagnosticsPanel } from "./panels/panel";
 import { showMachinesDialog } from "./machines-dialog";
 import { startChoice } from "./remembered";
+import { Throttle } from "./throttle";
 import { showTransformDialog } from "./transform/dialog";
 import { decodeEdits, editorChanges } from "./transform/edits";
 import { buildRequest } from "./transform/request";
@@ -408,15 +409,15 @@ async function main(app: HTMLElement): Promise<void> {
     const n = segments.length;
     setStatus(n === 0 ? `${lines}: no toolpath` : `${lines}: ${String(n)} segment${n === 1 ? "" : "s"}`);
   };
-  /** Redraws the selection at most once a frame while it is being dragged. */
-  let selectionFrame = 0;
-  const scheduleSelection = (): void => {
-    if (selectionFrame !== 0) return;
-    selectionFrame = requestAnimationFrame(() => {
-      selectionFrame = 0;
-      showSelection();
-    });
-  };
+  /** Follows the editor's cursor and selection in the view, the marker,
+   *  the readout and the status: at once after a pause, about twice a
+   *  second while the cursor keeps moving (a held Page Up/Down, a drag),
+   *  and once more just after it stops (M5.2). */
+  const followCursor = new Throttle(() => {
+    showLine(editor.cursorLineNumber());
+    selection = editor.selectedLines();
+    showSelection();
+  });
 
   const runner = latestOnly(
     async () => {
@@ -426,6 +427,8 @@ async function main(app: HTMLElement): Promise<void> {
     },
     ({ rb, token }) => {
       current = rb;
+      // This result shows the cursor's line and selection itself.
+      followCursor.cancel();
       lineIndex = buildLineIndex(rb.header.segmentCount, (i) => rb.segmentLine(i));
       freshness.resultShown(token);
       showFreshness();
@@ -496,12 +499,11 @@ async function main(app: HTMLElement): Promise<void> {
       openTransform();
     }
   });
-  editor.onCursorLine = (line) => {
-    showLine(line);
+  editor.onCursorLine = () => {
+    followCursor.request();
   };
-  editor.onSelectedLines = (range) => {
-    selection = range;
-    scheduleSelection();
+  editor.onSelectedLines = () => {
+    followCursor.request();
   };
   viewport.onHover = (p) => {
     hovered = p && current ? preferArrivingMove(current, p) : null;
