@@ -634,6 +634,35 @@ fn startup_file(state: State<'_, AppState>) -> Option<String> {
     }
 }
 
+/// What the app side knows for the diagnostics panel (M5.2): its version,
+/// the build target, the Flatpak runtime, the graphics cards and NVIDIA
+/// driver, and the environment variables that change how WebKitGTK draws.
+/// Nothing personal.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SystemReport {
+    app_version: &'static str,
+    #[serde(flatten)]
+    system: app_backend::system::SystemInfo,
+}
+
+/// See [`SystemReport`].
+#[tauri::command]
+fn system_info() -> SystemReport {
+    use app_backend::system::{graphics_cards, system_info, SystemFacts};
+    let flatpak = std::fs::read_to_string("/.flatpak-info").ok();
+    let nvidia = std::fs::read_to_string("/proc/driver/nvidia/version").ok();
+    let facts = SystemFacts {
+        flatpak_info: flatpak.as_deref(),
+        gpus: graphics_cards(Path::new("/sys/class/drm")),
+        nvidia_proc: nvidia.as_deref(),
+    };
+    SystemReport {
+        app_version: env!("CARGO_PKG_VERSION"),
+        system: system_info(std::env::vars_os(), facts),
+    }
+}
+
 /// Reads a program file and returns its raw bytes.
 #[tauri::command]
 async fn load_file(path: String) -> Result<Response, String> {
@@ -675,6 +704,7 @@ pub fn with_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
         startup_file,
         load_file,
         save_file,
+        system_info,
     ])
 }
 

@@ -14,11 +14,14 @@
 //!   edit list out.
 //! - [`settings`]: what the app remembers between sessions (the machine
 //!   and dialect chosen last), in a small JSON file.
+//! - [`system`]: what the diagnostics panel learns from the app side
+//!   (M5.2): the Flatpak runtime and the drawing-related environment.
 
 #![forbid(unsafe_code)]
 
 pub mod files;
 pub mod settings;
+pub mod system;
 pub mod transform;
 
 use dialect_api::Dialect;
