@@ -97,7 +97,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 8. Scale (one factor for X and Y; Z never scaled) *(done)*
 9. Transform dialog (app and UI) *(done)*
 9a. Transformations for Osai programs *(done; added by the owner)*
-10. A better icon
+10. A better icon *(done)*
 11. `.nc` files on the Linux desktop (Flatpak)
 12. Wrap-up
 
