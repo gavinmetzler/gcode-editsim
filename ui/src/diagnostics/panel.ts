@@ -67,7 +67,7 @@ export function showDiagnostics(gather: () => DiagnosticsInfo, perf: Perf, onClo
     });
   });
   reset.addEventListener("click", () => {
-    for (const s of [perf.inputDelay, perf.follow, perf.render, perf.frame]) s.reset();
+    for (const s of [perf.inputDelay, perf.keyRepeat, perf.keyHandling, perf.follow, perf.render, perf.frame]) s.reset();
     perf.heldBack = 0;
     lastFrame = 0;
     refresh();

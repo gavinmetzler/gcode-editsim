@@ -1,9 +1,11 @@
 // Whether the app is falling behind the keyboard (M5.2). Each key press
 // says how long it waited before the page could handle it. When that is
-// more than a tenth of a second, something (usually drawing frames) is
-// slower than the keys repeat, and redrawing the 3D view only adds to the
-// queue; the view then waits until the late key presses stop and updates
-// once. On a machine that keeps up, the view follows every frame.
+// more than a tenth of a second and the 3D draws are expensive (software
+// rendering), redrawing the view only adds to the queue, so the highlight
+// waits until the late key presses stop and updates once. When the draws
+// are cheap, the delay is elsewhere (on the owner's machine, before the
+// page: keys 20 s late with 1-2 ms draws), and holding the view back would
+// only hide the selection, so it follows every frame.
 
 /** The limits, in milliseconds. */
 export const CATCH_UP = {
@@ -12,10 +14,67 @@ export const CATCH_UP = {
   /** No late key press for this long means it has caught up. Longer than
    *  the time between two repeats of a held key. */
   quiet: 150,
+  /** A 3D draw taking longer than this (half a 60 Hz frame) is expensive. */
+  drawLimit: 8,
 } as const;
 
-/** True when the last key press waited `lastLag` ms and was handled
- *  `sinceLastKey` ms ago, and that means the app is still behind. */
-export function behind(lastLag: number, sinceLastKey: number, limits = CATCH_UP): boolean {
-  return lastLag > limits.lagLimit && sinceLastKey < limits.quiet;
+/** True when the highlight should wait: the last key press waited
+ *  `lastLag` ms, was handled `sinceLastKey` ms ago, and the last 3D draw
+ *  took `drawMs`. */
+export function behind(lastLag: number, sinceLastKey: number, drawMs: number, limits = CATCH_UP): boolean {
+  return lastLag > limits.lagLimit && sinceLastKey < limits.quiet && drawMs > limits.drawLimit;
+}
+
+/** One held key, for the diagnostics panel. */
+export interface HoldSummary {
+  /** Key presses, the first and its repeats. */
+  readonly presses: number;
+  /** From the first to the last press, by the keyboard's timestamps. */
+  readonly keyboardMs: number;
+  /** From handling the first press to handling the last, in the page. */
+  readonly handledMs: number;
+}
+
+/** Follows key presses to tell how fast the keyboard repeats and whether
+ *  the page handles them as fast as they are sent. */
+export class KeyHold {
+  private presses = 0;
+  private firstStamp = 0;
+  private lastStamp = 0;
+  private firstHandled = 0;
+  private lastHandled = 0;
+  /** The last finished hold of more than one press. */
+  last: HoldSummary | null = null;
+
+  /** A key press with the keyboard's timestamp `stamp`, handled at `now`.
+   *  Returns the time since the previous press by the keyboard's clock for
+   *  the second and later repeats, else null. */
+  keyDown(stamp: number, now: number, repeat: boolean): number | null {
+    if (!repeat || this.presses === 0) {
+      this.presses = 1;
+      this.firstStamp = stamp;
+      this.lastStamp = stamp;
+      this.firstHandled = now;
+      this.lastHandled = now;
+      return null;
+    }
+    // The first repeat follows the keyboard's repeat delay, not its rate.
+    const interval = this.presses >= 2 ? stamp - this.lastStamp : null;
+    this.presses += 1;
+    this.lastStamp = stamp;
+    this.lastHandled = now;
+    return interval;
+  }
+
+  /** The key was released. */
+  keyUp(): void {
+    if (this.presses > 1) {
+      this.last = {
+        presses: this.presses,
+        keyboardMs: this.lastStamp - this.firstStamp,
+        handledMs: this.lastHandled - this.firstHandled,
+      };
+    }
+    this.presses = 0;
+  }
 }

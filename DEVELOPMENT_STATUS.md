@@ -563,6 +563,18 @@ errors; every warning or note names a real gap. Run it with
   "Apple GPU", so the real card comes from the app side
   (`/sys/class/drm`). Open it in the real app here too: it works under
   Xvfb, and `xclip -o -selection clipboard` reads what Copy put there.
+- **What the owner's reports showed (M5.2, 2026-11-02):** KDE Wayland, an
+  RTX 4090 beside an Intel iGPU, device pixel ratio 2, Flatpak runtime
+  GNOME 51, NVIDIA 580 with its Flatpak GL extension. Holding Page Down,
+  key presses reached the page 4 to 26 s late while following the
+  cursor took 0.3 ms, a 3D draw 1 to 3 ms and frames came every 16 to
+  23 ms; hiding the 3D view or shrinking the window did not help. So the
+  queue is before the page (WebKit's UI process sends key events one at
+  a time and waits for each to be handled). `WEBKIT_DISABLE_DMABUF_RENDERER=0`
+  still closes the window (Wayland error 71). `GDK_BACKEND=x11` alone fails
+  ("Failed to initialize GTK"), because the manifest only allows X11 as a
+  fallback: test X11 with `flatpak run --nosocket=wayland --socket=x11
+  --env=GDK_BACKEND=x11 com.ncsoftbyai.gcodeeditsim`.
 - **Check a drawing change pixel by pixel:** screenshot the view for the
   same selections with the old build and the new one, and compare them
   (`compare -metric AE old.png new.png null:` gives the number of pixels

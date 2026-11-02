@@ -47,7 +47,7 @@ import { DiagnosticsPanel } from "./panels/panel";
 import { showDiagnostics } from "./diagnostics/panel";
 import type { DiagnosticsInfo } from "./diagnostics/report";
 import { newPerf } from "./diagnostics/stats";
-import { behind } from "./catch-up";
+import { KeyHold, behind } from "./catch-up";
 import { showMachinesDialog } from "./machines-dialog";
 import { startChoice } from "./remembered";
 import { showTransformDialog } from "./transform/dialog";
@@ -316,7 +316,10 @@ async function main(app: HTMLElement): Promise<void> {
   let current: RenderBuffer | null = null;
   /** Timings for the diagnostics panel (M5.2). */
   const perf = newPerf();
+  /** The last 3D draw's time, for the catch-up rule. */
+  let lastDrawMs = 0;
   viewport.onRender = (ms) => {
+    lastDrawMs = ms;
     perf.render.add(ms);
   };
   /** How long the last run's steps took, and its render buffer's size. */
@@ -427,7 +430,7 @@ async function main(app: HTMLElement): Promise<void> {
    *  the readout and the status, once per frame however fast the cursor
    *  moves (a held Page Up/Down, a drag). Each update is cheap: the
    *  highlight is two numbers for a shader (M5.2). But when key presses
-   *  arrive late (the app is behind, usually drawing frames), the
+   *  arrive late and the 3D draws are expensive (software rendering), the
    *  highlight and its redraw wait until they stop, so the editor catches
    *  up first; the marker and readout still follow. */
   let followFrame = 0;
@@ -437,7 +440,7 @@ async function main(app: HTMLElement): Promise<void> {
     followFrame = 0;
     const started = performance.now();
     showLine(editor.cursorLineNumber());
-    if (behind(lastKeyLag, started - lastKeyAt)) {
+    if (behind(lastKeyLag, started - lastKeyAt, lastDrawMs)) {
       perf.heldBack += 1;
       followFrame = requestAnimationFrame(follow);
       return;
@@ -449,15 +452,33 @@ async function main(app: HTMLElement): Promise<void> {
   const followCursor = (): void => {
     if (followFrame === 0) followFrame = requestAnimationFrame(follow);
   };
-  // How long key presses wait before the page handles them: the sign of
-  // the app falling behind (also shown in the diagnostics panel).
+  // Key timings for the catch-up rule and the diagnostics panel: how long
+  // each press waited before the page got it, how fast the keyboard
+  // repeats (its own timestamps), and how long the page spends on a press
+  // (from this capture listener, before the editor, to the bubbling one,
+  // after it).
+  const keyHold = new KeyHold();
+  let keyStart = 0;
   editorBox.addEventListener(
     "keydown",
     (e) => {
       const now = performance.now();
+      keyStart = now;
       lastKeyLag = Math.max(0, now - e.timeStamp);
       lastKeyAt = now;
       perf.inputDelay.add(lastKeyLag);
+      const interval = keyHold.keyDown(e.timeStamp, now, e.repeat);
+      if (interval !== null) perf.keyRepeat.add(interval);
+    },
+    { capture: true },
+  );
+  editorBox.addEventListener("keydown", () => {
+    perf.keyHandling.add(performance.now() - keyStart);
+  });
+  editorBox.addEventListener(
+    "keyup",
+    () => {
+      keyHold.keyUp();
     },
     { capture: true },
   );
@@ -586,11 +607,14 @@ async function main(app: HTMLElement): Promise<void> {
       gpu: graphics.gpu,
       timings: [
         { label: "Key press waiting (input delay)", summary: perf.inputDelay.summary() },
+        { label: "Keyboard repeat interval (keyboard's timestamps)", summary: perf.keyRepeat.summary() },
+        { label: "Page handling one key press (editor)", summary: perf.keyHandling.summary() },
         { label: "Follow cursor (marker, readout, highlight, status)", summary: perf.follow.summary() },
         { label: "3D draw (JavaScript side)", summary: perf.render.summary() },
         { label: "Frame interval (while this panel is open)", summary: perf.frame.summary() },
       ],
       heldBack: perf.heldBack,
+      lastHold: keyHold.last,
     };
   };
   const toggleDiagnostics = (): void => {

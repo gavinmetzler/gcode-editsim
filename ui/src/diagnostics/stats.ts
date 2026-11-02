@@ -63,6 +63,10 @@ export class RollingStats {
 export interface Perf {
   /** How long key presses waited before the page handled them. */
   readonly inputDelay: RollingStats;
+  /** Time between a held key's repeats, by the keyboard's timestamps. */
+  readonly keyRepeat: RollingStats;
+  /** Time the page (the editor) spends handling one key press. */
+  readonly keyHandling: RollingStats;
   /** Following the cursor: marker, readout, highlight and status. */
   readonly follow: RollingStats;
   /** One 3D draw, as far as JavaScript sees it (the GPU may still be busy). */
@@ -77,6 +81,8 @@ export interface Perf {
 export function newPerf(): Perf {
   return {
     inputDelay: new RollingStats(),
+    keyRepeat: new RollingStats(),
+    keyHandling: new RollingStats(),
     follow: new RollingStats(),
     render: new RollingStats(),
     frame: new RollingStats(),

@@ -67,6 +67,12 @@ export interface DiagnosticsInfo {
   readonly timings: readonly { readonly label: string; readonly summary: Summary | null }[];
   /** Frames in which the highlight waited for the editor to catch up. */
   readonly heldBack: number;
+  /** The last key held down, or null before the first. */
+  readonly lastHold: {
+    readonly presses: number;
+    readonly keyboardMs: number;
+    readonly handledMs: number;
+  } | null;
 }
 
 const count = (n: number): string => Math.round(n).toLocaleString("en-US");
@@ -136,5 +142,11 @@ export function formatReport(d: DiagnosticsInfo): string {
   out.push("Timings:");
   for (const t of d.timings) out.push(timing(t.label, t.summary));
   out.push(`Highlight held back while the editor caught up: ${count(d.heldBack)} frames`);
+  const h = d.lastHold;
+  out.push(
+    h
+      ? `Last held key: ${count(h.presses)} presses, sent by the keyboard over ${(h.keyboardMs / 1000).toFixed(1)} s, handled by the page over ${(h.handledMs / 1000).toFixed(1)} s`
+      : "Last held key: none yet",
+  );
   return out.join("\n");
 }
