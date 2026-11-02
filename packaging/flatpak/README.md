@@ -99,5 +99,19 @@ and the setting that fixes it.
 | `com.ncsoftbyai.gcodeeditsim.yml` | Flatpak manifest |
 | `com.ncsoftbyai.gcodeeditsim.desktop` | Desktop entry |
 | `com.ncsoftbyai.gcodeeditsim.metainfo.xml` | AppStream metadata (description, licence, releases) |
-| `../icons/com.ncsoftbyai.gcodeeditsim.svg` | App icon (**placeholder**) |
+| `../icons/com.ncsoftbyai.gcodeeditsim.svg` | App icon (M4.10): an editor page beside a backplot |
+
+The app's PNG icons (`app/shell/icons/`, embedded by Tauri as the window
+icon) are rendered from that SVG. After changing it, regenerate them from
+the repository root with `rsvg-convert` (Debian/Ubuntu package
+`librsvg2-bin`):
+
+```bash
+for s in 32 128 256 512; do
+  case $s in 32) f=32x32.png;; 128) f=128x128.png;; 256) f=128x128@2x.png;; 512) f=icon.png;; esac
+  rsvg-convert -w $s -h $s packaging/icons/com.ncsoftbyai.gcodeeditsim.svg -o app/shell/icons/$f
+done
+```
+
+A test in `app/shell/tests/app_id.rs` checks the four sizes.
 | `build.sh` | Build script |

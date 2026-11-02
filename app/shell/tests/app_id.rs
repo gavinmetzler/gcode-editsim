@@ -40,3 +40,52 @@ fn the_flatpak_files_are_named_for_the_identifier() {
         "{manifest}"
     );
 }
+
+/// Width and height of a PNG file, from its header.
+fn png_size(path: &std::path::Path) -> (u32, u32) {
+    let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    assert_eq!(
+        &bytes[..8],
+        b"\x89PNG\r\n\x1a\n",
+        "{} is a PNG",
+        path.display()
+    );
+    let be =
+        |at: usize| u32::from_be_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]);
+    (be(16), be(20))
+}
+
+#[test]
+fn the_app_icons_exist_in_the_sizes_tauri_and_desktops_use() {
+    // M4.10: the icon is drawn once (packaging/icons/<id>.svg) and the PNGs
+    // Tauri embeds (the window icon) are rendered from it.
+    let conf: serde_json::Value =
+        serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json");
+    let icons: Vec<&str> = conf["bundle"]["icon"]
+        .as_array()
+        .expect("bundle.icon")
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect();
+    let shell = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut sizes = Vec::new();
+    for icon in &icons {
+        let (w, h) = png_size(&shell.join(icon));
+        assert_eq!(w, h, "{icon} is square");
+        sizes.push(w);
+    }
+    sizes.sort_unstable();
+    assert_eq!(sizes, vec![32, 128, 256, 512], "{icons:?}");
+
+    let id = identifier();
+    let svg = std::fs::read_to_string(shell.join(format!("../../packaging/icons/{id}.svg")))
+        .expect("svg");
+    assert!(
+        !svg.to_ascii_lowercase().contains("placeholder"),
+        "the real icon, not the placeholder"
+    );
+    assert!(
+        svg.contains("viewBox=\"0 0 128 128\""),
+        "drawn on a 128-unit grid"
+    );
+}

@@ -545,7 +545,7 @@ Colours are given in sRGB and converted to linear light for the renderer. Positi
 
 - **Linux:** a single `.flatpak` file that users download and install (`packaging/flatpak/`; built offline from vendored crates on the GNOME runtime). Flathub is not planned. CI builds it when the app, UI, core or packaging change (and on every push to `main`) and keeps it as a download for 30 days. The app sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`, which avoids a WebKit protocol error under Wayland on NVIDIA.
 - **Windows and macOS:** not packaged yet; the app builds from source with `cargo run` in `app/shell`.
-- The app id is `com.ncsoftbyai.gcodeeditsim`; the icon (`packaging/icons/`) is a placeholder. On Linux the app gives its windows that id (GTK's program name) before any opens, so desktops match a window to `com.ncsoftbyai.gcodeeditsim.desktop` and show its icon; a test keeps the identifier, desktop file, icon and Flatpak manifest in step.
+- The app id is `com.ncsoftbyai.gcodeeditsim`; the icon (M4.10, chosen by the owner: an editor page beside a backplot, in the app's toolpath colours) is drawn once as `packaging/icons/<id>.svg`, and the PNGs Tauri embeds (`app/shell/icons/`, 32 to 512 px) are rendered from it. On Linux the app gives its windows that id (GTK's program name) before any opens, so desktops match a window to `com.ncsoftbyai.gcodeeditsim.desktop` and show its icon; a test keeps the identifier, desktop file, icon and Flatpak manifest in step.
 
 ## 9. Machine layer (*provisional*)
 

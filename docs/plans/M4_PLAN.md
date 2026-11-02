@@ -301,7 +301,7 @@ DEVELOPMENT_STATUS.md point to it.
   selection inside a subprogram was adjusted, shifting every call. Now
   refused.
 
-### M4.10: A better icon
+### M4.10: A better icon *(done: design B, an editor page beside a backplot, chosen 2026-11-02)*
 - The current icon is a placeholder. A new one as SVG (with the PNG
   sizes Tauri and the desktop need), drawn for clarity at 16–48 px.
 - The agent proposes two or three designs as images; the owner picks
@@ -358,3 +358,10 @@ DEVELOPMENT_STATUS.md point to it.
    selection shown bright yellow in the 3D view
    (M4.3), a better icon (M4.10), and `.nc` files showing the icon and
    opening in the app on the Linux desktop (M4.11).
+7. **Scope of transformations** (2026-11-02, after M4.9a): transform is a
+   tool for an operator to change a piece of a program, not a feature
+   that handles every edge case. The operator is responsible for the
+   moves before and after the selection fitting the rest of the program.
+   So an absolute move after the selection keeps leaving the axes it does
+   not write moved (with a note), and G53/G79 and G92 in a selection stay
+   refused.

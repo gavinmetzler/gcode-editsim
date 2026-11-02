@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- PLACEHOLDER icon for GCode EditSim: a toolpath on a dark tile (rapid
-     dashed, feeds solid, an arc). Replace with the real icon when there is one. -->
+<!-- GCode EditSim app icon (M4.10, design B "code beside path", chosen by
+     the owner 2026-11-02): an editor page with the selected line in yellow,
+     beside a backplot of a feed move (blue) and an arc (green) with the
+     selected arc in yellow. The app's own toolpath colours. Drawn on a
+     128-unit grid with heavy strokes so it reads at 16 px.
+     The PNGs in app/shell/icons are rendered from this file
+     (see packaging/flatpak/README.md). -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect x="8" y="8" width="112" height="112" rx="20" fill="#1d2128"/>
-  <path d="M24 30 L96 30" stroke="#f29a26" stroke-width="5" stroke-dasharray="9 6" fill="none" stroke-linecap="round"/>
-  <path d="M96 30 L96 52 L40 52 L40 74 L72 74" stroke="#4099ff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M72 74 A20 20 0 0 1 92 94" stroke="#4dd973" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <path d="M92 94 L32 94" stroke="#4099ff" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <circle cx="24" cy="30" r="5" fill="#ffffff"/>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a313d"/>
+      <stop offset="1" stop-color="#161a20"/>
+    </linearGradient>
+  </defs>
+  <!-- The tile, its left part the editor page. -->
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#tile)"/>
+  <rect x="6" y="6" width="50" height="116" rx="26" fill="#e9edf2"/>
+  <rect x="30" y="6" width="26" height="116" fill="#e9edf2"/>
+  <!-- Program lines, the selected one yellow. -->
+  <path d="M18 34 H44 M18 74 H46 M18 94 H34" stroke="#2a313d" stroke-width="9" stroke-linecap="round"/>
+  <path d="M18 54 H38" stroke="#ffd23f" stroke-width="9" stroke-linecap="round"/>
+  <!-- The backplot: feed moves (blue), the selected arc (yellow). -->
+  <path d="M70 100 V58" stroke="#4099ff" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <path d="M110 58 V76" stroke="#4099ff" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <path d="M70 58 A20 20 0 0 1 110 58" stroke="#ffd23f" stroke-width="10" stroke-linecap="round" fill="none"/>
 </svg>
