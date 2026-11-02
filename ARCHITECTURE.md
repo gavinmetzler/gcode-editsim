@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-Status: **living document**, kept in step with the code. M1 (core skeleton), M2 (render buffer and minimal desktop UI), M3 (a dependable backplotter) and M4 (code transformations) are complete; M5 is next (§13; plan in draft). Where this file describes something not built yet, it says which milestone brings it. Interfaces marked *provisional* were checked against a stub second dialect (Osai 10 Series) and a stub second machine type (lathe) in M2.2 (findings in §7.2 and §9); they may still change when those become real (M9).
+Status: **living document**, kept in step with the code. M1 (core skeleton), M2 (render buffer and minimal desktop UI), M3 (a dependable backplotter) and M4 (code transformations) are complete; M5 is in progress (§13; plan agreed). Where this file describes something not built yet, it says which milestone brings it. Interfaces marked *provisional* were checked against a stub second dialect (Osai 10 Series) and a stub second machine type (lathe) in M2.2 (findings in §7.2 and §9); they may still change when those become real (M9).
 
 ## 1. Goals
 
@@ -628,7 +628,7 @@ Not started; planned for M8, after tool geometry (M7). Dexels are the leading ca
 
 ## 13. Milestones
 
-Status: M1 to M4 done; M5 next (plan in draft, `docs/plans/M5_PLAN.md`).
+Status: M1 to M4 done; M5 in progress (plan agreed, `docs/plans/M5_PLAN.md`).
 
 1. **M1: Core skeleton** *(done)*. Workspace, CI, `gcode-syntax`, `ir`, Fanuc subset (G0/G1/G2/G3, G17–19, G20/21, G90/91, G54–59, F/S/T/M basics), `machine-mill`, interpreter, golden tests. No UI.
 2. **M2: Render buffer + minimal UI** *(done)*. Binary boundary, three.js viewport, CodeMirror editor, line ↔ segment sync, stats and diagnostics panel. Desktop only. Add stub lathe/second dialect to stress the traits. Added along the way: an Android spike of the binary boundary (passed), a Flatpak package (§8.7), CI jobs that run only when their files change, refresh on demand after edits, and the tool marker with hover readout (M3.1/M3.2 brought forward). See `docs/plans/M2_PLAN.md`.
