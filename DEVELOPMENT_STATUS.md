@@ -461,6 +461,12 @@ errors; every warning or note names a real gap. Run it with
   top view and unstyled CodeMirror (blocked by the content security
   policy) were all found by looking. Headless Chromium with the app's IPC
   mocked by a real render buffer works in the container.
+- **An icon or metadata change can break only the Flatpak** (M4.10): the
+  SVG's `<svg` tag must come within its first 256 bytes, or gdk-pixbuf, and
+  so `appstreamcli compose`, cannot tell it is an SVG (a long comment
+  before it did that). Test packaging changes with `appstreamcli compose`
+  on the build tree, or a full `build.sh`, and look at CI on `main` after a
+  merge.
 - **Flatpak in a container** needs a D-Bus session (and a system bus),
   the portals and `XDG_RUNTIME_DIR` started by hand. `XDG_RUNTIME_DIR`
   must be `/run/user/<uid>`: the document portal returns paths under it,

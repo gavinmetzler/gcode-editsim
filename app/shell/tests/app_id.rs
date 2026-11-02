@@ -88,6 +88,11 @@ fn the_app_icons_exist_in_the_sizes_tauri_and_desktops_use() {
         svg.contains("viewBox=\"0 0 128 128\""),
         "drawn on a 128-unit grid"
     );
+    // Image loaders (gdk-pixbuf, so the Flatpak's AppStream step) tell an
+    // SVG by its start: `<svg` must come within the first 256 bytes. A long
+    // comment before it broke the Flatpak build after M4.10.
+    let at = svg.find("<svg").expect("an <svg> element");
+    assert!(at < 256, "<svg starts at byte {at}; move comments inside the element");
 }
 
 #[test]
