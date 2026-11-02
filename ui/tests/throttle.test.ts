@@ -132,6 +132,68 @@ describe("Throttle", () => {
     expect(s.runs).toEqual([0, 50]);
   });
 
+  it("while a key is held, ignores gaps in the repeats and updates at most once per interval", () => {
+    // A slow redraw delays the queued repeats, so they arrive in bursts with
+    // gaps longer than `settle`; that must not count as the key being let go.
+    const s = setup();
+    s.throttle.setHeld(true);
+    for (let t = 0; t <= 3000; t += 250) {
+      s.time.advance(t);
+      s.throttle.request();
+    }
+    expect(s.runs.length).toBeLessThanOrEqual(7);
+    for (let i = 1; i < s.runs.length; i++) {
+      expect((s.runs[i] ?? 0) - (s.runs[i - 1] ?? 0)).toBeGreaterThanOrEqual(500);
+    }
+    expect(s.throttle.held).toBe(true);
+  });
+
+  it("updates at once when the held key is released, with held false", () => {
+    const s = setup();
+    const heldAtRun: boolean[] = [];
+    const runs: number[] = [];
+    const throttle = new Throttle(
+      () => {
+        runs.push(s.time.now());
+        heldAtRun.push(throttle.held);
+      },
+      { interval: 500, settle: 100 },
+      s.time.now,
+      { set: s.time.set, clear: s.time.clear },
+    );
+    throttle.setHeld(true);
+    for (let t = 0; t <= 1200; t += 33) {
+      s.time.advance(t);
+      throttle.request();
+    }
+    s.time.advance(1210);
+    throttle.setHeld(false);
+    expect(runs.at(-1)).toBe(1210);
+    expect(heldAtRun.at(-1)).toBe(false);
+    expect(heldAtRun.slice(0, -1).every((h) => h)).toBe(true);
+    s.time.advance(5000);
+    expect(runs.at(-1)).toBe(1210);
+    expect(s.time.pending()).toBe(0);
+  });
+
+  it("updates on release even when the last held update already showed the final position", () => {
+    // Held updates may skip the expensive part, so the release always updates.
+    const s = setup();
+    s.throttle.setHeld(true);
+    s.throttle.request(); // runs at 0, held
+    s.time.advance(600);
+    s.throttle.setHeld(false);
+    expect(s.runs).toEqual([0, 600]);
+  });
+
+  it("does nothing on release when nothing moved while the key was held", () => {
+    const s = setup();
+    s.throttle.setHeld(true);
+    s.time.advance(600);
+    s.throttle.setHeld(false);
+    expect(s.runs).toEqual([]);
+  });
+
   it("uses a half-second interval for the 3D view, and settles faster than a key repeats slowly", () => {
     expect(VIEW_UPDATES.interval).toBe(500);
     // Keyboards repeat 20 to 40 times a second (25 to 50 ms apart): the

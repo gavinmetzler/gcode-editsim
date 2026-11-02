@@ -8,7 +8,6 @@ import { lintGutter, setDiagnostics, type Diagnostic as LintDiagnostic } from "@
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import {
-  drawSelection,
   EditorView,
   highlightActiveLine,
   highlightActiveLineGutter,
@@ -18,6 +17,7 @@ import {
 import { tags } from "@lezer/highlight";
 
 import { gcodeLanguage } from "./gcode-language";
+import { markSelectedLines } from "./selected-lines";
 import type { LineChange } from "../transform/edits";
 import { selectedLines as wholeLines, type LineMark, type LineRange } from "./lines";
 
@@ -37,8 +37,12 @@ const theme = EditorView.theme(
     ".cm-gutters": { backgroundColor: "#1d2128", color: "#7a828c", border: "none" },
     ".cm-activeLine": { backgroundColor: "#ffffff0d" },
     ".cm-activeLineGutter": { backgroundColor: "#ffffff14" },
-    ".cm-cursor": { borderLeftColor: "#e6e6e6" },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "#3a4a63" },
+    // The browser draws the selection and caret: CodeMirror's drawSelection
+    // was too slow on large selections in WebKitGTK (M5.2).
+    ".cm-content": { caretColor: "#e6e6e6" },
+    ".cm-line::selection, .cm-line ::selection": { backgroundColor: "#3a4a63" },
+    // Full width, and still shown while the editor is not focused.
+    ".cm-selectedLine": { backgroundColor: "#3a4a63" },
   },
   { dark: true },
 );
@@ -63,9 +67,9 @@ export class GcodeEditor {
           lineNumbers(),
           highlightActiveLineGutter(),
           highlightActiveLine(),
-          drawSelection(),
           history(),
           highlightSelectionMatches(),
+          markSelectedLines,
           lintGutter(),
           gcodeLanguage,
           syntaxHighlighting(highlight),

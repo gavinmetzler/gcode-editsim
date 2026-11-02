@@ -125,3 +125,40 @@ with the editor cursor following the line being drawn. Play, pause, step
 and a speed control. It works with the tool filter planned in M5.4:
 hidden tools are skipped. The segments already carry an estimated time
 (M3.8), which could set the pace.
+
+## A much faster 3D view for very large programs
+
+*Raised by the owner, 2026-11-02, after M5.2 ("Page Up/Down acceptable,
+but not great").*
+
+Today every change to the yellow highlight (the selected lines) redraws
+the whole toolpath, and builds a new highlight that copies the toolpath's
+positions to the graphics card again (tens of MB for a million segments)
+and has three.js scan all of them to size it. M5.2 only makes this happen
+less often. Ways to make each update cheap, roughly in order of payoff:
+
+1. **Draw the toolpath once into a cached image.** The toolpath only
+   changes when the program is run again or the camera moves. Render it
+   into an off-screen texture then, and on a cursor move just copy that
+   image to the screen and draw the few highlighted segments on top (the
+   highlight already ignores depth, so the result looks the same). A
+   cursor move would then cost a full-screen copy plus a handful of lines,
+   whatever the program's size. Orbiting and zooming still redraw
+   everything.
+2. **Highlight without copying anything.** Keep one index of all segments
+   in program order on the graphics card. A range of lines is then one (or,
+   with subprograms, a few) contiguous slices of it, drawn with draw ranges
+   over buffers that are already there: no new geometry, no upload, no
+   sizing scan.
+3. **Chunks.** Split the toolpath into blocks of, say, 64,000 segments,
+   each with its own bounding box. Blocks off screen are skipped when
+   drawing, picking and snapping only search the blocks near the pointer,
+   and a later step could draw distant blocks simplified (level of
+   detail).
+4. **Work off the main thread.** Build highlight indices and pick results
+   in a Web Worker, so the editor never waits for the 3D view.
+
+Items 1 and 2 are mostly inside `ui/src/viewport/viewport.ts` and need no
+change to the core or the render buffer. They also help the timeline
+player above, which redraws a growing part of the toolpath many times a
+second.

@@ -2,7 +2,14 @@
  *  (M5.2): the first change after a pause runs it at once; while changes
  *  keep coming it runs at most once per `interval`; and it runs once more
  *  `settle` ms after the last change, so the result always shows the final
- *  state. Used for the 3D view while the editor cursor moves (a held
+ *  state.
+ *
+ *  While a key is held (`setHeld`), gaps between changes do not count as
+ *  stopping: a slow update delays the queued key repeats, which then
+ *  arrive in bursts, and guessing "stopped" from the gaps made every burst
+ *  update again. Instead it runs at most once per `interval`, and once
+ *  more when the key is released. The update can read `held` to skip its
+ *  expensive part until then. Used for the 3D view while the editor cursor moves (a held
  *  Page Up/Down redraws a million segments otherwise on every repeat). */
 
 /** How often, in milliseconds. */
@@ -36,6 +43,8 @@ const browserTimers: Timers = {
 export class Throttle {
   private lastRun: number | null = null;
   private timer: number | null = null;
+  private holding = false;
+  private movedWhileHeld = false;
 
   constructor(
     private readonly run: () => void,
@@ -44,9 +53,39 @@ export class Throttle {
     private readonly timers: Timers = browserTimers,
   ) {}
 
+  /** True while a key is held (see `setHeld`). */
+  get held(): boolean {
+    return this.holding;
+  }
+
+  /** A key is held down and repeating (true), or was released (false). On
+   *  release it updates at once if anything changed while the key was held. */
+  setHeld(held: boolean): void {
+    if (held) {
+      if (!this.holding) this.movedWhileHeld = false;
+      this.holding = true;
+      return;
+    }
+    if (!this.holding) return;
+    this.holding = false;
+    const moved = this.movedWhileHeld || this.timer !== null;
+    this.movedWhileHeld = false;
+    if (!moved) return;
+    this.cancel();
+    this.fire(this.now());
+  }
+
   /** Something changed: update now, or soon. */
   request(): void {
     const now = this.now();
+    if (this.holding) {
+      this.movedWhileHeld = true;
+      if (this.timer !== null) return;
+      const wait = this.lastRun === null ? 0 : this.lastRun + this.timing.interval - now;
+      if (wait <= 0) this.fire(now);
+      else this.schedule(wait);
+      return;
+    }
     if (this.timer === null && (this.lastRun === null || now - this.lastRun >= this.timing.interval)) {
       this.fire(now);
       return;
@@ -55,13 +94,7 @@ export class Throttle {
     const byInterval = (this.lastRun ?? now) + this.timing.interval;
     const at = Math.min(byInterval, now + this.timing.settle);
     if (this.timer !== null) this.timers.clear(this.timer);
-    this.timer = this.timers.set(
-      () => {
-        this.timer = null;
-        this.fire(this.now());
-      },
-      Math.max(0, at - now),
-    );
+    this.schedule(Math.max(0, at - now));
   }
 
   /** Runs a pending update now (nothing happens when none is pending). */
@@ -76,6 +109,13 @@ export class Throttle {
   cancel(): void {
     if (this.timer !== null) this.timers.clear(this.timer);
     this.timer = null;
+  }
+
+  private schedule(ms: number): void {
+    this.timer = this.timers.set(() => {
+      this.timer = null;
+      this.fire(this.now());
+    }, ms);
   }
 
   private fire(now: number): void {
