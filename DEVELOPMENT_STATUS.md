@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.1 (the out-of-date border, 2026-11-02).
+Last updated: M5.2 (smooth Page Up/Down, 2026-11-02).
 Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
 and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
@@ -536,6 +536,15 @@ errors; every warning or note names a real gap. Run it with
   librsvg2-dev`, and `xdotool` drives it) and screenshot it with `import
   -window root`. Draw things that must sit above the canvas as positioned
   boxes, not outlines.
+- **Measuring UI speed with a held key** (M5.2): send the repeats with
+  CDP `Input.dispatchKeyEvent` (`rawKeyDown`, `autoRepeat: true`) about
+  every 33 ms without awaiting them, so they queue like a real held key;
+  time from the key-up until every event is handled; count WebGL draw
+  calls and frames by wrapping `drawArrays`/`drawElements` and a
+  `requestAnimationFrame` loop. With a million segments, compositing the
+  canvas in software makes every frame slow here whatever the code does,
+  so also run with `.viewport canvas { display: none }` to see the
+  JavaScript and editor cost alone.
 - **Software rendering is slow here:** drawing a million segments takes
   seconds per frame in the container but is smooth on the owner's
   desktop. Judge JavaScript time with the CDP profiler, and rendering on
