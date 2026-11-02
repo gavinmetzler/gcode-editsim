@@ -157,3 +157,20 @@ Items 1 and 2 are mostly inside `ui/src/viewport/` and need no
 change to the core or the render buffer. They also help the timeline
 player above, which redraws a growing part of the toolpath many times a
 second.
+
+## Tauri's Chromium runtime (CEF) on Linux
+
+*Raised by the owner, 2026-11-02, during M5.2.*
+
+On the owner's NVIDIA machine WebKitGTK (Tauri's web view on Linux)
+cannot use the GPU's direct path, so every frame is copied through the
+CPU and held cursor keys fell seconds behind. The same UI in Chrome was
+very fast (DEVELOPMENT_STATUS §7, the Chrome test page). Tauri is
+building a Chromium runtime, `tauri-runtime-cef`, still in alpha
+(3.0.0-alpha.0 to alpha.6, September to October 2026, with Linux
+start-up fixes). When it is stable, try it on Linux: it should keep
+the whole app (Rust shell, UI, core) and only change the web view.
+Check with the diagnostics panel, on the owner's machine, that held
+Page Up/Down keeps up and that the Flatpak can still drop
+`WEBKIT_DISABLE_DMABUF_RENDERER`. Costs to weigh: a much larger
+download (Chromium), and whether it builds as a Flatpak.

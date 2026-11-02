@@ -42,6 +42,8 @@ const full: DiagnosticsInfo = {
     flatpakRuntime: "org.gnome.Platform/x86_64/47",
     gpus: ["card1: driver nvidia, PCI 10de:2684"],
     nvidiaDriver: "560.35.03",
+    drmDevices: ["pci-0000:01:00.0-card -> card0", "pci-0000:01:00.0-render -> renderD128"],
+    gbmBackends: [],
     env: [
       ["WEBKIT_DISABLE_DMABUF_RENDERER", "1"],
       ["XDG_SESSION_TYPE", "wayland"],
@@ -119,6 +121,15 @@ describe("formatReport", () => {
 
   it("lists the switches and their state", () => {
     expect(text).toContain("Switches: Pace held cursor keys on, 3D view at half resolution off");
+  });
+
+  it("lists the graphics device files and the GBM back ends, or that none were found", () => {
+    expect(text).toContain("Graphics devices: pci-0000:01:00.0-card -> card0, pci-0000:01:00.0-render -> renderD128");
+    expect(text).toContain("GBM back ends (Flatpak GL extensions): none found");
+    if (!full.system) throw new Error("the sample has system facts");
+    const found = formatReport({ ...full, system: { ...full.system, drmDevices: [], gbmBackends: ["nvidia-580/lib/gbm/nvidia-drm_gbm.so"] } });
+    expect(found).toContain("Graphics devices: none found");
+    expect(found).toContain("GBM back ends (Flatpak GL extensions): nvidia-580/lib/gbm/nvidia-drm_gbm.so");
   });
 
   it("counts the frames the highlight waited for the editor to catch up", () => {

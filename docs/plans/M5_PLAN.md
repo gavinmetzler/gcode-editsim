@@ -138,6 +138,14 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   before and after.
 - Throttle the 3D view's updates while the cursor moves quickly (section
   3); pure, tested throttling logic, wired into `main.ts`.
+- **As built (#68 to #72 and the wrap-up):** the throttle did not fix it
+  on the owner's machine, and was replaced: the highlight is a shader over
+  the toolpath already on the GPU (#70, as PrusaSlicer's libvgcode does),
+  held cursor keys are paced by the app (#72), and a diagnostics panel
+  (Ctrl+Shift+D) reports timings and the graphics setup. The remaining
+  cost is WebKitGTK copying frames through the CPU on NVIDIA; the same UI
+  is fast in Chrome, so the owner chose to wait for Tauri's Chromium
+  runtime (DEVELOPMENT_STATUS §8, wishlist).
 
 ### M5.3: Find and Replace
 - Make CodeMirror's panel easy to find (a **Find…** button, with Ctrl+F

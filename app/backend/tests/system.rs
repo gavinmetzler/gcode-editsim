@@ -168,6 +168,7 @@ fn passes_the_cards_and_driver_through() {
             flatpak_info: None,
             gpus: vec!["card0: driver amdgpu, PCI 1002:744c".to_string()],
             nvidia_proc: Some("NVRM version: NVIDIA UNIX x86_64 Kernel Module  550.1  x\n"),
+            ..Default::default()
         },
     );
     assert_eq!(
@@ -175,4 +176,47 @@ fn passes_the_cards_and_driver_through() {
         vec!["card0: driver amdgpu, PCI 1002:744c".to_string()]
     );
     assert_eq!(info.nvidia_driver, Some("550.1".to_string()));
+}
+
+#[test]
+fn lists_the_graphics_device_links_by_pci_address() {
+    let root = std::env::temp_dir().join(format!("editsim-bypath-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("dir");
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink("../renderD128", root.join("pci-0000:01:00.0-render"))
+            .expect("link");
+        std::os::unix::fs::symlink("../card0", root.join("pci-0000:01:00.0-card")).expect("link");
+        assert_eq!(
+            app_backend::system::drm_devices(&root),
+            vec![
+                "pci-0000:01:00.0-card -> card0".to_string(),
+                "pci-0000:01:00.0-render -> renderD128".to_string(),
+            ]
+        );
+    }
+    let _ = std::fs::remove_dir_all(&root);
+    assert!(app_backend::system::drm_devices(std::path::Path::new("/nonexistent")).is_empty());
+}
+
+#[test]
+fn finds_gbm_backends_in_the_flatpak_gl_extensions() {
+    let root = std::env::temp_dir().join(format!("editsim-gl-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let gbm = root.join("nvidia-580-178-04").join("lib").join("gbm");
+    std::fs::create_dir_all(&gbm).expect("dirs");
+    std::fs::write(gbm.join("nvidia-drm_gbm.so"), b"").expect("file");
+    std::fs::create_dir_all(root.join("default").join("lib")).expect("default");
+    assert_eq!(
+        app_backend::system::gbm_backends(&root),
+        vec!["nvidia-580-178-04/lib/gbm/nvidia-drm_gbm.so".to_string()]
+    );
+    let _ = std::fs::remove_dir_all(&root);
+    assert!(app_backend::system::gbm_backends(std::path::Path::new("/nonexistent")).is_empty());
+}
+
+#[test]
+fn reports_where_gbm_looks_for_backends() {
+    assert!(DRAWING_ENV.contains(&"GBM_BACKENDS_PATH"));
 }

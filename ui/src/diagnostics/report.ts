@@ -14,6 +14,11 @@ export interface SystemInfo {
   readonly gpus: readonly string[];
   /** The NVIDIA driver version, when one is loaded. */
   readonly nvidiaDriver: string | null;
+  /** The graphics device files by PCI address (`/dev/dri/by-path`). */
+  readonly drmDevices: readonly string[];
+  /** The GBM back ends in the Flatpak's GL extensions, which WebKitGTK's
+   *  direct drawing path needs. */
+  readonly gbmBackends: readonly string[];
   /** Environment variables that change how WebKitGTK draws, as set. */
   readonly env: readonly (readonly [string, string])[];
 }
@@ -99,6 +104,9 @@ export function formatReport(d: DiagnosticsInfo): string {
     const cards = d.system.gpus.length === 0 ? "none found" : d.system.gpus.join("; ");
     const nvidia = d.system.nvidiaDriver ? `; NVIDIA driver ${d.system.nvidiaDriver}` : "";
     out.push(`Graphics cards (system): ${cards}${nvidia}`);
+    const list = (items: readonly string[]): string => (items.length === 0 ? "none found" : items.join(", "));
+    out.push(`Graphics devices: ${list(d.system.drmDevices)}`);
+    out.push(`GBM back ends (Flatpak GL extensions): ${list(d.system.gbmBackends)}`);
     out.push(
       `Environment: ${d.system.env.length === 0 ? "none of the drawing settings set" : d.system.env.map(([k, v]) => `${k}=${v}`).join(", ")}`,
     );
