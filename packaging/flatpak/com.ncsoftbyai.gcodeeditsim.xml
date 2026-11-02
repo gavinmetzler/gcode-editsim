@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MIME type for CNC G-code programs (M4.11), shown with GCode EditSim's
+     icon and opened by it.
+
+     Two of its extensions are claimed by other types in the shared MIME
+     database: *.nc by NetCDF (application/x-netcdf, binary scientific
+     data) and *.ngc by a Neo Geo Pocket Color ROM. They must keep their
+     files, so the desktop has to read a file to decide, and the two
+     desktops need different things for that:
+
+     - GNOME (GIO) merges all MIME folders. With equal glob weights it
+       reads the file: text goes to the type that is a sub-class of
+       text/plain (this one), binary data to a type whose signature
+       matches.
+     - KDE (Qt's QMimeDatabase, Dolphin) lets a glob or a type defined in a
+       higher-priority folder hide the same glob or type in lower ones,
+       and Flatpak's exported folder comes before /usr/share. A *.nc glob
+       here alone would hide NetCDF's. So this package also defines the
+       two competing types in full (their globs, and signatures to tell
+       them by content: this database version gives NetCDF none), which
+       puts every candidate in the same folder, and Qt then reads the
+       file like GIO.
+
+     Checked with QMimeDatabase (Qt 6.4) and GIO; see
+     packaging/flatpak/README.md. The NetCDF and ROM definitions follow
+     freedesktop.org shared-mime-info 2.4, with NetCDF's documented
+     signatures added: classic, 64-bit offset and CDF-5 files start with
+     "CDF" and a version byte; netCDF-4 files are HDF5. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-cnc-gcode">
+    <comment>CNC G-code program</comment>
+    <sub-class-of type="text/plain"/>
+    <icon name="com.ncsoftbyai.gcodeeditsim"/>
+    <glob pattern="*.nc"/>
+    <glob pattern="*.ngc"/>
+    <glob pattern="*.tap"/>
+  </mime-type>
+  <mime-type type="application/x-netcdf">
+    <comment>Unidata NetCDF document</comment>
+    <acronym>NetCDF</acronym>
+    <expanded-acronym>Network Common Data Form</expanded-acronym>
+    <generic-icon name="x-office-document"/>
+    <glob pattern="*.cdf"/>
+    <glob pattern="*.nc"/>
+    <magic priority="60">
+      <match type="string" offset="0" value="CDF\001"/>
+      <match type="string" offset="0" value="CDF\002"/>
+      <match type="string" offset="0" value="CDF\005"/>
+      <match type="string" offset="0" value="\211HDF\r\n\032\n"/>
+    </magic>
+  </mime-type>
+  <mime-type type="application/x-neo-geo-pocket-color-rom">
+    <comment>Neo-Geo Pocket Color ROM</comment>
+    <generic-icon name="application-x-executable"/>
+    <glob pattern="*.ngc"/>
+    <magic>
+      <match type="byte" offset="35" value="0x10">
+        <match type="string" offset="0" value="COPYRIGHT BY SNK CORPORATION"/>
+        <match type="string" offset="0" value=" LICENSED BY SNK CORPORATION"/>
+      </match>
+    </magic>
+  </mime-type>
+</mime-info>

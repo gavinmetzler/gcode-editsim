@@ -132,6 +132,12 @@ export async function interpret(program: Uint8Array, fileName: string): Promise<
   return result;
 }
 
+/** The file the app was started with (opened from the file manager), or
+ *  null. Given once. */
+export function startupFile(): Promise<string | null> {
+  return invoke<string | null>("startup_file");
+}
+
 /** Reads the file at `path` and returns its raw bytes. */
 export async function loadFile(path: string): Promise<ArrayBuffer> {
   const result = await invoke<ArrayBuffer>("load_file", { path });

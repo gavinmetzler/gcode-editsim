@@ -220,3 +220,71 @@ fn a_leftover_temporary_link_is_not_followed() {
     assert_eq!(fs::read(&elsewhere).expect("read"), b"keep me");
     assert_eq!(fs::read(&path).expect("read"), b"G0 X2.\n");
 }
+
+mod startup_file {
+    //! The file the app was asked to open (M4.11): from the command line
+    //! the desktop gives it (`gcode-editsim %f`; in the Flatpak a path
+    //! through the document portal).
+
+    use std::ffi::OsString;
+    use std::path::PathBuf;
+
+    use app_backend::files::startup_file;
+
+    fn args(list: &[&str]) -> Vec<OsString> {
+        list.iter().map(OsString::from).collect()
+    }
+
+    #[test]
+    fn the_first_argument_after_the_program_is_the_file() {
+        assert_eq!(
+            startup_file(args(&["gcode-editsim", "/home/me/part one.nc"])),
+            Some(PathBuf::from("/home/me/part one.nc"))
+        );
+        assert_eq!(
+            startup_file(args(&[
+                "gcode-editsim",
+                "/run/user/1000/doc/ab12/PART.NC",
+                "other.nc"
+            ])),
+            Some(PathBuf::from("/run/user/1000/doc/ab12/PART.NC")),
+            "one file per window: the first"
+        );
+    }
+
+    #[test]
+    fn no_file_means_none() {
+        assert_eq!(startup_file(args(&["gcode-editsim"])), None);
+        assert_eq!(startup_file(args(&[])), None);
+        assert_eq!(startup_file(args(&["gcode-editsim", ""])), None);
+    }
+
+    #[test]
+    fn options_are_not_files() {
+        assert_eq!(
+            startup_file(args(&["gcode-editsim", "--verbose", "-x"])),
+            None
+        );
+        assert_eq!(
+            startup_file(args(&["gcode-editsim", "-psn_0_1", "part.nc"])),
+            Some(PathBuf::from("part.nc"))
+        );
+    }
+
+    #[test]
+    fn a_file_uri_is_a_path() {
+        assert_eq!(
+            startup_file(args(&["gcode-editsim", "file:///home/me/Teil%20%C3%BC.nc"])),
+            Some(PathBuf::from("/home/me/Teil \u{fc}.nc"))
+        );
+        // A URI that is not a local file, or does not decode, is not opened.
+        assert_eq!(
+            startup_file(args(&["gcode-editsim", "https://example.com/a.nc"])),
+            None
+        );
+        assert_eq!(
+            startup_file(args(&["gcode-editsim", "file:///bad%zz.nc"])),
+            None
+        );
+    }
+}

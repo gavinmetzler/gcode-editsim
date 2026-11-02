@@ -41,6 +41,8 @@ modules:
       - install -Dm644 packaging/flatpak/com.ncsoftbyai.gcodeeditsim.desktop /app/share/applications/com.ncsoftbyai.gcodeeditsim.desktop
       - install -Dm644 packaging/flatpak/com.ncsoftbyai.gcodeeditsim.metainfo.xml /app/share/metainfo/com.ncsoftbyai.gcodeeditsim.metainfo.xml
       - install -Dm644 packaging/icons/com.ncsoftbyai.gcodeeditsim.svg /app/share/icons/hicolor/scalable/apps/com.ncsoftbyai.gcodeeditsim.svg
+      # The G-code file type (*.nc, *.ngc, *.tap), opened by the app (M4.11).
+      - install -Dm644 packaging/flatpak/com.ncsoftbyai.gcodeeditsim.xml /app/share/mime/packages/com.ncsoftbyai.gcodeeditsim.xml
       - install -Dm644 LICENSE /app/share/licenses/com.ncsoftbyai.gcodeeditsim/LICENSE
     sources:
       - type: dir

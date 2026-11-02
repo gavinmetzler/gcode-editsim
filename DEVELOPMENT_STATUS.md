@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M4.10 (the app icon, 2026-11-02).
+Last updated: M4.11 (.nc files on the Linux desktop, 2026-11-02).
 M2 is planned in [`docs/plans/M2_PLAN.md`](docs/plans/M2_PLAN.md), M3 in
 [`docs/plans/M3_PLAN.md`](docs/plans/M3_PLAN.md); the milestone order is in
 ARCHITECTURE.md §13.
@@ -34,7 +34,7 @@ statistics and a time estimate, that opens and saves files.
 
 | Area | Status |
 |---|---|
-| Tests | 708 pass (`cargo test --workspace`); 29 in the app shell (`cd app/shell && cargo test`); 148 in the UI (`cd ui && npm test`) |
+| Tests | 712 pass (`cargo test --workspace`); 31 in the app shell (`cd app/shell && cargo test`); 148 in the UI (`cd ui && npm test`) |
 | CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build), a Flatpak build (artifact kept 30 days) and a dependency audit (`cargo audit` on the three Rust lock files, `npm audit` on the UI; on pull requests only when a lock file changes); on pull requests each job runs only when its files change (`tools/ci`) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7), with per-tool times and a time estimate (M3.8); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. The machine folder is created on first start with the example mill and router files; the window reports the app id, so the desktop shows its icon. Windows and macOS: build from source |
@@ -352,6 +352,14 @@ Changing any of these is a deliberate, documented change.
   in `ui/src/transform/edits.ts`. Values are mm (inches: wishlist). The
   centre can be picked in the view (`program_point` gives its program
   coordinates; refused while the view is out of date; Esc cancels).
+- **G-code files on the desktop (M4.11):** MIME type `text/x-cnc-gcode`
+  (`packaging/flatpak/<id>.xml`), `Exec=gcode-editsim %f`; the app opens a
+  file from its command line (`startup_file`). KDE's Qt lets types and
+  globs in Flatpak's exported folder hide those in `/usr/share`, so the
+  package also defines NetCDF and the Neo Geo ROM type in full;
+  `packaging/flatpak/check-mime.sh` checks GIO and Qt (`apt install
+  libglib2.0-bin python3-pyqt6 python3-pyqt6.sip`; PyQt6 is built for the
+  system's python3.12).
 - Flatpak: single file, offline build, `WEBKIT_DISABLE_DMABUF_RENDERER=1`
   (fixes a Wayland protocol error on NVIDIA, confirmed by the owner).
 
@@ -453,12 +461,27 @@ errors; every warning or note names a real gap. Run it with
   top view and unstyled CodeMirror (blocked by the content security
   policy) were all found by looking. Headless Chromium with the app's IPC
   mocked by a real render buffer works in the container.
+- **An icon or metadata change can break only the Flatpak** (M4.10): the
+  SVG's `<svg` tag must come within its first 256 bytes, or gdk-pixbuf, and
+  so `appstreamcli compose`, cannot tell it is an SVG (a long comment
+  before it did that). Test packaging changes with `appstreamcli compose`
+  on the build tree, or a full `build.sh`, and look at CI on `main` after a
+  merge.
 - **Flatpak in a container** needs a D-Bus session (and a system bus),
   the portals and `XDG_RUNTIME_DIR` started by hand. `XDG_RUNTIME_DIR`
   must be `/run/user/<uid>`: the document portal returns paths under it,
   and Flatpak mounts the sandbox's copy there, so any other folder makes
   every portal path "No such file or directory" inside the sandbox; CI needs `elfutils` and
   `librsvg2-common`, and `--disable-rofiles-fuse`.
+- **Opening a file through the installed Flatpak (M4.11):** start Xvfb,
+  a system bus (`mkdir -p /run/dbus && dbus-daemon --system --fork`) and a
+  session bus (`dbus-launch`), `/usr/libexec/xdg-document-portal`
+  (package `xdg-desktop-portal`, needs `/dev/fuse`), set
+  `XDG_RUNTIME_DIR=/run/user/0` and put
+  `~/.local/share/flatpak/exports/share` first in `XDG_DATA_DIRS`, then
+  `gio launch <exports>/applications/<id>.desktop FILE`. Without the
+  system bus, `flatpak run` fails with "Could not connect: No such file
+  or directory".
 - **Disk space is limited** in the cloud container: the shell's `target/`,
   the Android SDK and Gradle caches fill it quickly.
 
