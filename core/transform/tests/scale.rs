@@ -3,6 +3,8 @@
 //! scaled with the moves; a zero or negative factor, and an arc in another
 //! plane, are refused.
 
+mod common;
+
 use dialect_fanuc::Fanuc;
 use interpreter::Options;
 use ir::{ArcPlane, Pos, MAX_AXES};
@@ -144,10 +146,12 @@ fn a_dialect_without_a_radius_letter_cannot_scale_r_arcs() {
         Fanuc::new().expect("dialect").arc_radius_letter(),
         Some('R')
     );
+    assert_eq!(common::NoRewrite::new().arc_radius_letter(), None);
+    // The 10 Series names it too (M4.9a).
     assert_eq!(
         dialect_osai::Osai::new()
             .expect("dialect")
             .arc_radius_letter(),
-        None
+        Some('R')
     );
 }

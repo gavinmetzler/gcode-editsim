@@ -1,6 +1,6 @@
 //! Small building blocks shared by dialect implementations.
 
-use gcode_syntax::{Block, Expr, Number};
+use gcode_syntax::{Block, Expr, Number, NumberStyle};
 use ir::{DiagCode, Diagnostic, Diagnostics, LengthUnit, SourceRef};
 
 /// Millimetres per inch.
@@ -11,6 +11,34 @@ pub fn length_to_internal(value: f64, unit: LengthUnit) -> f64 {
     match unit {
         LengthUnit::Metric => value,
         LengthUnit::Inch => value * MM_PER_INCH,
+    }
+}
+
+/// `value` (in program units) written for a control that reads numbers as
+/// written, with or without a decimal point (calculator-style input): in
+/// the style of the literal it replaces, rounded to `max_decimals` (at
+/// least the decimals the literal had). A literal without a point stays
+/// without one when the rounded value is whole, and gains a point when it
+/// is not, since the whole number would mean something else. `None` if the
+/// value is not finite.
+pub fn format_as_written(value: f64, style: &NumberStyle, max_decimals: usize) -> Option<String> {
+    if !value.is_finite() {
+        return None;
+    }
+    if style.decimal_point {
+        return style.render_decimal(value, max_decimals);
+    }
+    let places = i32::try_from(max_decimals).unwrap_or(9).min(9);
+    let scale = 10f64.powi(places);
+    let rounded = (value * scale).round() / scale;
+    if rounded.fract() == 0.0 {
+        style.render_integer(rounded)
+    } else {
+        NumberStyle {
+            decimal_point: true,
+            ..style.clone()
+        }
+        .render_decimal(value, max_decimals)
     }
 }
 

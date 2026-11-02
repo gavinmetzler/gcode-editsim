@@ -96,10 +96,11 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 7. Rotate *(done)*
 8. Scale (one factor for X and Y; Z never scaled) *(done)*
 9. Transform dialog (app and UI) *(done)*
+9a. Transformations for Osai programs *(done; added by the owner)*
 10. A better icon
 11. `.nc` files on the Linux desktop (Flatpak)
 12. Wrap-up
 
-Desktop only. The lathe and Osai crates stay stubs; full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.
+Desktop only. The lathe and Osai crates stay stubs (Osai programs can be transformed, M4.9a); full support is M8. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md`.
 
 **Then:** M5 mobile (reduce memory for large programs first), M6 machine state and accuracy, M7 material removal (`ARCHITECTURE.md` §13).

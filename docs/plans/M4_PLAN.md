@@ -58,7 +58,8 @@ which the user can read, edit, undo and save.
 - transforming rotary axes, canned-cycle depths in incremental mode, and
   the codes M3 left on hold (coordinate shifts, macros): refused with a
   message (question 4)
-- the Osai dialect and the lathe (M8); the design keeps the dialect
+- the lathe (M8), and the Osai dialect beyond transformations (M8; the
+  owner asked for Osai transformations in M4, M4.9a); the design keeps the dialect
   boundary, so they can be added
 - mobile (M5)
 
@@ -284,6 +285,21 @@ DEVELOPMENT_STATUS.md point to it.
 - UI: Transform… dialog, the selected lines, centre picked from the
   view, applying the edits as one transaction, running again, showing
   warnings. Unit tests for the pure parts; a browser check.
+
+### M4.9a: Transformations for Osai programs *(done)*
+*Added by the owner, 2026-11-02, after M4.9 merged.*
+- The Osai 10 Series stub implements reading and writing numbers (as
+  written, with or without a point; rounded to 0.001 mm, 0.0001 inch:
+  our choice, the manual gives no input increment), its radius letter,
+  its centre letters (I and J in any plane), and its refusals (presetting,
+  canned cycles, G79, three-letter commands that change coordinates).
+- Arc centres given as positions (Osai G90 I/J) are transformed like end
+  points; in G91 like distances.
+- Checked on the owner's two Osai programs (locally): large selections
+  transform within 0.0005 mm, nothing outside moves. The same check on
+  the Fanuc programs found a fault: an incremental move after the
+  selection inside a subprogram was adjusted, shifting every call. Now
+  refused.
 
 ### M4.10: A better icon
 - The current icon is a placeholder. A new one as SVG (with the PNG

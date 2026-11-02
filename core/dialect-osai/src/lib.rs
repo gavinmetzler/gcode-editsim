@@ -18,14 +18,16 @@
 
 mod block;
 mod handler;
+mod numbers;
 mod three_letter;
 
 use std::collections::BTreeMap;
 
 use dialect_api::{
     AxisSet, BlockContext, CodeKey, CodeTable, CodeTableError, Command, Dialect, ModalState,
+    ValueKind,
 };
-use gcode_syntax::Block;
+use gcode_syntax::{Block, Number, NumberStyle};
 use ir::{ArcPlane, Diagnostics, LengthUnit, WorkOffsetId};
 use thiserror::Error;
 
@@ -130,5 +132,44 @@ impl Dialect for Osai {
         diag: &mut Diagnostics,
     ) {
         block::interpret(self, block, ctx, state, out, diag);
+    }
+
+    /// Numbers as written, with or without a point (manual p. 2-4).
+    fn read_value(&self, number: &Number, kind: ValueKind, units: LengthUnit) -> Option<f64> {
+        Some(numbers::read(number, kind, units))
+    }
+
+    /// As written: a number without a point gains one only when the new
+    /// value is not whole; rounded to 0.001 mm or degree, 0.0001 inch.
+    fn format_value(
+        &self,
+        value: f64,
+        kind: ValueKind,
+        units: LengthUnit,
+        style: &NumberStyle,
+    ) -> Option<String> {
+        numbers::format(value, kind, units, style)
+    }
+
+    /// `R`, negative for more than 180° (p. 2-6).
+    fn arc_radius_letter(&self) -> Option<char> {
+        Some('R')
+    }
+
+    /// I and J are the plane's first and second axis, whatever the plane
+    /// (p. 2-4).
+    fn arc_centre_letters(
+        &self,
+        _plane: ArcPlane,
+        _machine: [Option<char>; 2],
+    ) -> [Option<char>; 2] {
+        [Some('I'), Some('J')]
+    }
+
+    /// Presetting (G92, G98, G99), canned cycles (and every block while
+    /// one is active), G79, and three-letter commands that shift, turn,
+    /// scale or mirror coordinates, including `(UAO,n,axes)`.
+    fn transform_refusal(&self, block: &Block, state: &ModalState) -> Option<String> {
+        block::transform_refusal(self, block, state)
     }
 }

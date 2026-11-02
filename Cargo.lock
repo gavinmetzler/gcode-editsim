@@ -163,7 +163,6 @@ name = "dialect-fanuc"
 version = "0.1.0"
 dependencies = [
  "dialect-api",
- "dialect-osai",
  "gcode-syntax",
  "ir",
  "proptest",

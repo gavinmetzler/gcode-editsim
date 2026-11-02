@@ -244,3 +244,24 @@ fn a_picked_point_in_program_coordinates() {
     assert_eq!(p[0], ('X', 10.0));
     assert!(program_point(program, mill(), "fanuc", RunOptions::default(), 9, [0.0; 3]).is_err());
 }
+
+#[test]
+fn osai_programs_transform_through_the_app_too() {
+    let program = "G17\n(UAO,1)\nG71 G90 G0 X0 Y0 Z5\nG1 X10 Y0 F100\nG2 X20 Y0 I15 J0\n";
+    let json = r#"{"first": 4, "last": 5, "transform": {"kind": "translate", "offset": {"X": 1, "Y": 2.5}}}"#;
+    let bytes = transform_program(
+        program.as_bytes(),
+        mill(),
+        "osai",
+        RunOptions::default(),
+        &request(json),
+    )
+    .unwrap();
+    let list = decode_edits(&bytes).expect("decodes");
+    let out = String::from_utf8(apply_edits(program.as_bytes(), &list.edits).expect("applies"))
+        .expect("utf-8");
+    assert_eq!(
+        out,
+        "G17\n(UAO,1)\nG71 G90 G0 X0 Y0 Z5\nG1 X11 Y2.5 F100\nG2 X21 Y2.5 I16 J2.5\n"
+    );
+}

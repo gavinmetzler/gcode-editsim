@@ -147,3 +147,32 @@ and M14 are taken to act like M3/M4 (unverified))*
 - **S**: rpm under G97. Under G96 it is a surface speed, which is not
   simulated. *(verified)*
 - **F**: mm/min (G71) or inch/min (G70) under G94 (p. 1-7). *(verified)*
+
+## Transformations (M4.9a)
+
+What the code transformations (Translate, Rotate, Scale) do with 10 Series
+programs. Our choices, not controller behaviour, except where cited.
+
+- **Numbers are written as read**: a number with a decimal point keeps at
+  least the decimals it had; one without stays without when the new value
+  is whole, and gains a point when it is not, since `X12` means 12 mm
+  (p. 2-4) *(verified: the reading rule)*. Values are rounded to 0.001 mm
+  or degree and 0.0001 inch, or kept to the decimals the number already
+  had if it had more. The manual allows up to 9 decimals and cuts off any
+  more without an error ("Programming restrictions for long real
+  formats", p. 1-15), and gives no input increment (the resolution is a
+  machine setting): the rounding is *our choice*. The manual also says no
+  zeros should precede or follow a value (p. 1-2); rewriting never adds
+  them, and keeps a number's own style where a program has them.
+- **Arc centres**: in G90, I and J are the centre's position, so they move
+  with the selection like an end point (a translation moves them too); in
+  G91 they are distances from the start, so they turn and scale like
+  Fanuc's offsets. I and J name the plane's first and second axis in any
+  plane. **R** scales with a scale factor and keeps its sign.
+- **Refused** (the whole transformation, naming the line): presetting
+  (G92, G98, G99), canned cycles (G81-G89, and every block while one is
+  active), G79, and three-letter commands that change later coordinates:
+  `(UAO,n,axes)` (an origin for some axes), `ROT`, `SCF`, `MIR`, `UTO`,
+  `UIO` and any other not known to leave the path alone. A plain
+  `(UAO,n)` changes the origin for every axis, like Fanuc's G54, and is
+  allowed. Messages and graphics commands (`DIS`, `UGS`, …) are ignored.

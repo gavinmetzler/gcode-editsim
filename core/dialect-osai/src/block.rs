@@ -1094,3 +1094,40 @@ fn report_unused_words(
         }
     }
 }
+
+/// Why a code transformation cannot rewrite `block` (`state` is the state
+/// after it): a code or three-letter command whose effect its axis words
+/// do not carry.
+pub(crate) fn transform_refusal(osai: &Osai, block: &Block, state: &ModalState) -> Option<String> {
+    for w in block.words.iter().filter(|w| w.letter == 'G') {
+        let Some(key) = literal(&w.value).and_then(|n| CodeKey::from_value('G', n.value)) else {
+            continue;
+        };
+        let why = match osai.handler(key) {
+            Some(Handler::Ignored) => "presets or shifts later moves",
+            Some(Handler::CannedCycle) => "is a canned cycle",
+            Some(Handler::MachineCoords) => "refers the block to the home position",
+            // G99 deletes a G92 preset, which changes later coordinates.
+            _ if key.value() == 99.0 => "deletes a preset, which changes later coordinates",
+            _ => continue,
+        };
+        return Some(format!("{key} {why}"));
+    }
+    for comment in &block.comments {
+        let Some(command) = three_letter::parse(&comment.text) else {
+            continue;
+        };
+        let name = command.name.as_str();
+        let whole_origin = name == "UAO" && command.args.len() == 1;
+        if NO_PATH_EFFECT.contains(&name) || whole_origin {
+            continue;
+        }
+        return Some(format!(
+            "({}) changes later coordinates (an origin for some axes, a rotation, a scale factor, a mirror \
+             or a preset), which a rewrite cannot carry over",
+            comment.text.trim()
+        ));
+    }
+    cycle_active(osai, state)
+        .then(|| "a canned cycle is active, so the block is one of its holes".to_owned())
+}

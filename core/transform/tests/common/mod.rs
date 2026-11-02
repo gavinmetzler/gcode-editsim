@@ -38,9 +38,36 @@ fn mm(thousandths: i32) -> String {
     format!("{:.3}", f64::from(thousandths) / 1000.0)
 }
 
-/// The program text for `steps`, after a header on lines 1 and 2.
+/// How the generated program is written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Style {
+    /// Fanuc: G21, G54; arc centres I/J as offsets from the start.
+    Fanuc,
+    /// Osai 10 Series: G71, (UAO,1), G17 alone in its block; arc centres
+    /// I/J as the centre's position (G90).
+    Osai,
+}
+
+/// The line the first step is on.
+pub fn first_step_line(style: Style) -> u32 {
+    match style {
+        Style::Fanuc => 3,
+        Style::Osai => 5,
+    }
+}
+
+/// The Fanuc program text for `steps`, after a header on lines 1 and 2.
 pub fn program(steps: &[Step]) -> String {
-    let mut text = String::from("G21 G90 G17 G54 G0 X0. Y0. Z5.\nG1 F100.\n");
+    program_in(steps, Style::Fanuc)
+}
+
+/// The program text for `steps` in `style`, after a header (the first
+/// step is on [`first_step_line`]).
+pub fn program_in(steps: &[Step], style: Style) -> String {
+    let mut text = String::from(match style {
+        Style::Fanuc => "G21 G90 G17 G54 G0 X0. Y0. Z5.\nG1 F100.\n",
+        Style::Osai => "G17\n(UAO,1)\nG71 G90 G0 X0 Y0 Z5\nG1 F100\n",
+    });
     let mut at = [0.0f64, 0.0, 5.0];
     for step in steps {
         match step {
@@ -89,13 +116,12 @@ pub fn program(steps: &[Step]) -> String {
                     let r = if *angle > std::f64::consts::PI { -r } else { r };
                     text.push_str(&format!("G90 {code} X{} Y{} R{:.3}\n", mm(ex), mm(ey), r));
                 } else {
-                    text.push_str(&format!(
-                        "G90 {code} X{} Y{} I{} J{}\n",
-                        mm(ex),
-                        mm(ey),
-                        mm(c[0]),
-                        mm(c[1])
-                    ));
+                    // Fanuc: offsets from the start; Osai (G90): the centre.
+                    let (ci, cj) = match style {
+                        Style::Fanuc => (mm(c[0]), mm(c[1])),
+                        Style::Osai => (format!("{cx:.3}"), format!("{cy:.3}")),
+                    };
+                    text.push_str(&format!("G90 {code} X{} Y{} I{ci} J{cj}\n", mm(ex), mm(ey)));
                 }
                 at[0] = f64::from(ex) / 1000.0;
                 at[1] = f64::from(ey) / 1000.0;
@@ -103,6 +129,17 @@ pub fn program(steps: &[Step]) -> String {
         }
     }
     text
+}
+
+/// The segments of `src` run with `dialect` on the generic mill.
+pub fn segments_with(src: &[u8], dialect: &dyn dialect_api::Dialect) -> Vec<Segment> {
+    let mill = Mill::generic().expect("machine");
+    let p = interpret(src, "t.nc", dialect, &mill, Options::default());
+    p.channels
+        .into_iter()
+        .next()
+        .map(|c| c.segments)
+        .unwrap_or_default()
 }
 
 pub fn segments(src: &[u8]) -> Vec<Segment> {
@@ -126,4 +163,40 @@ pub fn plus(p: &Pos, d: &Pos) -> Pos {
         *v += o;
     }
     out
+}
+
+/// A dialect that implements none of the rewriting methods, to check
+/// that transformations refuse it.
+pub struct NoRewrite {
+    table: dialect_api::CodeTable,
+}
+
+impl NoRewrite {
+    pub fn new() -> Self {
+        Self {
+            table: dialect_api::CodeTable::from_toml_str("[dialect]\nid = \"none\"\n")
+                .expect("table"),
+        }
+    }
+}
+
+impl dialect_api::Dialect for NoRewrite {
+    fn id(&self) -> &str {
+        self.table.id()
+    }
+    fn code_table(&self) -> &dialect_api::CodeTable {
+        &self.table
+    }
+    fn initial_state(&self, _axes: &dialect_api::AxisSet) -> dialect_api::ModalState {
+        dialect_api::ModalState::default()
+    }
+    fn interpret_block(
+        &self,
+        _block: &gcode_syntax::Block,
+        _ctx: &dialect_api::BlockContext<'_>,
+        _state: &mut dialect_api::ModalState,
+        _out: &mut Vec<dialect_api::Command>,
+        _diag: &mut ir::Diagnostics,
+    ) {
+    }
 }

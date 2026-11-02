@@ -28,6 +28,8 @@ pub use axes::{AxisInfo, AxisSet, AxisSetError};
 pub use code::CodeKey;
 pub use command::{ArcCenter, ArcDir, AxisOffset, AxisWord, Command};
 pub use dialect::{BlockContext, Dialect, ValueKind};
-pub use helpers::{length_to_internal, literal, report_syntax_errors, MM_PER_INCH};
+pub use helpers::{
+    format_as_written, length_to_internal, literal, report_syntax_errors, MM_PER_INCH,
+};
 pub use state::{CoolantState, DistanceMode, FeedMode, ModalState, SpindleState};
 pub use table::{CodeDef, CodeTable, CodeTableError};
