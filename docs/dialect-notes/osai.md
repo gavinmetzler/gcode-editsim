@@ -65,7 +65,7 @@ to run on a machine.
 | G17, G18, G19 | Plane of the 1st and 2nd, 3rd and 1st, 2nd and 3rd axes **in the machine's axis order**. Must be alone in the block. A warning if the first three axes are not X, Y, Z | p. 2-46, 2-47, 1-10 *(verified)* |
 | G16 | Plane by axis names (`G16 X A`): the parser cannot read it, so arcs are not shown until G17-G19 | p. 2-48 |
 | G27, G28, G29 | Continuous or point-to-point movement: no effect on the path. **G28 is not a reference return** | p. 2-49 *(verified)* |
-| G40 / G41, G42 | No effect / cutter compensation not simulated (warning) | p. 1-11 |
+| G40 / G41, G42 | No effect / cutter compensation not simulated (one warning per program, M5.6d; G93 and G96 likewise once each) | p. 1-11 |
 | G70, G71 | Inches, millimetres | p. 2-79 *(verified)* |
 | G20, G21 | GTL profiles, not units: unknown code | p. 1-11 *(verified)* |
 | G79 | Coordinates refer to the home position for one block (machine coordinates here). Supported with G00 only; with a feed move, an error and the position becomes unknown | p. 2-80, 2-81 *(verified; the G00-only limit is the stub's)* |
@@ -134,7 +134,7 @@ and M14 are taken to act like M3/M4 (unverified))*
 | M0, M1 | Stop, optional stop |
 | M2, M30 | End of program (M30 also rewinds) |
 | M3, M4, M5 | Spindle CW, CCW, stop |
-| M6 | Tool change to the tool selected by T |
+| M6 | Tool change to the tool selected by T; without a T word, a note (the tool stays unknown; an error until M5.6d) |
 | M7 | Auxiliary coolant: shown as mist (the IR has only flood and mist) |
 | M8, M9 | Main coolant on, all coolant off |
 | M13, M14 | Spindle CW / CCW and coolant on |

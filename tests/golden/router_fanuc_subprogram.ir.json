@@ -706,9 +706,9 @@
     },
     {
       "line": 5,
-      "severity": "Warning",
+      "severity": "Info",
       "code": "MissingWord",
-      "message": "M6 with no tool selected (no T word yet)"
+      "message": "M6 with no tool selected (no T word yet): the tool stays unknown"
     },
     {
       "line": 6,

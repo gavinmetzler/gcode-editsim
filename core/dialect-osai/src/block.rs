@@ -579,17 +579,28 @@ fn apply_gcode(
         Handler::NoEffect => set_active(osai, state, code.key),
         Handler::NotSimulated => {
             set_active(osai, state, code.key);
-            diag.push(
-                Diagnostic::warning(
-                    DiagCode::NotYetSimulated,
-                    format!(
-                        "{} is not simulated yet; the path is shown without it",
-                        description(osai, code.key)
-                    ),
-                    src,
-                )
-                .about(code.key.to_string()),
-            );
+            // Once per program for each modal group (M5.6d): cutter
+            // compensation (G41/G42) gives one warning however often it is
+            // switched on.
+            let group = osai.table.get(code.key).and_then(|c| c.group);
+            let key = match group {
+                Some(g) => format!("osai.not_simulated.{g}"),
+                None => format!("osai.not_simulated.{}", code.key),
+            };
+            if state.first_report(&key) {
+                diag.push(
+                    Diagnostic::warning(
+                        DiagCode::NotYetSimulated,
+                        format!(
+                            "{} is not simulated yet; the path is shown without it. Not \
+                             reported again.",
+                            description(osai, code.key)
+                        ),
+                        src,
+                    )
+                    .about(code.key.to_string()),
+                );
+            }
         }
         Handler::Ignored => {
             set_active(osai, state, code.key);
@@ -753,9 +764,14 @@ fn apply_mcode(
                 state.current_tool = Some(tool);
                 out.push(Command::ToolChange { tool });
             }
-            None => diag.error(
+            // A note (M5.6d): some machines use M6 alone for their own
+            // purposes, such as a head change.
+            None => diag.info(
                 DiagCode::MissingWord,
-                format!("{} with no tool selected (no T word yet)", code.key),
+                format!(
+                    "{} with no tool selected (no T word yet): the tool stays unknown",
+                    code.key
+                ),
                 src,
             ),
         },
