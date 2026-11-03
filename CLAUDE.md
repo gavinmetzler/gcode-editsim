@@ -60,7 +60,7 @@ A cross-platform G-code simulator (desktop + mobile). Rust core (`core/`), Tauri
 ## Scope discipline
 
 - Implement **only** the mill subset currently scoped, for Fanuc and the Osai 10 Series. Do not add other dialects or machine types unless the task says so, but **do** keep the trait boundaries clean so they can be added.
-- Unsupported G/M codes must produce a `Diagnostic` (`UnsupportedGCode` / `UnsupportedMCode`) and never be silently ignored.
+- Codes the dialect does not know must produce a `Diagnostic` (`UnsupportedGCode` / `UnsupportedMCode`) and never be silently ignored. Codes the machine file lists in `ignore_codes` are recognised and produce none (the user's choice for that machine); a code that changes later moves but is not simulated keeps one warning until it is supported or listed (owner, 2026-11-03, M5_PLAN §6 item 7).
 - This tool is a visualization aid. Never describe its output as verified safe in docs, UI text, or comments.
 
 ## Security notes for the agent
@@ -93,7 +93,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 3. Find and Replace (CodeMirror's panel, made visible and dark)
 4. Filter the toolpath by tool
 5. Colour by tool
-6. Osai level with Fanuc (audit first, then fixes)
+6. Useful diagnostics, and Osai level with Fanuc: every "not supported" message removed by supporting the code or listing it in the machine file; the machine file names its dialect and power-on state; G92 supported (M5.6a–f)
 7. Packages (`.deb`, `.rpm`, Windows, macOS; workflow changes need the owner's approval)
 8. Wrap-up
 

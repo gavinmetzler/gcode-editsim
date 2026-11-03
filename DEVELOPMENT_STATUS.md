@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.5 (colour by tool, hide rapids, 2026-11-03).
+Last updated: M5.6a (useful diagnostics: plan, rule change and audit, 2026-11-03).
 Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
 and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
@@ -784,6 +784,19 @@ Decided (2026-11-02), during M5.2 (slow Page Up/Down):
 - **Meanwhile:** the shader highlight (#70), pacing of held cursor keys
   (#72) and the diagnostics panel (Ctrl+Shift+D) stay; pacing and half
   resolution are switches in the panel.
+
+Decided (2026-11-03), M5.6 refocused (M5_PLAN §6 item 7):
+- **Diagnostics are to be about the program**, not about unsupported
+  codes. Each "not supported" message goes by supporting the code or by
+  listing it in the machine file's `ignore_codes`, which then silences it
+  (also G codes and Osai commands: G43, UAO and DWT are silenced only when
+  listed; their behaviour does not change). Unknown codes are still
+  reported. CLAUDE.md's scope rule and ARCHITECTURE.md §7.3a say so.
+- Cutter compensation: one warning per program. M6 with no T: a note.
+  G92 (Fanuc and Osai) is supported.
+- **The machine file names its dialect** (choosing the machine sets it;
+  the shipped generic 3-axis router is Osai, as the owner's router is) and
+  its **power-on state** (units, plane, motion mode).
 
 Still open:
 1. Can the owner verify the *(unverified)* Fanuc items against their

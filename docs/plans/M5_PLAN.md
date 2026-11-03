@@ -179,19 +179,52 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   to, left out of the highlight); not remembered, so the app always
   starts showing them.
 
-### M5.6: Osai level with Fanuc
-- First an audit, in the PR description and `docs/dialect-notes/osai.md`:
-  every feature, its state for Fanuc and Osai, and what is missing.
-  Candidates from the notes: subprograms (Fanuc M98/M99 are followed; the
-  Osai stub has none), dwell times (Osai's `DWT` is not read), helices
-  (Osai's K pitch is refused), G16 planes by axis name, G79 only with G00,
-  and the parser's Fanuc-shaped lexical rules (labels, E parameters,
-  lower-case `r` and `t`, quoted strings in parentheses).
-- The owner's programs use dwells (section 6 item 6), so `DWT` comes
-  first. The owner decides which other gaps to close in M5; each fix starts with a
-  failing test, with conformance tests one file per behaviour. This may be
-  more than one PR.
-- The owner's Osai programs (private, `tools/corpus`) stay clean.
+### M5.6: Useful diagnostics, and Osai level with Fanuc
+**Goal, set by the owner (2026-11-03):** the warnings and errors should be
+about the *program*, like an arc whose radius cannot fit after a missing
+positioning move, not about what the software does not support. Each
+message that only says "not supported" is removed by supporting the code,
+or, where the owner decides it need not be supported, by letting the
+machine file declare it as having no effect, which silences it. Unknown
+codes (typos, codes never seen) are still reported. The audit (in
+`docs/dialect-notes/osai.md`, "Parity with Fanuc") lists every message
+the owner's programs give today and what M5.6 does about each.
+
+The new rule (CLAUDE.md, ARCHITECTURE.md §7.3a): *codes the dialect does
+not know always produce a diagnostic; codes the machine file lists in
+`ignore_codes` are recognised and produce none (the owner's
+responsibility for that machine); a code that changes later moves but is
+not simulated keeps one warning until it is supported or listed.*
+
+- **M5.6a: This plan, the rule change and the audit** (docs only).
+- **M5.6b: The machine file names its dialect and its power-on state.**
+  `dialect = "osai"` in `[machine]`: choosing the machine sets the dialect
+  (the dialect list stays, to override); the shipped generic 3-axis router
+  becomes an Osai machine (the owner's router is an Osai control), the mill
+  stays Fanuc. A `[power_on]` section (units, plane, motion mode) states how
+  the control starts up, so the "assumed G21/G17/G00/G71" warnings are not
+  given for a machine that states them.
+- **M5.6c: `ignore_codes` silences, and takes G codes and Osai commands.**
+  A listed code gives no message at all (today M codes get one note each).
+  Besides M codes, a machine may list G codes and Osai three-letter
+  commands (for example `G43`, `UAO`, `DWT`): their behaviour is unchanged
+  (G43's Z move is still drawn, UAO and DWT stay unsimulated), only the
+  message goes. M codes keep being removed from the block, as now.
+- **M5.6d: Severities.** Cutter compensation (G41/G42): one warning per
+  program, not one per block. M6 with no T word: a note, not a warning.
+  G43 without being listed keeps its note.
+- **M5.6e: Presetting (G92) supported, Fanuc and Osai.** Later moves are
+  drawn with its effect (every program of the owner's Fanuc machine
+  starts with `G54 G92 …`). Part of the coordinate shifts that were on
+  hold; the rest (G52, G10, rotation, scaling) stays on hold.
+- **M5.6f: Wrap-up of the audit.** The owner's programs, run through
+  `tools/corpus` with their machine files, give no "not supported"
+  messages; the dialect notes are updated.
+
+Each fix starts with a failing test, conformance tests one file per
+behaviour. Osai features no program of the owner's uses (subprograms,
+helices, G16, labels, the parser's lexical differences) stay for M9,
+listed in the audit.
 
 ### M5.7: Packages
 - Linux `.deb` and `.rpm` (and AppImage if wanted), a Windows installer
@@ -238,4 +271,12 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
    the repository. Platforms in order of importance: Linux, Windows,
    macOS.
 6. **Osai:** the owner's Osai programs use dwells, not subprograms,
-   helices or labels; M5.6 closes the dwell gap (`DWT`) first.
+   helices or labels; M5.6 closes the dwell gap (`DWT`) first. *(Changed on
+   2026-11-03, item 7: `DWT` is listed in the machine file instead.)*
+7. **M5.6 refocused (2026-11-03):** messages about unsupported codes are
+   removed by supporting the code or by listing it in the machine file's
+   `ignore_codes`, which silences it; G43, UAO and DWT are silenced only
+   when listed; cutter compensation gives one warning per program; M6
+   without T is a note; G92 is supported; the machine file names its
+   dialect (choosing the machine sets it; the generic router is Osai) and
+   its power-on state.
