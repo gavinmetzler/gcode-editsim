@@ -142,6 +142,8 @@ export function startupFile(): Promise<string | null> {
 /** What the app side knows for the diagnostics panel (M5.2). */
 export interface AppSystemInfo extends SystemInfo {
   readonly appVersion: string;
+  /** How the app set up WebKitGTK's drawing, and why (M5.2). */
+  readonly webkitSetup: string;
 }
 
 /** The app version, system and drawing environment (M5.2). */

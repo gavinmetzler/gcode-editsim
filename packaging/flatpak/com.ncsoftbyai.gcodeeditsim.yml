@@ -18,12 +18,13 @@ finish-args:
   - --share=ipc
   # GPU for the 3D view.
   - --device=dri
-  # WebKitGTK's DMA-BUF renderer fails on some Wayland setups (seen with
-  # NVIDIA: "Error 71 (Protocol error) dispatching to Wayland display") and
-  # the window closes. Rendering through shared memory instead works
-  # everywhere, at a small cost in speed. Override per run with
-  # `flatpak run --env=WEBKIT_DISABLE_DMABUF_RENDERER=0 ...`.
-  - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
+  # How WebKitGTK draws is chosen by the app at start-up (M5.2,
+  # app_backend::system::webkit_setup): with NVIDIA's driver on Wayland
+  # the direct GPU path with NVIDIA explicit sync off, on X11 frames copied
+  # through the CPU, otherwise WebKit's defaults. Do not set those variables
+  # here: the app keeps any variable already set, so this would override
+  # its choice for everyone. Users can still override per run, for example
+  # `flatpak run --env=WEBKIT_DISABLE_DMABUF_RENDERER=1 ...`.
   # No network and no file-system access: files are opened through the
   # desktop's file chooser (the portal), and the app's own settings live in
   # its sandboxed config folder.

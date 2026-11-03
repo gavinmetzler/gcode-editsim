@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.4 (filter the toolpath by tool, 2026-11-03).
+Last updated: M5.2 follow-up (WebKit setup chosen by the app, 2026-11-03).
 Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
 and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
@@ -772,6 +772,15 @@ Decided (2026-11-02), during M5.2 (slow Page Up/Down):
   newer WebKitGTK) "didn't work" (owner; which of them were tried is not
   recorded). Building WebKitGTK ourselves was ruled out (hours of build,
   a large download, and WebKit's security updates would be ours).
+- **A working combination after all (owner, 2026-11-03):**
+  `WEBKIT_DISABLE_DMABUF_RENDERER=0` with only
+  `__NV_DISABLE_EXPLICIT_SYNC=1` runs fast and without crashes on the
+  owner's machine (adding `WEBKIT_USE_SKIA_FOR_COMPOSITION=0` crashed).
+  **Decided:** the app chooses WebKit's settings at start-up (NVIDIA on
+  Wayland: that combination; NVIDIA on X11: the CPU path; otherwise
+  defaults), never overriding a variable the user set, and the manifest
+  no longer sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` (ARCHITECTURE.md
+  §8.7). Tauri's Chromium runtime stays on the wishlist.
 - **Meanwhile:** the shader highlight (#70), pacing of held cursor keys
   (#72) and the diagnostics panel (Ctrl+Shift+D) stay; pacing and half
   resolution are switches in the panel.
@@ -785,9 +794,9 @@ Still open:
    real control.
 3. More real programs are welcome in the private corpus, especially
    from other CAM systems and controls.
-4. Held Page Up/Down in the owner's Flatpak: pacing (#72) helped a
-   little but it is still not acceptable (2026-11-02); left until
-   WebKitGTK or Tauri's Chromium runtime changes. (The M5 plan's §6
+4. Held Page Up/Down in the owner's Flatpak: with the app's WebKit
+   setup (2026-11-03), is it smooth and stable over longer use? (Pacing
+   alone, before that, was not enough.) (The M5 plan's §6
    questions were answered on 2026-11-02.)
 
 ---

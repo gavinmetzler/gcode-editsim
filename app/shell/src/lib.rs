@@ -64,6 +64,9 @@ pub struct AppState {
     window: Mutex<Option<WindowGeometry>>,
     /// The file the app was started with (M4.11), until the UI takes it.
     startup_file: Mutex<Option<String>>,
+    /// How WebKitGTK was set up to draw, and why (M5.2), for the
+    /// diagnostics report.
+    webkit_setup: String,
 }
 
 impl AppState {
@@ -81,6 +84,15 @@ impl AppState {
             settings_file: Mutex::new(settings_file),
             window: Mutex::new(None),
             startup_file: Mutex::new(None),
+            webkit_setup: String::new(),
+        }
+    }
+
+    /// Records how WebKitGTK was set up ([`choose_webkit_setup`]).
+    pub fn with_webkit_setup(self, reason: String) -> Self {
+        Self {
+            webkit_setup: reason,
+            ..self
         }
     }
 
@@ -642,13 +654,15 @@ fn startup_file(state: State<'_, AppState>) -> Option<String> {
 #[serde(rename_all = "camelCase")]
 struct SystemReport {
     app_version: &'static str,
+    /// How WebKitGTK was set up to draw, and why (M5.2).
+    webkit_setup: String,
     #[serde(flatten)]
     system: app_backend::system::SystemInfo,
 }
 
 /// See [`SystemReport`].
 #[tauri::command]
-fn system_info() -> SystemReport {
+fn system_info(state: State<'_, AppState>) -> SystemReport {
     use app_backend::system::{
         drm_devices, gbm_backends, graphics_cards, system_info, SystemFacts,
     };
@@ -663,6 +677,7 @@ fn system_info() -> SystemReport {
     };
     SystemReport {
         app_version: env!("CARGO_PKG_VERSION"),
+        webkit_setup: state.webkit_setup.clone(),
         system: system_info(std::env::vars_os(), facts),
     }
 }
@@ -727,18 +742,43 @@ pub fn set_window_app_id(id: &str) {
     let _ = id;
 }
 
+/// Chooses how WebKitGTK draws and sets its environment variables (M5.2),
+/// before any window or thread exists. Returns the reason, for the
+/// diagnostics report. Variables the user set are kept
+/// (`app_backend::system::webkit_setup`).
+fn choose_webkit_setup() -> String {
+    use app_backend::system::{graphics_cards, nvidia_present, webkit_setup};
+    if !cfg!(target_os = "linux") {
+        return "not Linux: WebKitGTK is not used".to_string();
+    }
+    let nvidia = nvidia_present(
+        &graphics_cards(Path::new("/sys/class/drm")),
+        Path::new("/proc/driver/nvidia/version").exists(),
+    );
+    let setup = webkit_setup(nvidia, positions_unsupported(), |name| {
+        std::env::var_os(name).is_some()
+    });
+    for (name, value) in &setup.set {
+        std::env::set_var(name, value);
+    }
+    setup.reason
+}
+
 /// Runs the desktop app. The user's machine folder is `machines` in the
 /// app's configuration folder; on start it gets the shipped examples if it
 /// has no machine files yet. The remembered settings are `settings.json`
 /// in the same folder.
+/// Chooses WebKitGTK's drawing setup first ([`choose_webkit_setup`]).
 pub fn run() -> Result<(), tauri::Error> {
+    // First, while the process has a single thread.
+    let webkit = choose_webkit_setup();
     let context = tauri::generate_context!();
     set_window_app_id(&context.config().identifier);
     with_commands(tauri::Builder::default())
         // Native open, save and message dialogs (the UI picks paths with
         // them; files are still read and written by this app's commands).
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .setup(move |app| {
             let config = app.path().app_config_dir()?;
             let dir = config.join("machines");
             // Not fatal: the shipped examples are listed when the folder
@@ -750,7 +790,9 @@ pub fn run() -> Result<(), tauri::Error> {
             // file (in the Flatpak, a path the document portal gives).
             let file = files::startup_file(std::env::args_os()).map(|p| p.display().to_string());
             app.manage(
-                AppState::new(dir, config.join(settings::SETTINGS_FILE)).with_startup_file(file),
+                AppState::new(dir, config.join(settings::SETTINGS_FILE))
+                    .with_startup_file(file)
+                    .with_webkit_setup(webkit.clone()),
             );
             // The window starts hidden (tauri.conf.json) so it appears
             // straight away at its remembered size and place.

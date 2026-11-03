@@ -27,7 +27,13 @@ export interface SystemInfo {
 export interface DiagnosticsInfo {
   /** When it was made (ISO 8601). */
   readonly generated: string;
-  readonly app: { readonly version: string | null; readonly uiBuild: string };
+  readonly app: {
+    readonly version: string | null;
+    readonly uiBuild: string;
+    /** How the app set up WebKitGTK's drawing, and why (M5.2); null
+     *  outside the desktop app. */
+    readonly webkitSetup: string | null;
+  };
   /** Null outside the desktop app. */
   readonly system: SystemInfo | null;
   readonly browser: {
@@ -98,6 +104,7 @@ function timing(label: string, s: Summary | null): string {
 export function formatReport(d: DiagnosticsInfo): string {
   const out: string[] = [`GCode EditSim diagnostics (${d.generated})`];
   out.push(`App: ${d.app.version ?? "unknown version"} (UI build ${d.app.uiBuild})`);
+  if (d.app.webkitSetup) out.push(`WebKit setup: ${d.app.webkitSetup}`);
   if (d.system) {
     const runtime = d.system.flatpakRuntime ? `, Flatpak runtime ${d.system.flatpakRuntime}` : ", not in a Flatpak";
     out.push(`System: ${d.system.os} ${d.system.arch}${runtime}`);

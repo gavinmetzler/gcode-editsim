@@ -18,6 +18,7 @@ pub const DRAWING_ENV: &[&str] = &[
     "WEBKIT_DISABLE_DMABUF_RENDERER",
     "WEBKIT_DISABLE_COMPOSITING_MODE",
     "WEBKIT_FORCE_COMPOSITING_MODE",
+    "WEBKIT_USE_SKIA_FOR_COMPOSITION",
     "GDK_BACKEND",
     "GSK_RENDERER",
     "XDG_SESSION_TYPE",
@@ -27,6 +28,7 @@ pub const DRAWING_ENV: &[&str] = &[
     "LIBGL_ALWAYS_SOFTWARE",
     "__GLX_VENDOR_LIBRARY_NAME",
     "__NV_PRIME_RENDER_OFFLOAD",
+    "__NV_DISABLE_EXPLICIT_SYNC",
     "MESA_LOADER_DRIVER_OVERRIDE",
     "GBM_BACKENDS_PATH",
 ];
@@ -212,4 +214,62 @@ pub fn gbm_backends(gl: &Path) -> Vec<String> {
     }
     found.sort();
     found
+}
+
+/// The WebKitGTK settings the app chooses before its window opens (M5.2),
+/// and why, for the diagnostics report.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebKitSetup {
+    /// Environment variables to set (none of them already set).
+    pub set: Vec<(&'static str, &'static str)>,
+    /// One line for the diagnostics report.
+    pub reason: String,
+}
+
+/// Chooses how WebKitGTK draws, from whether NVIDIA's driver is loaded and
+/// whether GTK will use Wayland. `is_set` tells whether the user already
+/// set a variable: those are never overridden.
+///
+/// - No NVIDIA driver: WebKit's defaults (the direct GPU path).
+/// - NVIDIA on Wayland: the direct path with NVIDIA's explicit sync off.
+///   On the owner's machine (RTX 4090, driver 580, KDE, 2026-11-03) that
+///   was fast and stable, while without it the window closed (Wayland
+///   error 71) and copying frames through the CPU was slow.
+/// - NVIDIA on X11: frames copied through the CPU, since the direct path
+///   drew a white window there ("Failed to create GBM buffer").
+pub fn webkit_setup(nvidia: bool, wayland: bool, is_set: impl Fn(&str) -> bool) -> WebKitSetup {
+    let (var, base) = match (nvidia, wayland) {
+        (false, _) => {
+            return WebKitSetup {
+                set: Vec::new(),
+                reason: "no NVIDIA driver: WebKit's defaults".to_string(),
+            }
+        }
+        (true, true) => (
+            "__NV_DISABLE_EXPLICIT_SYNC",
+            "NVIDIA on Wayland: direct GPU path, NVIDIA explicit sync off",
+        ),
+        (true, false) => (
+            "WEBKIT_DISABLE_DMABUF_RENDERER",
+            "NVIDIA on X11: frames copied through the CPU (the direct path draws a white window)",
+        ),
+    };
+    if is_set(var) {
+        WebKitSetup {
+            set: Vec::new(),
+            reason: format!("{base}; {var} set by the user, kept"),
+        }
+    } else {
+        WebKitSetup {
+            set: vec![(var, "1")],
+            reason: base.to_string(),
+        }
+    }
+}
+
+/// Whether NVIDIA's own driver is loaded: a graphics card using the
+/// `nvidia` driver ([`graphics_cards`]), or its `/proc/driver/nvidia`
+/// version file. The open-source `nouveau` driver does not count.
+pub fn nvidia_present(gpus: &[String], nvidia_proc_exists: bool) -> bool {
+    nvidia_proc_exists || gpus.iter().any(|g| g.contains(": driver nvidia,"))
 }
