@@ -607,7 +607,11 @@ async function main(app: HTMLElement): Promise<void> {
     const rb = current;
     return {
       generated: new Date().toISOString(),
-      app: { version: system?.appVersion ?? null, uiBuild: typeof __UI_BUILD__ === "string" ? __UI_BUILD__ : "unknown" },
+      app: {
+        version: system?.appVersion ?? null,
+        uiBuild: typeof __UI_BUILD__ === "string" ? __UI_BUILD__ : "unknown",
+        webkitSetup: system?.webkitSetup ?? null,
+      },
       system,
       browser: {
         userAgent: navigator.userAgent,

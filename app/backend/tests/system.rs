@@ -220,3 +220,75 @@ fn finds_gbm_backends_in_the_flatpak_gl_extensions() {
 fn reports_where_gbm_looks_for_backends() {
     assert!(DRAWING_ENV.contains(&"GBM_BACKENDS_PATH"));
 }
+
+mod webkit_setup {
+    use app_backend::system::{nvidia_present, webkit_setup};
+
+    #[test]
+    fn leaves_webkit_alone_without_an_nvidia_driver() {
+        let s = webkit_setup(false, true, |_| false);
+        assert!(s.set.is_empty());
+        assert!(s.reason.contains("WebKit's defaults"), "{}", s.reason);
+    }
+
+    #[test]
+    fn keeps_the_direct_path_on_nvidia_wayland_with_explicit_sync_off() {
+        // The owner's machine (2026-11-03): fast and stable this way, while
+        // the CPU-copy path was slow and Skia composition off crashed.
+        let s = webkit_setup(true, true, |_| false);
+        assert_eq!(s.set, vec![("__NV_DISABLE_EXPLICIT_SYNC", "1")]);
+        assert!(s.reason.contains("Wayland"), "{}", s.reason);
+    }
+
+    #[test]
+    fn copies_frames_through_the_cpu_on_nvidia_x11() {
+        // The direct path drew a white window under X11 ("Failed to create
+        // GBM buffer"), so X11 keeps the old safe setting.
+        let s = webkit_setup(true, false, |_| false);
+        assert_eq!(s.set, vec![("WEBKIT_DISABLE_DMABUF_RENDERER", "1")]);
+        assert!(s.reason.contains("X11"), "{}", s.reason);
+    }
+
+    #[test]
+    fn never_overrides_what_the_user_set() {
+        let s = webkit_setup(true, false, |name| name == "WEBKIT_DISABLE_DMABUF_RENDERER");
+        assert!(s.set.is_empty());
+        assert!(
+            s.reason
+                .contains("WEBKIT_DISABLE_DMABUF_RENDERER set by the user"),
+            "{}",
+            s.reason
+        );
+        let s = webkit_setup(true, true, |name| name == "__NV_DISABLE_EXPLICIT_SYNC");
+        assert!(s.set.is_empty());
+        assert!(
+            s.reason
+                .contains("__NV_DISABLE_EXPLICIT_SYNC set by the user"),
+            "{}",
+            s.reason
+        );
+    }
+
+    #[test]
+    fn finds_the_nvidia_driver_from_the_cards_or_its_proc_file() {
+        let cards = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert!(nvidia_present(
+            &cards(&[
+                "card0: driver i915, PCI 8086:4680",
+                "card1: driver nvidia, PCI 10de:2684"
+            ]),
+            false
+        ));
+        assert!(nvidia_present(&cards(&[]), true));
+        assert!(!nvidia_present(
+            &cards(&["card0: driver amdgpu, PCI 1002:744c"]),
+            false
+        ));
+        // "nvidia-drm" style names do not appear for the card, but the
+        // nouveau driver must not count as NVIDIA's own.
+        assert!(!nvidia_present(
+            &cards(&["card0: driver nouveau, PCI 10de:2684"]),
+            false
+        ));
+    }
+}

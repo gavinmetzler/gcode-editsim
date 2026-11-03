@@ -35,7 +35,7 @@ describe("RollingStats", () => {
 
 const full: DiagnosticsInfo = {
   generated: "2026-11-02T10:00:00.000Z",
-  app: { version: "0.1.0", uiBuild: "abc1234" },
+  app: { version: "0.1.0", uiBuild: "abc1234", webkitSetup: "NVIDIA on Wayland: direct GPU path, NVIDIA explicit sync off" },
   system: {
     os: "linux",
     arch: "x86_64",
@@ -90,6 +90,11 @@ describe("formatReport", () => {
 
   it("starts with a title and the time it was made", () => {
     expect(text.split("\n")[0]).toBe("GCode EditSim diagnostics (2026-11-02T10:00:00.000Z)");
+  });
+
+  it("says how the app set up WebKitGTK's drawing, and why", () => {
+    expect(text).toContain("WebKit setup: NVIDIA on Wayland: direct GPU path, NVIDIA explicit sync off");
+    expect(formatReport({ ...full, app: { version: null, uiBuild: "x", webkitSetup: null } })).not.toContain("WebKit setup");
   });
 
   it("names the app, system, Flatpak runtime and the environment that affects drawing", () => {
@@ -156,7 +161,7 @@ describe("formatReport", () => {
   });
 
   it("says what is not available instead of leaving it out", () => {
-    const sparse = formatReport({ ...full, app: { version: null, uiBuild: "unknown" }, system: null, webgl: null, program: null, lastRun: null, gpu: null });
+    const sparse = formatReport({ ...full, app: { version: null, uiBuild: "unknown", webkitSetup: null }, system: null, webgl: null, program: null, lastRun: null, gpu: null });
     expect(sparse).toContain("App: unknown version (UI build unknown)");
     expect(sparse).toContain("System: not available (not running in the desktop app)");
     expect(sparse).toContain("GPU: WebGL not available");

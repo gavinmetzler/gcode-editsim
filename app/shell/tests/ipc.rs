@@ -135,6 +135,7 @@ fn system_info_reports_the_app_version_and_the_drawing_environment() {
     assert_eq!(info["os"], std::env::consts::OS);
     assert!(info["env"].is_array(), "{info}");
     assert!(info.get("flatpakRuntime").is_some(), "{info}");
+    assert!(info["webkitSetup"].is_string(), "{info}");
 }
 
 #[test]

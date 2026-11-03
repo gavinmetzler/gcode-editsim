@@ -113,15 +113,28 @@ and the setting that fixes it.
 
 ## Known issues
 
-- **Window closes at start with "Error 71 (Protocol error) dispatching to
-  Wayland display"** (seen with NVIDIA graphics on Wayland): WebKitGTK's
-  DMA-BUF renderer fails there. The package now sets
-  `WEBKIT_DISABLE_DMABUF_RENDERER=1`, which avoids it. To try the faster
-  renderer anyway: `flatpak run --env=WEBKIT_DISABLE_DMABUF_RENDERER=0
-  com.ncsoftbyai.gcodeeditsim`.
-- **Forcing X11** (`--socket=x11 --env=GDK_BACKEND=x11`) failed to start
-  GTK on the same machine. The app runs on Wayland natively, so this is not
-  needed; X11 is used automatically only where there is no Wayland.
+- **NVIDIA graphics (M5.2).** The app chooses how WebKitGTK draws when it
+  starts, and the diagnostics panel (Ctrl+Shift+D) shows the choice on its
+  "WebKit setup" line:
+  - *NVIDIA on Wayland:* WebKitGTK's fast direct GPU path, with NVIDIA's
+    explicit sync off (`__NV_DISABLE_EXPLICIT_SYNC=1`). Without that
+    setting the window closed at start with "Error 71 (Protocol error)
+    dispatching to Wayland display"; with the direct path off, every frame
+    was copied through the CPU and holding Page Down fell seconds behind.
+  - *NVIDIA on X11:* frames copied through the CPU
+    (`WEBKIT_DISABLE_DMABUF_RENDERER=1`): the direct path gave a white
+    window there ("Failed to create GBM buffer").
+  - *Other graphics:* WebKitGTK's defaults.
+
+  Tested on one machine (RTX 4090, driver 580, KDE Plasma). If the window
+  closes, stays white or freezes, override the choice for one run; a
+  variable you set is never changed by the app:
+  `flatpak run --env=WEBKIT_DISABLE_DMABUF_RENDERER=1 com.ncsoftbyai.gcodeeditsim`
+  (the safe, slower path). Do not add `WEBKIT_USE_SKIA_FOR_COMPOSITION=0`:
+  with it the app crashed.
+- **Forcing X11** needs `--nosocket=wayland --socket=x11
+  --env=GDK_BACKEND=x11`, since the package allows X11 only where there is
+  no Wayland. The app runs on Wayland natively, so this is not needed.
 
 ## Files
 

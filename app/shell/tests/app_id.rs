@@ -41,6 +41,28 @@ fn the_flatpak_files_are_named_for_the_identifier() {
     );
 }
 
+/// M5.2: the app chooses WebKitGTK's drawing setup itself and keeps any
+/// variable that is already set, so a fixed setting in the manifest would
+/// override its choice for everyone (as `WEBKIT_DISABLE_DMABUF_RENDERER=1`
+/// did, making NVIDIA on Wayland copy every frame through the CPU).
+#[test]
+fn the_flatpak_leaves_the_webkit_drawing_setup_to_the_app() {
+    let id = identifier();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packaging");
+    let manifest =
+        std::fs::read_to_string(root.join(format!("flatpak/{id}.yml"))).expect("manifest");
+    for var in [
+        "WEBKIT_DISABLE_DMABUF_RENDERER",
+        "__NV_DISABLE_EXPLICIT_SYNC",
+        "WEBKIT_USE_SKIA_FOR_COMPOSITION",
+    ] {
+        let set = manifest
+            .lines()
+            .any(|l| l.trim_start().starts_with("- --env=") && l.contains(var));
+        assert!(!set, "the manifest sets {var}");
+    }
+}
+
 /// Width and height of a PNG file, from its header.
 fn png_size(path: &std::path::Path) -> (u32, u32) {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
