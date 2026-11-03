@@ -18,9 +18,10 @@ fn unknown_g_code_is_an_error_and_the_block_does_not_move() {
 
 #[test]
 fn one_shot_codes_use_axis_words_as_data() {
-    // G4 X is a dwell time and G92/G10/G52 X set coordinates: none is a
-    // move. (G28 and G53 are supported; see tests/reference_and_machine_moves.rs.)
-    for src in ["G4 X1.\n", "G92 X0\n", "G10 L2 P1 X-100.\n", "G52 X5.\n"] {
+    // G4 X is a dwell time and G10/G52 X set coordinates: none is a move.
+    // (G28 and G53 are supported, see tests/reference_and_machine_moves.rs;
+    // G92 too since M5.6e, see tests/presetting_g92.rs.)
+    for src in ["G4 X1.\n", "G10 L2 P1 X-100.\n", "G52 X5.\n"] {
         let r = run(src);
         assert!(r.moves().is_empty(), "{src}");
         assert!(

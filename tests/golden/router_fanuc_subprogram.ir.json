@@ -4,7 +4,7 @@
       "line": 8,
       "kind": "Rapid",
       "end": {
-        "X": 0.0,
+        "X": 15.0,
         "Y": 0.0,
         "Z": 0.0
       },
@@ -15,7 +15,7 @@
       "line": 10,
       "kind": "Rapid",
       "end": {
-        "X": 0.0,
+        "X": 15.0,
         "Y": 0.0,
         "Z": -40.0
       },
@@ -26,7 +26,7 @@
       "line": 12,
       "kind": "Rapid",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -40.0
       },
@@ -37,7 +37,7 @@
       "line": 23,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -49.0
       },
@@ -49,7 +49,7 @@
       "line": 24,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -65.0
       },
@@ -61,7 +61,7 @@
       "line": 25,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -516.0,
         "Z": -65.0
       },
@@ -73,7 +73,7 @@
       "line": 26,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -506.0,
         "Z": -65.0
       },
@@ -85,7 +85,7 @@
       "line": 27,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -65.0
       },
@@ -97,7 +97,7 @@
       "line": 28,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -49.0
       },
@@ -109,7 +109,7 @@
       "line": 29,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -65.0
       },
@@ -121,7 +121,7 @@
       "line": 30,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -81.0
       },
@@ -133,7 +133,7 @@
       "line": 31,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -516.0,
         "Z": -81.0
       },
@@ -145,7 +145,7 @@
       "line": 32,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -506.0,
         "Z": -81.0
       },
@@ -157,7 +157,7 @@
       "line": 33,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -81.0
       },
@@ -169,7 +169,7 @@
       "line": 34,
       "kind": "Linear",
       "end": {
-        "X": 304.0,
+        "X": 319.0,
         "Y": -304.0,
         "Z": -40.0
       },
@@ -181,7 +181,7 @@
       "line": 35,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -40.0
       },
@@ -193,7 +193,7 @@
       "line": 23,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -49.0
       },
@@ -205,7 +205,7 @@
       "line": 24,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -65.0
       },
@@ -217,7 +217,7 @@
       "line": 25,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -516.0,
         "Z": -65.0
       },
@@ -229,7 +229,7 @@
       "line": 26,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -506.0,
         "Z": -65.0
       },
@@ -241,7 +241,7 @@
       "line": 27,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -65.0
       },
@@ -253,7 +253,7 @@
       "line": 28,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -49.0
       },
@@ -265,7 +265,7 @@
       "line": 29,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -65.0
       },
@@ -277,7 +277,7 @@
       "line": 30,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -81.0
       },
@@ -289,7 +289,7 @@
       "line": 31,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -516.0,
         "Z": -81.0
       },
@@ -301,7 +301,7 @@
       "line": 32,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -506.0,
         "Z": -81.0
       },
@@ -313,7 +313,7 @@
       "line": 33,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -81.0
       },
@@ -325,7 +325,7 @@
       "line": 34,
       "kind": "Linear",
       "end": {
-        "X": 338.0,
+        "X": 353.0,
         "Y": -304.0,
         "Z": -40.0
       },
@@ -337,7 +337,7 @@
       "line": 35,
       "kind": "Linear",
       "end": {
-        "X": 372.0,
+        "X": 387.0,
         "Y": -304.0,
         "Z": -40.0
       },
@@ -349,7 +349,7 @@
       "line": 15,
       "kind": "Rapid",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -40.0
       },
@@ -360,7 +360,7 @@
       "line": 23,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -49.0
       },
@@ -372,7 +372,7 @@
       "line": 24,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -65.0
       },
@@ -384,7 +384,7 @@
       "line": 25,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -786.0,
         "Z": -65.0
       },
@@ -396,7 +396,7 @@
       "line": 26,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -776.0,
         "Z": -65.0
       },
@@ -408,7 +408,7 @@
       "line": 27,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -65.0
       },
@@ -420,7 +420,7 @@
       "line": 28,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -49.0
       },
@@ -432,7 +432,7 @@
       "line": 29,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -65.0
       },
@@ -444,7 +444,7 @@
       "line": 30,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -81.0
       },
@@ -456,7 +456,7 @@
       "line": 31,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -786.0,
         "Z": -81.0
       },
@@ -468,7 +468,7 @@
       "line": 32,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -776.0,
         "Z": -81.0
       },
@@ -480,7 +480,7 @@
       "line": 33,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -81.0
       },
@@ -492,7 +492,7 @@
       "line": 34,
       "kind": "Linear",
       "end": {
-        "X": -274.0,
+        "X": -259.0,
         "Y": -574.0,
         "Z": -40.0
       },
@@ -504,7 +504,7 @@
       "line": 35,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -40.0
       },
@@ -516,7 +516,7 @@
       "line": 23,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -49.0
       },
@@ -528,7 +528,7 @@
       "line": 24,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -65.0
       },
@@ -540,7 +540,7 @@
       "line": 25,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -786.0,
         "Z": -65.0
       },
@@ -552,7 +552,7 @@
       "line": 26,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -776.0,
         "Z": -65.0
       },
@@ -564,7 +564,7 @@
       "line": 27,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -65.0
       },
@@ -576,7 +576,7 @@
       "line": 28,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -49.0
       },
@@ -588,7 +588,7 @@
       "line": 29,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -65.0
       },
@@ -600,7 +600,7 @@
       "line": 30,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -81.0
       },
@@ -612,7 +612,7 @@
       "line": 31,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -786.0,
         "Z": -81.0
       },
@@ -624,7 +624,7 @@
       "line": 32,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -776.0,
         "Z": -81.0
       },
@@ -636,7 +636,7 @@
       "line": 33,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -81.0
       },
@@ -648,7 +648,7 @@
       "line": 34,
       "kind": "Linear",
       "end": {
-        "X": -240.0,
+        "X": -225.0,
         "Y": -574.0,
         "Z": -40.0
       },
@@ -660,7 +660,7 @@
       "line": 35,
       "kind": "Linear",
       "end": {
-        "X": -206.0,
+        "X": -191.0,
         "Y": -574.0,
         "Z": -40.0
       },
@@ -700,15 +700,15 @@
     },
     {
       "line": 5,
-      "severity": "Warning",
-      "code": "UnsupportedGCode",
-      "message": "G92 (Workpiece coordinate system setting) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
-    },
-    {
-      "line": 5,
       "severity": "Info",
       "code": "MissingWord",
       "message": "M6 with no tool selected (no T word yet): the tool stays unknown"
+    },
+    {
+      "line": 5,
+      "severity": "Warning",
+      "code": "ControllerDependent",
+      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
     },
     {
       "line": 6,
@@ -721,12 +721,6 @@
       "severity": "Info",
       "code": "UnsupportedMCode",
       "message": "M93 is not a standard Fanuc code; it is taken to be machine-specific and ignored (no movement). If it moves the machine, list it in the machine file's ignore_codes or expect the drawing to differ. Not reported again."
-    },
-    {
-      "line": 8,
-      "severity": "Warning",
-      "code": "ControllerDependent",
-      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
     },
     {
       "line": 9,
@@ -750,12 +744,12 @@
   "tools_used": [],
   "bbox": {
     "min": {
-      "X": -274.0,
+      "X": -259.0,
       "Y": -786.0,
       "Z": -81.0
     },
     "max": {
-      "X": 372.0,
+      "X": 387.0,
       "Y": 0.0,
       "Z": 0.0
     }

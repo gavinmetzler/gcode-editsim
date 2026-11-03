@@ -61,6 +61,8 @@ enum Motion {
     /// A canned cycle: the block's position in the working plane is a hole,
     /// drawn as a rapid.
     CycleHoles,
+    /// Presetting (G92): the axis words are the new current position.
+    Preset,
 }
 
 /// The source reference narrowed to a span within the line.
@@ -233,6 +235,7 @@ pub(crate) fn interpret(
             special = Some(code);
         }
         motion_effect = match (motion_effect, effect) {
+            (Motion::Preset, _) | (_, Motion::Preset) => Motion::Preset,
             (Motion::Consumed, _) | (_, Motion::Consumed) => Motion::Consumed,
             (Motion::CycleHoles, _) | (_, Motion::CycleHoles) => Motion::CycleHoles,
             _ => Motion::Normal,
@@ -250,6 +253,11 @@ pub(crate) fn interpret(
     // 4. Motion.
     match special {
         Some(code) => special_motion(fanuc, code, &values, ctx, state, out, diag),
+        // Presetting: the values are positions, absolute whatever the mode.
+        None if motion_effect == Motion::Preset => {
+            let target = axis_target(fanuc, &values, false, ctx, state, diag);
+            out.push(Command::Preset { target });
+        }
         None => motion(fanuc, &values, motion_effect, ctx, state, out, diag),
     }
 
@@ -561,6 +569,8 @@ fn apply_gcode(
             // Its words are data (an offset, a centre, an angle), not a move.
             return Motion::Consumed;
         }
+        Handler::Preset => return Motion::Preset,
+        Handler::PresetCancel => out.push(Command::CancelPreset),
         Handler::CannedCycle => {
             set_active(fanuc, state, code.key);
             if state.first_report(&format!("fanuc.cycle.{}", code.key)) {
@@ -963,7 +973,8 @@ fn motion(
         return;
     }
     match effect {
-        Motion::Consumed => return,
+        // A preset block never reaches here (handled before motion).
+        Motion::Consumed | Motion::Preset => return,
         Motion::CycleHoles => return cycle_hole(fanuc, values, ctx, state, out, diag),
         Motion::Normal if cycle_active(fanuc, state) => {
             return cycle_hole(fanuc, values, ctx, state, out, diag);
@@ -1193,6 +1204,9 @@ pub(crate) fn transform_refusal(
         };
         let why = match fanuc.handler(key) {
             Some(Handler::Ignored) => "shifts, turns or scales later moves, or calls a macro",
+            // Supported since M5.6e, but still refused in a selection (M4,
+            // owner, 2026-11-02): it shifts every later move.
+            Some(Handler::Preset | Handler::PresetCancel) => "presets the coordinates",
             Some(Handler::CannedCycle) => "is a canned cycle",
             Some(Handler::MachineRapid) => "moves in machine coordinates",
             Some(Handler::ReferenceReturn | Handler::ReferenceReturnOther) => {

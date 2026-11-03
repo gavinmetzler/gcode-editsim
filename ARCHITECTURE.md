@@ -365,8 +365,8 @@ pub trait Dialect {
     fn format_value(&self, value: f64, kind: ValueKind, units: LengthUnit, style: &NumberStyle) -> Option<String> { None }
 
     /// Why a transformation cannot rewrite a block (M4.6): codes whose effect
-    /// its axis words do not carry (Fanuc: canned cycles, G92/G52/G10 and the
-    /// other ignored shifts, G53, G28/G30). Default `None`.
+    /// its axis words do not carry (Fanuc: canned cycles, G92/G92.1, G52/G10 and
+    /// the other ignored shifts, G53, G28/G30). Default `None`.
     fn transform_refusal(&self, block: &Block, state: &ModalState) -> Option<String> { None }
 
     /// The arc radius word's letter (Fanuc `R`), for scaling radii (M4.8).
@@ -407,11 +407,11 @@ pub trait Dialect {
 
 ### 7.3a Codes that change later moves: never hide moves
 
-Some unsupported codes change how *later* blocks move: coordinate shifts (G92, G52, G10, Osai presetting and origins), rotation, scaling, mirroring, polar input, macro and subprogram calls, and unknown G codes. **Moves are never hidden** (owner decision, 2026-10-31): a backplot drawn without their effect is more useful than none, and the diagnostics say not to rely on it. Each such code gives one diagnostic where it appears (a warning; an error for an unknown G code), its words are data rather than a move, and later moves are drawn as programmed. Canned cycles draw their hole positions (§7.3).
+Some unsupported codes change how *later* blocks move: coordinate shifts (G52, G10, Osai origins by axis), rotation, scaling, mirroring, polar input, macro and subprogram calls, and unknown G codes. **Moves are never hidden** (owner decision, 2026-10-31): a backplot drawn without their effect is more useful than none, and the diagnostics say not to rely on it. Each such code gives one diagnostic where it appears (a warning; an error for an unknown G code), its words are data rather than a move, and later moves are drawn as programmed. Canned cycles draw their hole positions (§7.3).
 
 Until M3.0–M3.5 these codes started a *motion blocker* that hid every later move until a cancel code; that mechanism is gone. A position that is genuinely unknown (G30 to a reference the machine file does not give, an Osai line that cannot be read) still makes the interpreter wait for an absolute position on every axis before drawing again: nothing is drawn from a guessed starting point.
 
-Coordinate shifts and canned cycles are on hold, left to the community (`docs/WISHLIST.md`), except presetting (G92, Fanuc and Osai), which M5.6 supports.
+Coordinate shifts and canned cycles are on hold, left to the community (`docs/WISHLIST.md`), except presetting (Fanuc G92/G92.1, Osai G92/G98/G99), supported since M5.6e: the interpreter adds the preset shift to the work offset to get program zero (`Command::Preset`, `Command::CancelPreset`).
 
 **Useful diagnostics (M5.6, owner, 2026-11-03).** Messages should be about the program, not about what the software does not do. A code the machine file lists in `ignore_codes` produces no message: M codes are removed from the block as before, while listed G codes and Osai three-letter commands (such as `G43`, `UAO`, `DWT`) keep their behaviour and only lose their message. Codes the dialect does not know are still always reported, so a typo is caught. Mechanism (M5.6c): a dialect tags each "not supported" message with the code it is about (`Diagnostic::about`, such as `"G43"`, `"UAO"`, or `"DWT"` for the G04 dwell-time message), and the interpreter drops the tagged messages whose code the machine lists; the tag is not part of the golden or render-buffer output. The machine file also names its dialect (choosing the machine sets it) and the control's power-on state, so programs that rely on it are not warned about assumed modes.
 

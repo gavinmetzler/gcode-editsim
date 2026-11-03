@@ -12,8 +12,8 @@ use common::{run, w};
 use dialect_api::Command;
 use ir::{DiagCode, Severity};
 
-const CODES: [&str; 9] = [
-    "G92 X100. Y100.",
+// G92 is supported since M5.6e (tests/presetting_g92.rs).
+const CODES: [&str; 8] = [
     "G52 X10. Y10.",
     "G68 X0 Y0 R90.",
     "G51 X0 Y0 P2",

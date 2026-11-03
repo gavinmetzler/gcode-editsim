@@ -189,7 +189,8 @@ See [Trying it out](#trying-it-out).
 
 **Never drawing a misleading toolpath without saying so** is the rule. The M1 review made unsupported codes hide later moves; since M3 (owner decision) moves are **never hidden**: a backplot drawn without an unsupported code's effect, with a warning, is more useful than none.
 
-- **Codes that change later moves** (G92, G52, G10, rotation, scaling, mirroring, polar input, macro calls, unknown G codes) are reported once where they appear; their values are data, not moves, and later moves are drawn as programmed. Canned cycles draw their hole positions.
+- **Presetting** (G92, Fanuc and Osai) shifts later moves, as on the control.
+- **Codes that change later moves** (G52, G10, rotation, scaling, mirroring, polar input, macro calls, unknown G codes) are reported once where they appear; their values are data, not moves, and later moves are drawn as programmed. Canned cycles draw their hole positions.
 - **Unknown position.** After the machine has gone somewhere the machine file doesn't describe (G30), nothing is drawn until the position is known again.
 - **Assumed defaults.** Modes a program relies on without setting them (units, G90/G91, plane, motion mode) are warned about. On a real control they depend on parameters or on the state at power-off.
 

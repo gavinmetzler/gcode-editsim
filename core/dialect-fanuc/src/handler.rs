@@ -26,6 +26,10 @@ pub(crate) enum Handler {
     /// Tool length compensation (G43, G44): never simulated, by design; the
     /// path is shown as programmed, with one note per program.
     LengthCompensation,
+    /// Presetting (G92, M5.6e): the axis words become the current position.
+    Preset,
+    /// Cancels the preset (G92.1).
+    PresetCancel,
     /// Reported as an error.
     Unsupported,
     /// Changes how later blocks move but is not simulated (coordinate
@@ -80,6 +84,8 @@ impl Handler {
             "length_compensation" => Self::LengthCompensation,
             "unsupported" => Self::Unsupported,
             "ignored" => Self::Ignored,
+            "preset" => Self::Preset,
+            "preset_cancel" => Self::PresetCancel,
             "canned_cycle" => Self::CannedCycle,
             "subprogram_call" => Self::SubprogramCall,
             "subprogram_return" => Self::SubprogramReturn,

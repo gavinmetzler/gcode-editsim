@@ -61,6 +61,8 @@ enum Motion {
     /// A canned cycle: the block's position in the working plane is a hole,
     /// drawn as a rapid.
     CycleHoles,
+    /// Presetting (G92/G98): the axis words are the new current position.
+    Preset,
 }
 
 /// The source reference narrowed to a span within the line.
@@ -247,6 +249,7 @@ pub(crate) fn interpret(
         }
         let effect = apply_gcode(osai, code, ctx, state, out, diag);
         motion_effect = match (motion_effect, effect) {
+            (Motion::Preset, _) | (_, Motion::Preset) => Motion::Preset,
             (Motion::Consumed, _) | (_, Motion::Consumed) => Motion::Consumed,
             (Motion::CycleHoles, _) | (_, Motion::CycleHoles) => Motion::CycleHoles,
             _ => Motion::Normal,
@@ -262,7 +265,13 @@ pub(crate) fn interpret(
     }
 
     // 5. Motion, then a G04 dwell at its end.
-    motion(osai, &values, motion_effect, g79, ctx, state, out, diag);
+    if motion_effect == Motion::Preset {
+        // Presetting: the values are positions, absolute whatever the mode.
+        let target = axis_target(&values, false, ctx, state, diag);
+        out.push(Command::Preset { target });
+    } else {
+        motion(osai, &values, motion_effect, g79, ctx, state, out, diag);
+    }
     if let Some(code) = dwell {
         if state.first_report("osai.dwell_time") {
             diag.push(
@@ -465,8 +474,7 @@ fn codes_compatible(
                 return false;
             }
         }
-        let alone = matches!(a.handler, Handler::Plane(..))
-            || (a.handler == Handler::NoEffect && group_of(a.key) == Some(4));
+        let alone = matches!(a.handler, Handler::Plane(..)) || a.handler == Handler::PresetCancel;
         if alone && (gcodes.len() > 1 || !values.is_empty()) {
             diag.push(
                 Diagnostic::error(
@@ -623,6 +631,14 @@ fn apply_gcode(
             });
             // Axis words with these codes are data (a preset).
             return Motion::Consumed;
+        }
+        Handler::Preset => {
+            set_active(osai, state, code.key);
+            return Motion::Preset;
+        }
+        Handler::PresetCancel => {
+            set_active(osai, state, code.key);
+            out.push(Command::CancelPreset);
         }
         Handler::CannedCycle => {
             set_active(osai, state, code.key);
@@ -907,7 +923,8 @@ fn motion(
         return;
     }
     match effect {
-        Motion::Consumed => return,
+        // A preset block never reaches here (handled before motion).
+        Motion::Consumed | Motion::Preset => return,
         Motion::CycleHoles => return cycle_hole(values, ctx, state, out, diag),
         Motion::Normal if cycle_active(osai, state) => {
             return cycle_hole(values, ctx, state, out, diag);
@@ -1143,6 +1160,9 @@ pub(crate) fn transform_refusal(osai: &Osai, block: &Block, state: &ModalState) 
         };
         let why = match osai.handler(key) {
             Some(Handler::Ignored) => "presets or shifts later moves",
+            // Supported since M5.6e, but still refused in a selection (M4,
+            // owner, 2026-11-02): it shifts every later move.
+            Some(Handler::Preset | Handler::PresetCancel) => "presets or shifts later moves",
             Some(Handler::CannedCycle) => "is a canned cycle",
             Some(Handler::MachineCoords) => "refers the block to the home position",
             // G99 deletes a G92 preset, which changes later coordinates.
