@@ -31,7 +31,9 @@ import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
 import type { DiagnosticsInfo } from "../diagnostics/report";
 import { LINE_ATTRIBUTE, LineHighlight, type LineRange } from "./highlight";
-import { filterToolpath, type FilteredDrawing } from "./tool-filter";
+import type { Colouring } from "../layout/panes";
+import { colourArray } from "./tool-colours";
+import { filterToolpath, toolsInOrder, type FilteredDrawing } from "./tool-filter";
 
 type GraphicsInfo = { webgl: NonNullable<DiagnosticsInfo["webgl"]>; gpu: NonNullable<DiagnosticsInfo["gpu"]> };
 import { PALETTE, srgbToLinear, type Toolpath } from "./toolpath";
@@ -68,6 +70,13 @@ export class Viewport {
   private highlightRange: LineRange | null = null;
   /** The tools not drawn (M5.4), and what is drawn for them. */
   private hiddenTools: ReadonlySet<number> = new Set();
+  /** Rapids shown (the view's toggle, M5.5), and the colouring. */
+  private rapidsShown = true;
+  private colouring: Colouring = "move";
+  /** The tools in order of first use, and the by-tool colours, made once
+   *  per toolpath. */
+  private tools: number[] = [];
+  private toolColours: Float32Array | null = null;
   private drawing: FilteredDrawing | null = null;
   /** GPU resources of the drawn toolpath, released by clearDrawing(). */
   private drawingDisposables: { dispose(): void }[] = [];
@@ -233,6 +242,8 @@ export class Viewport {
     this.clear();
     this.toolpath = toolpath;
     this.hiddenTools = new Set(hidden);
+    this.tools = toolsInOrder(toolpath.segmentTool);
+    this.toolColours = null;
     const [ox, oy, oz] = toolpath.origin;
     this.group.position.set(ox, oy, oz);
 
@@ -256,10 +267,11 @@ export class Viewport {
     const toolpath = this.toolpath;
     if (!toolpath) return;
     this.clearDrawing();
-    const drawing = filterToolpath(toolpath, this.hiddenTools);
+    const drawing = filterToolpath(toolpath, this.hiddenTools, { rapids: this.rapidsShown });
     this.drawing = drawing;
     const position = new BufferAttribute(toolpath.positions, 3);
-    const color = new BufferAttribute(toolpath.colors, 3);
+    if (this.colouring === "tool") this.toolColours ??= colourArray(toolpath, "tool", this.tools);
+    const color = new BufferAttribute(this.colouring === "tool" ? (this.toolColours ?? toolpath.colors) : toolpath.colors, 3);
     // Each vertex's program line, read only by the highlight's shader.
     const lineNo = new BufferAttribute(toolpath.vertexLine, 1);
     const lines = (index: Uint32Array): BufferGeometry => {
@@ -307,6 +319,23 @@ export class Viewport {
    *  leaves them out. Rebuilt once per change, not per frame. */
   setHiddenTools(hidden: ReadonlySet<number>): void {
     this.hiddenTools = new Set(hidden);
+    this.drawToolpath();
+    this.requestRender();
+  }
+
+  /** Colours the toolpath by move type or by tool (M5.5). */
+  setColouring(colouring: Colouring): void {
+    if (colouring === this.colouring) return;
+    this.colouring = colouring;
+    this.drawToolpath();
+    this.requestRender();
+  }
+
+  /** Shows or hides every rapid (M5.5): hidden rapids are not drawn and
+   *  cannot be picked, snapped or measured to. */
+  setRapidsShown(shown: boolean): void {
+    if (shown === this.rapidsShown) return;
+    this.rapidsShown = shown;
     this.drawToolpath();
     this.requestRender();
   }

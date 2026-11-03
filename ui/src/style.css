@@ -117,3 +117,7 @@ main[data-maximised="editor"] > .editor, main[data-maximised="panel"] .panel { f
 .tools-menu .buttons button { flex: 1; }
 .tools-menu .tool { display: flex; align-items: center; gap: 4px; padding: 2px 0; cursor: pointer; white-space: nowrap; }
 .tools-menu .tool input { margin: 0; accent-color: #7cb7ff; }
+/* Colour by move or by tool (M5.5), and the rapids toggle. */
+.legend .colour-by { display: flex; gap: 4px; margin: 4px 0 2px; }
+.legend .colour-by button { font-size: 11px; padding: 1px 8px; }
+.rapids-toggle { position: absolute; right: 8px; bottom: 8px; z-index: 5; font-size: 12px; padding: 3px 10px; }

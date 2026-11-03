@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { layoutToSave, paneName, restoredShare, shownSeverities, splitFraction, toggleMaximised } from "../src/layout/panes";
+import { colouringFrom, layoutToSave, paneName, restoredShare, shownSeverities, splitFraction, toggleMaximised } from "../src/layout/panes";
 
 describe("splitFraction", () => {
   it("follows the pointer between the minimums", () => {
@@ -62,7 +62,7 @@ describe("paneName", () => {
 
 describe("layoutToSave", () => {
   const ALL = new Set(["error", "warning", "info"] as const);
-  const base = { editor: null, panel: null, maximised: null, legendFolded: false, shown: ALL };
+  const base = { editor: null, panel: null, maximised: null, legendFolded: false, shown: ALL, colouring: "move" as const };
 
   it("leaves out what is at its default", () => {
     expect(layoutToSave(base)).toEqual({});
@@ -75,6 +75,20 @@ describe("layoutToSave", () => {
       legend_folded: true,
       hidden_diagnostics: ["error", "info"],
     });
+  });
+
+  it("remembers colouring by tool, and leaves out the default, by move (M5.5)", () => {
+    expect(layoutToSave({ ...base, colouring: "tool" })).toEqual({ colour_by: "tool" });
+    expect(layoutToSave(base)).toEqual({});
+  });
+});
+
+describe("colouringFrom (M5.5)", () => {
+  it("reads a remembered colouring, by move for anything else", () => {
+    expect(colouringFrom({ colour_by: "tool" })).toBe("tool");
+    expect(colouringFrom({ colour_by: "move" })).toBe("move");
+    expect(colouringFrom({ colour_by: "rainbow" })).toBe("move");
+    expect(colouringFrom(null)).toBe("move");
   });
 });
 

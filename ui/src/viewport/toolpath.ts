@@ -125,6 +125,10 @@ export interface Toolpath {
   /** The tool of each segment (the render buffer's tool number), for the
    *  tool filter (M5.4). */
   readonly segmentTool: Uint16Array;
+  /** The kind and flags of each segment, to recolour without the render
+   *  buffer (M5.5). */
+  readonly segmentKind: Uint8Array;
+  readonly segmentFlags: Uint8Array;
   /** Where vertex coordinates are measured from (machine coordinates, mm). */
   readonly origin: readonly [number, number, number];
   /** The vertices of segment `index`, or null if there is no such segment. */
@@ -146,6 +150,8 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
   const vertexSegment = new Uint32Array(vertexCount);
   const vertexLine = new Float32Array(vertexCount);
   const segmentTool = new Uint16Array(segmentCount);
+  const segmentKind = new Uint8Array(segmentCount);
+  const segmentFlags = new Uint8Array(segmentCount);
   const singles: number[] = [];
   const feed: number[] = [];
   const rapid: number[] = [];
@@ -157,6 +163,8 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     const seg = rb.segment(s);
     const color = linear(segmentColor(seg.kind, seg.flags));
     segmentTool[s] = seg.tool;
+    segmentKind[s] = seg.kind;
+    segmentFlags[s] = seg.flags;
     const end = seg.firstVertex + seg.vertexCount;
     for (let v = seg.firstVertex; v < end; v += 1) {
       vertexSegment[v] = s;
@@ -212,6 +220,8 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     vertexLine,
     singlePoints: { positions: singlePositions, lines: singleLines, segments: Uint32Array.from(singles) },
     segmentTool,
+    segmentKind,
+    segmentFlags,
     origin: rb.header.origin,
     endpoints: moveEndpoints(rb),
     segmentVertices: (index: number) => {

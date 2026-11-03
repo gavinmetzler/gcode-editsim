@@ -22,7 +22,15 @@ import { baseName, detectLineEnding, fileBytes, openPath, type LineEnding } from
 import { Freshness } from "./freshness";
 import { buildLineIndex, latestOnly, lineMarks, shownMarks, type LineIndex, type LineMark, type LineRange } from "./editor/lines";
 import { addSplitter, dblclickToggles, Maximiser } from "./layout/layout";
-import { layoutToSave, paneName, restoredShare, shownSeverities, type PaneLayout } from "./layout/panes";
+import {
+  colouringFrom,
+  layoutToSave,
+  paneName,
+  restoredShare,
+  shownSeverities,
+  type Colouring,
+  type PaneLayout,
+} from "./layout/panes";
 import {
   inApp,
   interpret,
@@ -66,7 +74,8 @@ import {
   type Pinned,
   type ToolPoint,
 } from "./viewport/readout";
-import { LEGEND, buildToolpath } from "./viewport/toolpath";
+import { legendEntries } from "./viewport/tool-colours";
+import { buildToolpath } from "./viewport/toolpath";
 import { Viewport } from "./viewport/viewport";
 import { VIEWS, type ViewName } from "./viewport/views";
 
@@ -196,21 +205,46 @@ async function main(app: HTMLElement): Promise<void> {
   staleBar.hidden = true;
   // What the colours mean (bottom left of the view); the header folds it.
   const legendToggle = el("button", { type: "button", className: "legend-toggle", textContent: "Colours ▾" });
-  const legendList = el(
-    "ul",
-    {},
-    ...LEGEND.map((entry) => {
-      const swatch = el("span", { className: `swatch ${entry.style}` });
-      swatch.style.setProperty("--swatch", entry.color);
-      return el("li", {}, swatch, entry.label);
-    }),
-  );
-  const legend = el("div", { className: "legend" }, legendToggle, legendList);
+  const legendList = el("ul", {});
+  // Colour by move type (as before) or by tool (M5.5), remembered.
+  const byMoveButton = el("button", { type: "button", className: "toggle", textContent: "By move" });
+  const byToolButton = el("button", { type: "button", className: "toggle", textContent: "By tool" });
+  const legendBody = el("div", {}, el("div", { className: "colour-by" }, byMoveButton, byToolButton), legendList);
+  const legend = el("div", { className: "legend" }, legendToggle, legendBody);
+  let colouring: Colouring = "move";
+  /** The program's tools in order of first use, for the colour key. */
+  let legendTools: number[] = [];
+  const showLegend = (): void => {
+    byMoveButton.classList.toggle("active", colouring === "move");
+    byToolButton.classList.toggle("active", colouring === "tool");
+    legendList.replaceChildren(
+      ...legendEntries(colouring, legendTools).map((entry) => {
+        const swatch = el("span", { className: `swatch ${entry.style}` });
+        swatch.style.setProperty("--swatch", entry.color);
+        return el("li", {}, swatch, entry.label);
+      }),
+    );
+  };
+  showLegend();
   const showLegendFolded = (folded: boolean): void => {
-    legendList.hidden = folded;
+    legendBody.hidden = folded;
     legendToggle.textContent = folded ? "Colours ▸" : "Colours ▾";
   };
-  viewportBox.append(readout, staleBar, legend);
+  // Hide or show every rapid (owner's addition to M5.5): a toggle in the
+  // view, not remembered, so the app always starts showing them.
+  const rapidsButton = el("button", {
+    type: "button",
+    className: "rapids-toggle toggle",
+    textContent: "Hide rapids",
+    title: "Hide or show rapid moves. Hidden rapids cannot be clicked or measured to.",
+  });
+  rapidsButton.addEventListener("click", () => {
+    const hide = !rapidsButton.classList.contains("active");
+    rapidsButton.classList.toggle("active", hide);
+    rapidsButton.textContent = hide ? "Rapids hidden" : "Hide rapids";
+    viewport.setRapidsShown(!hide);
+  });
+  viewportBox.append(readout, staleBar, legend, rapidsButton);
   const panel = new DiagnosticsPanel(panelBox);
 
   // Resizing: drag the borders between the panes. The shares are null at
@@ -235,13 +269,28 @@ async function main(app: HTMLElement): Promise<void> {
         editor: editorShare,
         panel: panelShare,
         maximised: maximiser.maximised,
-        legendFolded: legendList.hidden === true,
+        legendFolded: legendBody.hidden === true,
         shown: panel.shownSeverities(),
+        colouring,
       }),
     ).catch(() => undefined);
   };
+  const setColouring = (next: Colouring): void => {
+    colouring = next;
+    viewport.setColouring(next);
+    showLegend();
+  };
+  for (const [button, value] of [
+    [byMoveButton, "move"],
+    [byToolButton, "tool"],
+  ] as const) {
+    button.addEventListener("click", () => {
+      setColouring(value);
+      saveLayout();
+    });
+  }
   legendToggle.addEventListener("click", () => {
-    showLegendFolded(legendList.hidden !== true);
+    showLegendFolded(legendBody.hidden !== true);
     saveLayout();
   });
   addSplitter(mainBox, rightBox, "x", showEditorShare, saveLayout);
@@ -278,6 +327,7 @@ async function main(app: HTMLElement): Promise<void> {
     showPanelShare(restoredShare(layout?.panel, rightBox.getBoundingClientRect().height));
     maximiser.set(paneName(layout?.maximised));
     showLegendFolded(layout?.legend_folded === true);
+    setColouring(colouringFrom(layout));
     panel.setShown(shownSeverities(layout?.hidden_diagnostics));
   };
   resetLayoutButton.addEventListener("click", () => {
@@ -519,6 +569,8 @@ async function main(app: HTMLElement): Promise<void> {
       const tools = toolsInOrder(toolpath.segmentTool);
       hiddenTools = keepHidden(hiddenTools, tools);
       toolsMenu.setTools(tools, hiddenTools);
+      legendTools = tools;
+      showLegend();
       const showing = performance.now();
       viewport.show(toolpath, fitNext, hiddenTools);
       lastRun = { interpretMs, buildMs: showing - building, showMs: performance.now() - showing, bytes };

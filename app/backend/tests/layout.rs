@@ -43,6 +43,7 @@ fn the_layout_round_trips_through_the_settings_json() {
         maximised: Some("viewport".to_owned()),
         legend_folded: Some(true),
         hidden_diagnostics: Some(vec!["info".to_owned(), "warning".to_owned()]),
+        colour_by: Some("tool".to_owned()),
     });
     s.window = Some(geometry(1400.0, 900.0, Some((100, 50)), true));
     let loaded = Settings::from_json(s.to_json().as_bytes());
@@ -57,6 +58,7 @@ fn the_layout_round_trips_through_the_settings_json() {
             "maximised": "viewport",
             "legend_folded": true,
             "hidden_diagnostics": ["info", "warning"],
+            "colour_by": "tool",
         })
     );
     assert_eq!(
@@ -265,4 +267,20 @@ fn nothing_hidden_and_an_open_legend_are_remembered_too() {
     let layout = loaded.settings.layout.expect("layout");
     assert_eq!(layout.legend_folded, Some(false));
     assert_eq!(layout.hidden_diagnostics, Some(vec![]));
+}
+
+#[test]
+fn the_colouring_choice_is_remembered_and_a_bad_one_reported() {
+    // M5.5: colouring by move or by tool is remembered with the layout.
+    let loaded = Settings::from_json(br#"{"layout": {"colour_by": "tool"}}"#);
+    assert_eq!(loaded.problem, None);
+    assert_eq!(
+        loaded.settings.layout.expect("layout").colour_by,
+        Some("tool".to_owned())
+    );
+    let loaded = Settings::from_json(br#"{"layout": {"colour_by": 3, "editor": 0.4}}"#);
+    let layout = loaded.settings.layout.expect("layout kept");
+    assert_eq!(layout.colour_by, None);
+    assert_eq!(layout.editor, Some(0.4));
+    assert!(loaded.problem.is_some());
 }
