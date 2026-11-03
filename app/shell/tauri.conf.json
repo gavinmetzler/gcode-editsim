@@ -20,7 +20,40 @@
     }
   },
   "bundle": {
-    "active": false,
-    "icon": ["icons/icon.png", "icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png"]
+    "active": true,
+    "targets": [
+      "deb",
+      "rpm"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "Edit CNC G-code programs and see their toolpath in 3D",
+    "longDescription": "A G-code editor beside a synced 3D backplot of 3-axis milling programs (Fanuc and Osai 10 Series), with diagnostics, statistics and a time estimate. A visualization aid, not a safety check.",
+    "license": "AGPL-3.0-only",
+    "homepage": "https://github.com/gavinmetzler/gcode-editsim",
+    "icon": [
+      "icons/icon.png",
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ],
+    "linux": {
+      "deb": {
+        "section": "devel",
+        "desktopTemplate": "../../packaging/linux/desktop.hbs",
+        "files": {
+          "/usr/share/mime/packages/com.ncsoftbyai.gcodeeditsim.xml": "../../packaging/flatpak/com.ncsoftbyai.gcodeeditsim.xml",
+          "/usr/share/icons/hicolor/scalable/apps/com.ncsoftbyai.gcodeeditsim.svg": "../../packaging/icons/com.ncsoftbyai.gcodeeditsim.svg",
+          "/usr/share/licenses/gcode-editsim/LICENSE": "../../LICENSE"
+        }
+      },
+      "rpm": {
+        "desktopTemplate": "../../packaging/linux/desktop.hbs",
+        "files": {
+          "/usr/share/mime/packages/com.ncsoftbyai.gcodeeditsim.xml": "../../packaging/flatpak/com.ncsoftbyai.gcodeeditsim.xml",
+          "/usr/share/icons/hicolor/scalable/apps/com.ncsoftbyai.gcodeeditsim.svg": "../../packaging/icons/com.ncsoftbyai.gcodeeditsim.svg",
+          "/usr/share/licenses/gcode-editsim/LICENSE": "../../LICENSE"
+        }
+      }
+    }
   }
 }

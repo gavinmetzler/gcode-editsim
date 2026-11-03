@@ -30,12 +30,13 @@ jobs:
       app: ${{ steps.areas.outputs.app }}
       flatpak: ${{ steps.areas.outputs.flatpak }}
       audit: ${{ steps.areas.outputs.audit }}
+      packages: ${{ steps.areas.outputs.packages }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Test the rules
-        run: tools/ci/test-changed-areas.sh
+        run: tools/ci/test-changed-areas.sh && tools/release/test-check-version.sh
       - name: Decide
         id: areas
         env:
@@ -50,7 +51,7 @@ jobs:
             echo "$files" | tools/ci/changed-areas.sh | tee -a "$GITHUB_OUTPUT"
           else
             # Not a pull request, or the diff failed: run everything.
-            printf '%s\n' rust=true fuzz=true ui=true app=true flatpak=true audit=true | tee -a "$GITHUB_OUTPUT"
+            printf '%s\n' rust=true fuzz=true ui=true app=true flatpak=true audit=true packages=true | tee -a "$GITHUB_OUTPUT"
           fi
 
   rust:
@@ -188,6 +189,15 @@ jobs:
           path: gcode-editsim.flatpak
           if-no-files-found: error
           retention-days: 30
+
+  # The Linux packages (M5.7), built and checked as the release workflow
+  # builds them, when their settings change (the Flatpak is built above).
+  packages:
+    needs: changes
+    if: needs.changes.outputs.packages == 'true'
+    uses: ./.github/workflows/packages.yml
+    with:
+      flatpak: false
 
   fuzz:
     needs: changes

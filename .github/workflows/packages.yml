@@ -1,0 +1,125 @@
+name: Packages
+
+# Builds the installable packages (M5.7). Called by the release workflow
+# (with the Flatpak) and by CI when the packaging changes (without it: CI
+# builds the Flatpak itself). Can also be run by hand from the Actions tab
+# to try packages without publishing them.
+
+on:
+  workflow_call:
+    inputs:
+      flatpak:
+        description: Also build the Flatpak bundle
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      flatpak:
+        description: Also build the Flatpak bundle
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pinned like the other tools (CI changes only when we bump it); matches
+  # the tauri crate's minor version in app/shell/Cargo.toml.
+  TAURI_CLI_VERSION: 2.12.4
+
+jobs:
+  linux:
+    name: Linux packages (.deb, .rpm)
+    # The oldest supported Ubuntu with WebKitGTK 4.1: a package links
+    # against the system C library it was built on, so building on 22.04
+    # lets it install on 22.04 and newer (and distributions of that age)
+    # rather than only on 24.04 and newer.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      # The package mirrors once hung for over 30 minutes: fail fast.
+      - name: Install WebKit, the libraries Tauri needs, and rpm and cpio (to check the .rpm)
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev \
+            rpm cpio
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Build the UI
+        working-directory: ui
+        run: npm ci && npm run build
+      - name: Install pinned toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/shell -> target
+          key: packages
+      - name: Install the Tauri command-line tool
+        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
+      # The UI is built above. package-name.conf.json names the packages
+      # gcode-editsim (Tauri would make g-code-edit-sim from the product
+      # name); the app's settings folder goes by its identifier, unchanged.
+      - name: Build the packages
+        working-directory: app/shell
+        run: cargo tauri build --bundles deb,rpm --config ../../packaging/linux/package-name.conf.json
+      # Fixed names, so the README's "latest" download links always work.
+      - name: Name the packages
+        run: |
+          mkdir -p dist
+          cp app/shell/target/release/bundle/deb/*.deb dist/gcode-editsim-amd64.deb
+          cp app/shell/target/release/bundle/rpm/*.rpm dist/gcode-editsim-x86_64.rpm
+          ls -l dist
+      - name: Check the packages
+        run: packaging/linux/check-packages.sh dist/gcode-editsim-amd64.deb dist/gcode-editsim-x86_64.rpm
+      # Installs the .deb as a user would, and the app's file type with it.
+      - name: Install the .deb
+        run: |
+          sudo apt-get install -y ./dist/gcode-editsim-amd64.deb
+          test -x /usr/bin/gcode-editsim
+          # dpkg's trigger rebuilt the shared file-type database with it.
+          grep -qx 'text/x-cnc-gcode' /usr/share/mime/types
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gcode-editsim-linux
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  flatpak:
+    if: inputs.flatpak
+    name: Flatpak bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      # The same steps as the CI job of this name (ci.yml).
+      - name: Install the Flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            flatpak flatpak-builder elfutils librsvg2-common
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Install pinned toolchain
+        run: rustup toolchain install
+      - name: Build the bundle
+        env:
+          FLATPAK_BUILDER_ARGS: --disable-rofiles-fuse
+        run: packaging/flatpak/build.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gcode-editsim-flatpak-release
+          path: gcode-editsim.flatpak
+          if-no-files-found: error
+          retention-days: 30

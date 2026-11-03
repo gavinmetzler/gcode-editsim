@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.6g (the marker points along the move when snapped, 2026-11-03).
+Last updated: M5.7a (Linux packages and the release workflow, 2026-11-03).
 Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
 and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
@@ -49,7 +49,7 @@ selected lines.
 | Area | Status |
 |---|---|
 | Tests | 712 pass (`cargo test --workspace`); 31 in the app shell (`cd app/shell && cargo test`); 148 in the UI (`cd ui && npm test`) |
-| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build), a Flatpak build (artifact kept 30 days) and a dependency audit (`cargo audit` on the three Rust lock files, `npm audit` on the UI; on pull requests only when a lock file changes); on pull requests each job runs only when its files change (`tools/ci`) |
+| CI (green on GitHub) | fmt, clippy (`-D warnings`), dependency rules (`tools/depcheck`), tests, a 60 s parser fuzz job, a Tauri app-shell job (WebKit installed; fmt, clippy, tests), a UI job (lint, typecheck, test, build), a Flatpak build (artifact kept 30 days), the Linux `.deb` and `.rpm` when their settings change (`packages.yml`, also run by the release) and a dependency audit (`cargo audit` on the three Rust lock files, `npm audit` on the UI; on pull requests only when a lock file changes); on pull requests each job runs only when its files change (`tools/ci`). **Releases:** pushing a tag `vX.Y.Z` matching the version in `app/shell/tauri.conf.json` and `app/shell/Cargo.toml` runs `release.yml`, which publishes a GitHub Release with the packages under fixed names (M5.7) |
 | UI | Editor (M2.6: CodeMirror, highlighting, diagnostics in the gutter; since M2.8a edits mark the view out of date until the user refreshes) beside the toolpath viewport (M2.5: three.js, orthographic, standard views); line ↔ segment sync both ways; a tool marker that follows the pointer, with a readout of position, tool and feed (M3.1/M3.2, brought forward); measuring between two nodes by dragging (M3.3); orbiting about a node (M3.4); a colour key in the view; panes resized by dragging and maximised by double-click; the editor margin follows the diagnostics filters; a diagnostics panel under the viewport and statistics on demand in a dialog (M2.7), with per-tool times and a time estimate (M3.8); opening and saving through the native dialogs, keeping line endings, with a prompt before losing unsaved changes (M2.8b); served by the app shell (embedded `ui/dist`) |
 | Packaging | Linux: a single `.flatpak` file (`packaging/flatpak/`), tested on the owner's desktop; not on Flathub. The machine folder is created on first start with the example mill and router files; the window reports the app id, so the desktop shows its icon. Windows and macOS: build from source |
 | Mobile | Android spike passed on a real phone (branch `claude/android-spike`, `app/shell/SPIKE.md`); iOS not tried |
@@ -507,6 +507,15 @@ errors; every warning or note names a real gap. Run it with
   `gio launch <exports>/applications/<id>.desktop FILE`. Without the
   system bus, `flatpak run` fails with "Could not connect: No such file
   or directory".
+- **Linux packages** (M5.7a): `cargo install tauri-cli --version 2.12.4
+  --locked` takes about 10 minutes; then see `packaging/linux/README.md`.
+  Install the `.deb` with `apt-get install ./file.deb` and start it
+  through its menu entry under Xvfb (`gio launch
+  /usr/share/applications/gcode-editsim.desktop FILE.nc`). The container
+  lacks `desktop-file-utils`, so `gio mime` shows no default app until it
+  is installed (every desktop has it). `rpm2cpio` exits 1 on Tauri's
+  `.rpm` files although it writes them out whole (rpm 4.18), and the
+  `.rpm` cannot be installed here (Ubuntu); `check-packages.sh` reads it.
 - **Disk space is limited** in the cloud container: the shell's `target/`,
   the Android SDK and Gradle caches fill it quickly.
 
