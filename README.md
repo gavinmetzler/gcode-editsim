@@ -13,7 +13,7 @@ The long-term goal is to provide a practical environment where CNC programmers c
 
 The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline), 2 (render buffer and minimal desktop UI), 3 (a dependable backplotter: real programs without false alarms, subprograms, hover, measuring, orbiting, statistics with a time estimate, million-block programs) and 4 (code transformations: translate, rotate and scale selected lines) are complete. Next is Milestone 5: everyday-use improvements, Osai level with Fanuc, and installers for every desktop platform ([plan](docs/plans/M5_PLAN.md)). On Linux it installs as a Flatpak.
+> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline), 2 (render buffer and minimal desktop UI), 3 (a dependable backplotter: real programs without false alarms, subprograms, hover, measuring, orbiting, statistics with a time estimate, million-block programs) and 4 (code transformations: translate, rotate and scale selected lines) are complete. Next is Milestone 5: everyday-use improvements, Osai level with Fanuc, and installers for every desktop platform ([plan](docs/plans/M5_PLAN.md)). On Linux it installs from a `.deb`, `.rpm` or Flatpak ([Installing](#installing)).
 
 GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
@@ -99,7 +99,7 @@ The full design, including the dependency rules between crates, is in [ARCHITECT
 | `app/shell` | Tauri 2 shell: a thin command layer over `app/backend` (its own Cargo workspace). |
 | `ui/` | TypeScript user interface: three.js viewport, CodeMirror editor, diagnostics panel, statistics dialog. |
 | `tools/` | Development tools: the dependency-rule check, the UI constants generator, CI change detection. |
-| `packaging/` | The Flatpak package and app icon. |
+| `packaging/` | The Linux packages (`.deb`, `.rpm`, Flatpak) and app icon. |
 
 ### Intermediate Representation
 
@@ -245,6 +245,23 @@ See [Trying it out](#trying-it-out).
 - **M9+ – More dialects and machine types:** Haas, then others; the full Osai 10 Series; lathe and mill-turn.
 
 ---
+
+## Installing
+
+Download the newest release for your system (they appear on the
+[Releases page](https://github.com/gavinmetzler/gcode-editsim/releases)
+with every version):
+
+| System | Download | Install |
+|---|---|---|
+| Ubuntu, Debian, Linux Mint, … (22.04 / 12 or newer) | [gcode-editsim-amd64.deb](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim-amd64.deb) | `sudo apt install ./gcode-editsim-amd64.deb` |
+| Fedora, openSUSE, … | [gcode-editsim-x86_64.rpm](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim-x86_64.rpm) | `sudo dnf install ./gcode-editsim-x86_64.rpm` |
+| Any Linux with Flatpak | [gcode-editsim.flatpak](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim.flatpak) | `flatpak install --user gcode-editsim.flatpak` |
+
+Windows and macOS installers are coming next (M5.7). Details, where your
+machine files are, and how to remove the app:
+[packaging/linux/README.md](packaging/linux/README.md) (`.deb`, `.rpm`)
+and [packaging/flatpak/README.md](packaging/flatpak/README.md).
 
 ## Trying it out
 

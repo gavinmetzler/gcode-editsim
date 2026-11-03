@@ -1,0 +1,61 @@
+name: Release
+
+# Publishes a GitHub Release with every package (M5.7) when a version tag
+# is pushed, for example:
+#
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# The tag must be `v` and the version in app/shell/tauri.conf.json and
+# app/shell/Cargo.toml (tools/release/check-version.sh). The packages keep
+# fixed names, so https://github.com/<owner>/<repo>/releases/latest/download/<name>
+# always gives the newest (README, "Installing").
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: tag matches the app's version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test the check
+        run: tools/release/test-check-version.sh
+      - name: Check
+        run: tools/release/check-version.sh "$GITHUB_REF_NAME"
+
+  packages:
+    needs: version
+    uses: ./.github/workflows/packages.yml
+    with:
+      flatpak: true
+
+  publish:
+    needs: packages
+    name: publish the release
+    runs-on: ubuntu-24.04
+    permissions:
+      # Creating a release and uploading its files.
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -l artifacts
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "GCode EditSim ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            --verify-tag \
+            artifacts/gcode-editsim-amd64.deb \
+            artifacts/gcode-editsim-x86_64.rpm \
+            artifacts/gcode-editsim.flatpak

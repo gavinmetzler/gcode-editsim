@@ -1,6 +1,6 @@
 # M5 plan: everyday use, Osai level with Fanuc, and packages
 
-**Status: agreed (owner, 2026-11-02); M5.1-M5.6g done (2026-11-03), M5.7 next.** The owner set
+**Status: agreed (owner, 2026-11-02); M5.1-M5.6g done (2026-11-03), M5.7 in progress.** The owner set
 the content of M5 at the end of M4 (2026-11-02) and moved the earlier
 milestones back by one: mobile is now M6, machine state and accuracy M7,
 material removal M8, more dialects and machine types M9+
@@ -243,6 +243,19 @@ listed in the audit.
   first, then Windows, then macOS.
 - Tested: the Linux packages installed in the container; Windows and macOS
   by the owner (or a CI smoke test that the app starts).
+
+The owner approved the workflow changes (2026-11-03). In three PRs:
+
+- **M5.7a: Linux and the release.** `.deb` and `.rpm` (built on Ubuntu
+  22.04, checked and the `.deb` installed by CI; `packaging/linux/`), a
+  reusable `packages.yml` (also run by CI when the packaging changes) and
+  `release.yml`: pushing a tag `vX.Y.Z` that matches the app's version
+  publishes a GitHub Release with the `.deb`, `.rpm` and Flatpak under
+  fixed names. README "Installing" with the "latest" links. No AppImage
+  (not asked for).
+- **M5.7b: Windows** installer, added to `packages.yml` and the release.
+- **M5.7c: macOS** app, likewise (unsigned unless the owner wants to pay
+  for an Apple developer account).
 
 ### M5.8: Wrap-up
 - The owner's programs through every new feature; README, ARCHITECTURE.md,
