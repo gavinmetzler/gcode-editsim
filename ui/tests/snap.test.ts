@@ -37,11 +37,37 @@ describe("moveEndpoints", () => {
     ]);
   });
 
+  it("gives the direction of travel arriving at each end (M5.6g)", () => {
+    // A start (nothing arrives) takes its own move's first direction; an
+    // arc's end its last piece's direction.
+    const dirs = Array.from({ length: e.segment.length }, (_, i) =>
+      Array.from(e.direction.subarray(i * 3, i * 3 + 3)).map((v) => Math.round(v * 1000) / 1000),
+    );
+    expect(dirs).toEqual([[0, 0, -1], [0, 0, -1], unit([30, 40, -10]), [0.6, -0.8, 0], [0, 0, -1], [0, 0, -1]]);
+  });
+
+  it("has no direction for a move of zero length", () => {
+    const z = moveEndpoints(source([0, 0, 0], [[K.Linear, 1, 100, 0, [5, 5, 5], [5, 5, 5]]]));
+    expect(Array.from(z.direction).every((v) => Number.isNaN(v))).toBe(true);
+  });
+
+  it("skips repeated points when finding the direction", () => {
+    const r = moveEndpoints(
+      source([0, 0, 0], [[K.ArcCw, 1, 100, 0, [0, 0, 0], [0, 0, 0], [10, 0, 0], [10, 0, 0]]]),
+    );
+    expect(Array.from(r.direction)).toEqual([1, 0, 0, 1, 0, 0]);
+  });
+
   it("skips events and the inside points of arcs", () => {
     expect(Array.from(e.segment)).not.toContain(1);
     expect(Array.from(e.positions)).not.toContain(44);
   });
 });
+
+function unit(v: [number, number, number]): number[] {
+  const n = Math.hypot(...v);
+  return v.map((c) => Math.round((c / n) * 1000) / 1000);
+}
 
 describe("nearestScreenPoint", () => {
   const screen = Float32Array.from([0, 0, 100, 0, 100.5, 0, NaN, NaN, 300, 300]);

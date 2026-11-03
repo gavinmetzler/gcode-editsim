@@ -25,7 +25,7 @@ import {
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { ToolPoint } from "./readout";
-import { MARKER, markerShape } from "./marker";
+import { MARKER, markerShape, tailOnScreen } from "./marker";
 import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
@@ -88,6 +88,8 @@ export class Viewport {
   private readonly overlay = document.createElementNS(SVG, "svg");
   /** Where the marker's tip is (machine coordinates), or null. */
   private markerPoint: Vec3 | null = null;
+  /** The direction the marker points along, or null for down Z. */
+  private markerTravel: Vec3 | null = null;
   /** Measure mode, the measurement shown, whether a measuring drag is in
    *  progress, and the node the pointer is snapped to (measure mode). */
   private measuring = false;
@@ -419,22 +421,25 @@ export class Viewport {
     if (i < 0 || segment === undefined) return null;
     const [ox, oy, oz] = toolpath.origin;
     const p = toolpath.endpoints.positions;
+    const d = toolpath.endpoints.direction;
     return {
       point: [(p[i * 3] ?? NaN) + ox, (p[i * 3 + 1] ?? NaN) + oy, (p[i * 3 + 2] ?? NaN) + oz],
       segment,
       place: toolpath.endpoints.isStart[i] === 1 ? "start" : "end",
+      direction: [d[i * 3] ?? NaN, d[i * 3 + 1] ?? NaN, d[i * 3 + 2] ?? NaN],
     };
   }
 
   /** Shows the tool marker with its tip at `point` (machine coordinates),
-   *  or hides it for null. */
-  setMarker(point: Vec3 | null): void {
+   *  or hides it for null. With a `travel` direction it points along it
+   *  (M5.6g); without one it points down Z. */
+  setMarker(point: Vec3 | null, travel: Vec3 | null = null): void {
     const next = point && point.every((c) => Number.isFinite(c)) ? point : null;
-    const same =
-      next === this.markerPoint ||
-      (next !== null && this.markerPoint !== null && next.every((c, k) => c === this.markerPoint?.[k]));
-    if (same) return;
+    const equal = (a: Vec3 | null, b: Vec3 | null): boolean =>
+      a === b || (a !== null && b !== null && a.every((c, k) => Object.is(c, b[k])));
+    if (equal(next, this.markerPoint) && equal(travel, this.markerTravel)) return;
     this.markerPoint = next;
+    this.markerTravel = travel;
     // Only the overlay changes: the toolpath is not redrawn.
     this.drawOverlay();
   }
@@ -528,10 +533,10 @@ export class Viewport {
       return;
     }
     const [tx, ty] = screen(p);
-    // One mm along +Z, on screen. Linear (orthographic), so read off the
-    // matrix rather than projecting a second point far from the origin.
-    const zx = (e(8) / 2) * width;
-    const zy = (-e(9) / 2) * height;
+    // One mm along the shaft (+Z, or back along the travel), on screen.
+    // Linear (orthographic), so read off the matrix rather than projecting
+    // a second point far from the origin.
+    const [zx, zy] = tailOnScreen(this.markerTravel, m, width, height);
     const pxPerMm = 1 / orthoWorldPerPixel(this.halfHeight, this.camera.zoom, height);
     const shape = markerShape(tx, ty, zx, zy, pxPerMm);
     if (shape.kind === "ring") {

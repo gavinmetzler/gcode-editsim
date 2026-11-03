@@ -1,6 +1,6 @@
 # M5 plan: everyday use, Osai level with Fanuc, and packages
 
-**Status: agreed (owner, 2026-11-02); M5.1-M5.6 done (2026-11-03), M5.7 next.** The owner set
+**Status: agreed (owner, 2026-11-02); M5.1-M5.6g done (2026-11-03), M5.7 next.** The owner set
 the content of M5 at the end of M4 (2026-11-02) and moved the earlier
 milestones back by one: mobile is now M6, machine state and accuracy M7,
 material removal M8, more dialects and machine types M9+
@@ -220,6 +220,13 @@ not simulated keeps one warning until it is supported or listed.*
 - **M5.6f: Wrap-up of the audit.** The owner's programs, run through
   `tools/corpus` with their machine files, give no "not supported"
   messages; the dialect notes are updated.
+- **M5.6g: The marker points along the move** (owner's request,
+  2026-11-03, added before packaging). While the pointer is snapped to a
+  node, the yellow arrow points the way the tool was travelling when it
+  reached the node (the move arriving; at the very first point, its first
+  move; on an arc, its tangent). Elsewhere (the editor's cursor, a clicked
+  point) it stays vertical, along Z. A move straight toward or away from
+  the viewer shows the ring, as Z does in the Top view.
 
 Each fix starts with a failing test, conformance tests one file per
 behaviour. Osai features no program of the owner's uses (subprograms,

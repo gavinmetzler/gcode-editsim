@@ -422,7 +422,8 @@ async function main(app: HTMLElement): Promise<void> {
     if (viewport.measureMode) return;
     const rb = current;
     const p = hovered ?? resting;
-    viewport.setMarker(p?.point ?? null);
+    // Only while hovering it points along the move (owner, M5.6g).
+    viewport.setMarker(p?.point ?? null, hovered?.direction ?? null);
     if (!rb || !p) {
       readout.hidden = true;
       return;
