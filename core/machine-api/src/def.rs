@@ -126,10 +126,13 @@ pub struct MachineDef {
     pub axes: Vec<AxisDef>,
     /// Machine-wide speed limits.
     pub speeds: SpeedLimits,
-    /// M codes such as `"M92"` that this machine's programs use but that do
-    /// not move it (head selection, clamps): removed from every block before
-    /// the dialect sees them. Upper-case, as written. Only M codes: a G
-    /// code's axis words would be left behind and read as a move.
+    /// Codes this machine's programs use whose "not supported" messages the
+    /// user accepts (M5.6c), upper case: M codes such as `"M92"` (head
+    /// selection, clamps), removed from every block before the dialect sees
+    /// them; G codes such as `"G43"` and three-letter commands such as
+    /// `"UAO"` or `"DWT"`, which keep their behaviour and only lose their
+    /// message. A G code is never removed: its axis words would be left
+    /// behind and read as a move.
     pub ignore_codes: Vec<String>,
     /// The dialect this machine's control speaks (lower case, such as
     /// `"osai"`), if the file says: choosing the machine then sets the
@@ -199,10 +202,11 @@ pub enum MachineDefError {
     /// A power-on units setting that is not "mm" or "inch".
     #[error("power_on units: {0:?} is not \"mm\" or \"inch\"")]
     InvalidPowerOnUnits(String),
-    /// An `ignore_codes` entry that is not an M code such as `M92`.
+    /// An `ignore_codes` entry that is not an M or G code (`M92`, `G43`) or
+    /// a three-letter command (`UAO`).
     #[error(
-        "ignore_codes: {0:?} is not an M code such as \"M92\" (only M codes can be ignored: a \
-         G code's axis words would be left behind and read as a move)"
+        "ignore_codes: {0:?} is not an M or G code such as \"M92\" or \"G43\", or a three-letter \
+         command such as \"UAO\""
     )]
     InvalidIgnoreCode(String),
     /// A work offset value that is not finite.
@@ -302,14 +306,18 @@ fn power_on_plane(letters: &[String], axes: &[AxisDef]) -> Result<(char, char), 
     }
 }
 
-/// Checks an `ignore_codes` entry: `M`, then a whole number with at most
-/// one decimal place (`M92`, `M400.1`). Returns it upper-case.
+/// Checks an `ignore_codes` entry: `M` or `G`, then a whole number with at
+/// most one decimal place (`M92`, `M400.1`, `G43`), or a three-letter
+/// command (`UAO`). Returns it upper-case.
 fn ignore_code(text: &str) -> Result<String, MachineDefError> {
     let bad = || MachineDefError::InvalidIgnoreCode(text.to_owned());
+    if text.len() == 3 && text.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Ok(text.to_ascii_uppercase());
+    }
     let mut chars = text.chars();
     let letter = chars
         .next()
-        .filter(|c| c.eq_ignore_ascii_case(&'M'))
+        .filter(|c| c.eq_ignore_ascii_case(&'M') || c.eq_ignore_ascii_case(&'G'))
         .ok_or_else(bad)?;
     let number = chars.as_str();
     let (whole, tenths) = number.split_once('.').unwrap_or((number, ""));

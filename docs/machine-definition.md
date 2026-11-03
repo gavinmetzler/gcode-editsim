@@ -29,7 +29,7 @@ your programs use.
 | `max_spindle_rpm` | no | Fastest spindle speed, rpm |
 | `tool_change_time` | no | Seconds a tool change takes, for the time estimate in **Statistics…** (0 if not set). Zero or more. |
 | `dialect` | no | The dialect the machine's control speaks: `"fanuc"` or `"osai"` (M5.6b). Choosing the machine in the app sets the dialect; the dialect list can still override it for a program. The shipped router says `"osai"`, the mill `"fanuc"`. |
-| `ignore_codes` | no | M codes your programs use that do not move the machine (head selection, clamps, vacuum), e.g. `["M92", "M213"]`. They are removed from every block with one note per code. Only M codes: a G code's axis words would be left behind and read as a move. Codes not listed that the dialect does not know are still noted once each and ignored. |
+| `ignore_codes` | no | Codes your programs use whose "not supported" messages you accept for this machine (M5.6c): listed codes give **no message**. **M codes** (head selection, clamps, vacuum, e.g. `["M92", "M213"]`) are removed from every block. **G codes** (e.g. `"G43"`, tool length compensation) and Osai **three-letter commands** (e.g. `"UAO"`, `"DWT"`) keep their behaviour and only lose their message: G43's Z move is still drawn, and UAO and DWT stay unsimulated, so later moves can be drawn offset and dwells have no time; the drawing does not say so any more. Codes nobody listed are still reported, so a typo is caught. |
 
 ## `[power_on]` (optional)
 

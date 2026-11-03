@@ -165,13 +165,16 @@ pub(crate) fn interpret(
     for (letter, number, span) in &unknown {
         let what = format!("{letter}{}", number.value);
         if *letter == 'G' {
-            diag.error(
-                DiagCode::UnsupportedGCode,
-                format!(
-                    "{what} is not supported and is ignored: this block is not moved, and \
-                     later moves are drawn as programmed, so they may differ from the machine"
-                ),
-                at(src, *span),
+            diag.push(
+                Diagnostic::error(
+                    DiagCode::UnsupportedGCode,
+                    format!(
+                        "{what} is not supported and is ignored: this block is not moved, and \
+                         later moves are drawn as programmed, so they may differ from the machine"
+                    ),
+                    at(src, *span),
+                )
+                .about(&what),
             );
             motion_effect = Motion::Consumed;
         } else if state.first_report(&format!("fanuc.machine_m.{what}")) {
@@ -188,6 +191,7 @@ pub(crate) fn interpret(
                     ),
                     at(src, *span),
                 )
+                .about(&what)
                 .dialect_specific(),
             );
         }
@@ -427,7 +431,8 @@ fn ignored(fanuc: &Fanuc, code: &Code, src: SourceRef, diag: &mut Diagnostics) {
             ),
             at(src, code.span),
         )
-        .dialect_specific(),
+        .dialect_specific()
+        .about(code.key.to_string()),
     );
 }
 
@@ -506,26 +511,33 @@ fn apply_gcode(
         Handler::NoEffect => set_active(fanuc, state, code.key),
         Handler::NotSimulated => {
             set_active(fanuc, state, code.key);
-            diag.warning(
-                DiagCode::NotYetSimulated,
-                format!(
-                    "{} is not simulated yet; the path is shown without it",
-                    description(fanuc, code.key)
-                ),
-                src,
+            diag.push(
+                Diagnostic::warning(
+                    DiagCode::NotYetSimulated,
+                    format!(
+                        "{} is not simulated yet; the path is shown without it",
+                        description(fanuc, code.key)
+                    ),
+                    src,
+                )
+                .about(code.key.to_string()),
             );
         }
         Handler::LengthCompensation => {
             set_active(fanuc, state, code.key);
             if state.first_report("fanuc.length_compensation") {
-                diag.info(
-                    DiagCode::NotYetSimulated,
-                    format!(
-                        "{} is not simulated: tool length (height) and wear compensation are \
-                         ignored, and the path is shown as programmed. Not reported again.",
-                        description(fanuc, code.key)
-                    ),
-                    src,
+                diag.push(
+                    Diagnostic::info(
+                        DiagCode::NotYetSimulated,
+                        format!(
+                            "{} is not simulated: tool length (height) and wear compensation \
+                             are ignored, and the path is shown as programmed. Not reported \
+                             again.",
+                            description(fanuc, code.key)
+                        ),
+                        src,
+                    )
+                    .about(code.key.to_string()),
                 );
             }
         }
@@ -552,6 +564,7 @@ fn apply_gcode(
                         ),
                         at(src, code.span),
                     )
+                    .about(code.key.to_string())
                     .dialect_specific(),
                 );
             }
@@ -568,13 +581,16 @@ fn apply_gcode(
                 // Other modes (feed per revolution) leave the path alone.
                 Some(_) => (Motion::Normal, "; the path is shown without it"),
             };
-            diag.error(
-                DiagCode::UnsupportedGCode,
-                format!(
-                    "{} is not supported yet{note}",
-                    description(fanuc, code.key)
-                ),
-                src,
+            diag.push(
+                Diagnostic::error(
+                    DiagCode::UnsupportedGCode,
+                    format!(
+                        "{} is not supported yet{note}",
+                        description(fanuc, code.key)
+                    ),
+                    src,
+                )
+                .about(code.key.to_string()),
             );
             out.push(Command::Unsupported {
                 what: code.key.to_string(),
@@ -709,16 +725,20 @@ fn apply_mcode(
                         ),
                         at(ctx.src, p.span),
                     )
-                    .dialect_specific(),
+                    .dialect_specific()
+                    .about(code.key.to_string()),
                 );
             }
             out.push(Command::ReturnFromSubprogram);
         }
         Handler::Unsupported => {
-            diag.error(
-                DiagCode::UnsupportedMCode,
-                format!("{} is not supported yet", description(fanuc, code.key)),
-                src,
+            diag.push(
+                Diagnostic::error(
+                    DiagCode::UnsupportedMCode,
+                    format!("{} is not supported yet", description(fanuc, code.key)),
+                    src,
+                )
+                .about(code.key.to_string()),
             );
             out.push(Command::Unsupported {
                 what: code.key.to_string(),

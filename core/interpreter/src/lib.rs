@@ -196,12 +196,16 @@ fn run(
         }
     };
     let parsed = gcode_syntax::parse(source);
+    // Listed M codes are removed from every block; listed G codes and
+    // commands stay (their axis words would otherwise become a move) and
+    // only lose their messages, like every listed code (M5.6c).
     let ignored: BTreeSet<CodeKey> = machine
         .ignored_codes()
         .iter()
+        .filter(|c| c.starts_with('M'))
         .filter_map(|c| CodeKey::parse(c))
         .collect();
-    let mut noted_ignored = BTreeSet::new();
+    let listed: BTreeSet<String> = machine.ignored_codes().iter().cloned().collect();
     let mut start = dialect.initial_state(&axes);
     dialect.apply_power_on(&mut start, &axes, &power_on(machine.power_on()));
     let mut exec = Executor::new(start, machine);
@@ -307,7 +311,7 @@ fn run(
                 .as_ref()
                 .is_some_and(|t| t.wants(line))
                 .then(|| (exec.pos, exec.all_known(), diag.len()));
-            let stripped = strip_ignored(block, &ignored, &mut noted_ignored, src, &mut diag);
+            let stripped = strip_ignored(block, &ignored);
             let block = stripped.as_ref().unwrap_or(block);
             let ctx = BlockContext { axes: &axes, src };
             dialect.interpret_block(block, &ctx, &mut exec.state, &mut commands, &mut diag);
@@ -426,7 +430,22 @@ fn run(
         bbox: bounding_box(&exec.segments),
         estimated_time: Some(exec.segments.iter().filter_map(|s| s.time).sum()),
     };
-    finish(exec.segments, diag, file_name, meta)
+    finish(exec.segments, silence(diag, &listed), file_name, meta)
+}
+
+/// `diag` without the messages about codes the machine file lists in
+/// `ignore_codes` (M5.6c): the user accepts them for this machine.
+fn silence(diag: Diagnostics, listed: &BTreeSet<String>) -> Diagnostics {
+    if listed.is_empty() {
+        return diag;
+    }
+    let mut kept = Diagnostics::new();
+    for d in diag.into_vec() {
+        if !d.about.as_ref().is_some_and(|code| listed.contains(code)) {
+            kept.push(d);
+        }
+    }
+    kept
 }
 
 fn finish(segments: Vec<Segment>, diag: Diagnostics, file: &str, meta: ProgramMeta) -> Program {
@@ -531,41 +550,18 @@ fn has_content(block: &Block) -> bool {
 }
 
 /// `block` without the M codes the machine file lists in `ignore_codes`, or
-/// `None` if it has none of them. Each listed code is noted the first time
-/// it appears.
-fn strip_ignored(
-    block: &Block,
-    ignored: &BTreeSet<CodeKey>,
-    noted: &mut BTreeSet<CodeKey>,
-    src: SourceRef,
-    diag: &mut Diagnostics,
-) -> Option<Block> {
-    let key = |w: &gcode_syntax::Word| {
+/// `None` if it has none of them. No message: the user listed them (M5.6c).
+fn strip_ignored(block: &Block, ignored: &BTreeSet<CodeKey>) -> Option<Block> {
+    let listed = |w: &gcode_syntax::Word| {
         literal(&w.value)
             .and_then(|n| CodeKey::from_value(w.letter, n.value))
-            .filter(|k| ignored.contains(k))
+            .is_some_and(|k| ignored.contains(&k))
     };
-    if !block.words.iter().any(|w| key(w).is_some()) {
+    if !block.words.iter().any(listed) {
         return None;
     }
     let mut kept = block.clone();
-    kept.words.retain(|w| match key(w) {
-        None => true,
-        Some(k) => {
-            if noted.insert(k) {
-                // Only M codes can be listed (see `MachineDef::ignore_codes`).
-                diag.info(
-                    DiagCode::UnsupportedMCode,
-                    format!(
-                        "{k} is ignored, as the machine file lists it in ignore_codes. Not \
-                         reported again."
-                    ),
-                    src,
-                );
-            }
-            false
-        }
-    });
+    kept.words.retain(|w| !listed(w));
     Some(kept)
 }
 

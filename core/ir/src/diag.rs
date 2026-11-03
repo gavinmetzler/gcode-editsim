@@ -116,6 +116,12 @@ pub struct Diagnostic {
     /// `true` if it depends on the selected dialect's rules rather than on
     /// G-code in general.
     pub dialect_specific: bool,
+    /// The code a "not supported" message is about (`"G43"`, `"UAO"`,
+    /// `"DWT"`), if it is about one: a machine file that lists the code in
+    /// its `ignore_codes` silences it (M5.6c). Not part of the golden or
+    /// render-buffer output.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing))]
+    pub about: Option<String>,
 }
 
 impl Diagnostic {
@@ -132,6 +138,7 @@ impl Diagnostic {
             message: message.into(),
             src,
             dialect_specific: false,
+            about: None,
         }
     }
 
@@ -153,6 +160,13 @@ impl Diagnostic {
     /// Marks the diagnostic as dialect-specific.
     pub fn dialect_specific(mut self) -> Self {
         self.dialect_specific = true;
+        self
+    }
+
+    /// Says which code the message is about (upper case), so a machine
+    /// file listing it in `ignore_codes` silences it.
+    pub fn about(mut self, code: impl Into<String>) -> Self {
+        self.about = Some(code.into().to_ascii_uppercase());
         self
     }
 }

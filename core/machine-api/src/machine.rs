@@ -44,8 +44,9 @@ pub trait Machine {
     /// Machine-wide speed limits.
     fn speeds(&self) -> &SpeedLimits;
 
-    /// Codes this machine's programs use that do not move it (from the
-    /// machine file's `ignore_codes`), such as `"M92"`. The default is none.
+    /// The codes the machine file lists in `ignore_codes` (`"M92"`, `"G43"`,
+    /// `"UAO"`): listed M codes are removed from every block, and messages
+    /// about any listed code are dropped (M5.6c). The default is none.
     fn ignored_codes(&self) -> &[String] {
         &[]
     }

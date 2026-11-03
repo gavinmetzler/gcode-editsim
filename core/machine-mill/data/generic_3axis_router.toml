@@ -16,9 +16,12 @@ dialect = "osai"
 # tool_change_time = 6.0 # seconds per tool change, for the time estimate
 max_feed = 30000.0
 max_spindle_rpm = 24000.0
-# M codes your programs use that do not move the machine (head selection,
-# clamps, vacuum). Listed codes are ignored with one note each. Example:
-# ignore_codes = ["M92", "M213"]
+# Codes your programs use whose "not supported" messages you accept: listed
+# codes give no message. M codes (head selection, clamps, vacuum) are
+# removed; G codes and three-letter commands keep their behaviour and only
+# lose their message (UAO: origins per axis, DWT: dwell times, both not
+# simulated). Example:
+# ignore_codes = ["M92", "M213", "UAO", "DWT"]
 
 # How the control starts up, so programs that rely on it are not warned
 # about assumed modes: the Osai 10 Series power-up defaults (the machine

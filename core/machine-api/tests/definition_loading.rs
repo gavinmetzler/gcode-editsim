@@ -246,10 +246,20 @@ fn ignore_codes_default_to_none() {
 }
 
 #[test]
-fn ignore_codes_must_be_m_codes() {
-    // A G code's axis words would be left behind and read as a move.
+fn ignore_codes_take_m_codes_g_codes_and_three_letter_commands() {
+    // M5.6c: besides M codes (removed from the block), G codes and Osai
+    // three-letter commands, whose messages a listing silences.
+    let text = "[machine]\nname = \"m\"\nfamily = \"mill\"\n\
+                ignore_codes = [\"M92\", \"g43\", \"G43.4\", \"uao\", \"DWT\"]\n";
+    let def = MachineDef::from_toml_str(text).expect("loads");
+    assert_eq!(def.ignore_codes, vec!["M92", "G43", "G43.4", "UAO", "DWT"]);
+}
+
+#[test]
+fn ignore_codes_refuse_anything_else() {
     for bad in [
-        "92", "M", "MM2", "M9.2.1", "M-1", " M92", "M9 2", "M1.23", "G92", "T1",
+        "92", "M", "MM2", "M9.2.1", "M-1", " M92", "M9 2", "M1.23", "T1", "X10", "G", "UA", "UAOX",
+        "U1O", "",
     ] {
         let text =
             format!("[machine]\nname = \"m\"\nfamily = \"mill\"\nignore_codes = [{bad:?}]\n");
