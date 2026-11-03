@@ -349,8 +349,15 @@ description = "Incremental programming"
 code = "G92"
 group = 0
 modal = false
-handler = "ignored"
+handler = "preset"
 description = "Workpiece coordinate system setting"
+
+[[g]]
+code = "G92.1"
+group = 0
+modal = false
+handler = "preset_cancel"
+description = "Workpiece coordinate system preset"
 
 [[g]]
 code = "G94"

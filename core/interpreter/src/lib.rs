@@ -585,7 +585,12 @@ struct Executor<'m> {
     state: ModalState,
     pos: Pos,
     work_offset: WorkOffsetId,
+    /// Where program zero is, in machine coordinates: the work offset plus
+    /// the preset shift.
     origin: Pos,
+    /// The preset shift (Fanuc G92, Osai G92/G98, M5.6e), added to every
+    /// work offset until it is cancelled.
+    preset: Pos,
     feed: f64,
     feed_mode: FeedMode,
     /// Whether a feed per revolution with the spindle stopped has been
@@ -620,6 +625,7 @@ impl<'m> Executor<'m> {
             pos,
             work_offset,
             origin: machine.work_offset(work_offset).unwrap_or([0.0; MAX_AXES]),
+            preset: [0.0; MAX_AXES],
             feed: state.feed_rate.unwrap_or(0.0),
             feed_mode: state.feed_mode,
             stopped_feed_reported: false,
@@ -700,7 +706,12 @@ impl<'m> Executor<'m> {
             }
             Command::SetWorkOffset(id) => {
                 self.work_offset = *id;
-                self.origin = self.machine.work_offset(*id).unwrap_or([0.0; MAX_AXES]);
+                self.update_origin();
+            }
+            Command::Preset { target } => self.preset(target, src, diag),
+            Command::CancelPreset => {
+                self.preset = [0.0; MAX_AXES];
+                self.update_origin();
             }
             Command::SetSpindleSpeed { spindle: 0, rpm } => self.spindle_rpm = *rpm,
             Command::SetSpindleState { spindle: 0, state } => {
@@ -738,6 +749,9 @@ impl<'m> Executor<'m> {
             Command::ProgramEnd { .. } => {
                 self.push(SegKind::ProgramEnd, self.pos, None, src, diag);
                 self.ended = true;
+                // M2/M30 cancel presetting (Osai manual p. 2-82).
+                self.preset = [0.0; MAX_AXES];
+                self.update_origin();
             }
             // Modes the dialect has already applied to its state, spindles
             // other than the first (a single-spindle machine has no others),
@@ -895,6 +909,56 @@ impl<'m> Executor<'m> {
             self.unknown_reason = format!("the reference return on line {}", src.line);
             self.unknown_reported = false;
         }
+    }
+
+    /// Program zero from the work offset and the preset shift.
+    fn update_origin(&mut self) {
+        let base = self
+            .machine
+            .work_offset(self.work_offset)
+            .unwrap_or([0.0; MAX_AXES]);
+        for (o, (b, p)) in self.origin.iter_mut().zip(base.iter().zip(&self.preset)) {
+            *o = b + p;
+        }
+    }
+
+    /// Presetting: the current position on each named axis reads as its
+    /// value from now on, in every work coordinate system (M5.6e). An axis
+    /// whose position is unknown cannot be preset: its shift is kept.
+    fn preset(&mut self, target: &[AxisWord], src: SourceRef, diag: &mut Diagnostics) {
+        let base = self
+            .machine
+            .work_offset(self.work_offset)
+            .unwrap_or([0.0; MAX_AXES]);
+        let mut unknown = Vec::new();
+        for word in target {
+            let value = self.machine.normalize_axis_value(word.axis, word.value);
+            let (Some(slot), Some(pos), Some(b), Some(known)) = (
+                self.preset.get_mut(word.axis),
+                self.pos.get(word.axis),
+                base.get(word.axis),
+                self.known.get(word.axis),
+            ) else {
+                continue;
+            };
+            if *known {
+                *slot = pos - b - value;
+            } else if let Some(axis) = self.machine.axes().get(word.axis) {
+                unknown.push(axis.name.to_string());
+            }
+        }
+        if !unknown.is_empty() {
+            diag.warning(
+                DiagCode::InvalidValue,
+                format!(
+                    "presetting {} while the position is unknown: the preset cannot be applied \
+                     there, so later moves on that axis may be drawn offset",
+                    unknown.join(", ")
+                ),
+                src,
+            );
+        }
+        self.update_origin();
     }
 
     /// End position of a move, in machine coordinates.

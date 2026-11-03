@@ -29,6 +29,11 @@ pub(crate) enum Handler {
     /// Changes where later blocks move but is not simulated: a warning, its
     /// words are data, and later moves are drawn without its effect.
     Ignored,
+    /// Presetting (G92, G98; M5.6e): the axis words become the current
+    /// position (manual p. 2-82).
+    Preset,
+    /// Cancels the preset (G99).
+    PresetCancel,
     /// A canned cycle: each hole is drawn as a rapid in the working plane.
     CannedCycle,
     Stop,
@@ -69,6 +74,8 @@ impl Handler {
             "no_effect" => Self::NoEffect,
             "not_simulated" => Self::NotSimulated,
             "ignored" => Self::Ignored,
+            "preset" => Self::Preset,
+            "preset_cancel" => Self::PresetCancel,
             "canned_cycle" => Self::CannedCycle,
             "stop" => Self::Stop,
             "optional_stop" => Self::OptionalStop,

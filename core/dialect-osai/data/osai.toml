@@ -118,21 +118,22 @@ description = "Point-to-point"
 code = "G92"
 group = 4
 modal = false
-handler = "ignored"
+handler = "preset"
 description = "Axis presetting without mirror"
 
 [[g]]
 code = "G98"
 group = 4
 modal = false
-handler = "ignored"
+# Mirroring is not simulated, so G98 presets like G92 (p. 2-82).
+handler = "preset"
 description = "Axis presetting with mirror"
 
 [[g]]
 code = "G99"
 group = 4
 modal = true
-handler = "no_effect"
+handler = "preset_cancel"
 description = "Delete G92"
 
 # ---- group e: cutter diameter compensation (power-up G40) ----------------

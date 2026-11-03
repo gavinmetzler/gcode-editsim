@@ -120,6 +120,16 @@ pub enum Command {
     SetPlane(ArcPlane),
     /// Work coordinate system.
     SetWorkOffset(WorkOffsetId),
+    /// Presetting (Fanuc G92, Osai G92/G98, M5.6e): the current position on
+    /// each named axis becomes its value (absolute, in mm or degrees), by a
+    /// shift of every work coordinate system; axes not named keep theirs.
+    /// Nothing moves.
+    Preset {
+        /// The new positions; `incremental` is always false.
+        target: Vec<AxisWord>,
+    },
+    /// Cancels the preset shift on every axis (Fanuc G92.1, Osai G99).
+    CancelPreset,
     /// How the feed rate is interpreted.
     SetFeedMode(FeedMode),
     /// Spindle speed in rpm. Does not start or stop the spindle.

@@ -52,9 +52,9 @@ to run on a machine.
 ## Blocks a transformation refuses (M4.6)
 
 - **What we do:** a selection containing any of these is refused as a
-  whole, naming the line: G10, G16, G51, G51.1, G52, G65, G68 and G92 (the
-  codes ignored with a warning, whose effect a rewrite of the axis words
-  cannot carry); canned cycles (G73-G89, and every block while one is
+  whole, naming the line: G10, G16, G51, G51.1, G52, G65, G68 (the
+  codes ignored with a warning) and G92, G92.1 (presetting), whose effect a
+  rewrite of the axis words cannot carry; canned cycles (G73-G89, and every block while one is
   active, until G80 or G00-G03); G53 (machine coordinates); G28 and G30
   (through an intermediate point). This is our design choice (owner
   decision, M4_PLAN §6.4), not controller behaviour.
@@ -174,15 +174,31 @@ ISO-code programs may use `:` instead of `O` for the program number.
 *(unverified: seen in the owner's programs; not checked against a Fanuc
 manual)*
 
-## G92: ignored
+## G92: presetting (M5.6e)
 
-G92 (workpiece coordinate system setting) shifts every work coordinate
-system so that the current position gets the programmed values. That
-depends on where the machine is when G92 runs, which a backplot does not
-know. **G92 is ignored with a warning**: its X/Y/Z are data, not a move,
-and later moves are drawn without the shift (owner decision, 2026-10-31;
-coordinate shifts are on hold, see `docs/WISHLIST.md`). Real router programs start with `G54G92X…Y…Z0` and then
-select G55/G56, so the drawing uses those offsets from the machine file.
+G92 (workpiece coordinate system setting) shifts the work coordinate
+systems so that the current position gets the programmed values: the
+machine does not move, and later moves are drawn shifted. **What we do:**
+
+- G92 with axis words is a preset, not a move. For each named axis the
+  shift is chosen so that the current position reads the programmed value;
+  the axes not named keep their shift. The values are always absolute (also
+  under G91) and are in the active units (inches under G20).
+- The shift applies to every work offset: `G54 G92 X1000 Y1250 Z0` then
+  `G55 X0 Y0` goes to G55's zero shifted by the same amount, as on the
+  control (the shift is added to all of G54-G59). G53 and G28/G30 (machine
+  positions) are not shifted.
+- G92.1 cancels the shift on every axis. M02/M30 also cancel it.
+  *(unverified: on Fanuc, whether reset or a reference return cancels G92
+  depends on parameters; we keep the shift through G28, and cancel it at
+  program end)*
+- An axis whose position is unknown (before its first move, when the
+  machine file gives no start position) cannot be preset: a warning, and
+  its shift is unchanged.
+
+Source: G92 and G92.1 in the Fanuc Series 0i-MF operator's manual
+(coordinate system setting, workpiece coordinate system preset). Real
+router programs start with `G54G92X…Y…Z0` and then select G55/G56.
 
 ## G95: feed per revolution
 
@@ -202,7 +218,7 @@ programmed. One note (info) per program says so. G49 is quiet.
 
 ## Codes that change later moves: ignored, never hidden
 
-These codes change where *later* moves go and are not simulated: G92,
+These codes change where *later* moves go and are not simulated:
 G52, G10, G65, G68, G51, G51.1, G16 and any unknown G code.
 **Moves are never hidden** (owner decision, 2026-10-31: a backplot drawn
 without their effect is more useful than none). Each gives one
@@ -211,7 +227,7 @@ its words are data rather than a move, and later moves are drawn as
 programmed, so they may differ from the machine. The cancel codes G15,
 G50, G50.1 and G69 are quiet.
 
-Coordinate shifts (G92, G52, G10, rotation, scaling, mirroring, polar
+Coordinate shifts (G52, G10, rotation, scaling, mirroring, polar
 input) are **on hold**: left to the community (`docs/WISHLIST.md`).
 
 ## Subprograms (M98, M99)
@@ -251,7 +267,7 @@ Each of these produces a diagnostic, never silence:
 |---|---|---|---|
 | G41/G42 (cutter compensation) | warning (`NotYetSimulated`), once per program (M5.6d) | yes | Shown without the compensation |
 | G43/G44 (tool length compensation) | info, once per program | yes | Never simulated, by design |
-| G92, G10, G52, G65, G68, G51, G51.1, G16 | warning | no (its words are data) | Ignored; later moves drawn without its effect (see above) |
+| G10, G52, G65, G68, G51, G51.1, G16 | warning | no (its words are data) | Ignored; later moves drawn without its effect (see above) |
 | G04 | error | no | X/P is a dwell time, not a move |
 | Canned cycles G73, G74, G76, G81–G89 | warning, once per code | holes only | Each hole drawn as a rapid in the working plane |
 | Unknown G code | error | no (its words are data) | Its effect is unknown; later moves drawn as programmed |

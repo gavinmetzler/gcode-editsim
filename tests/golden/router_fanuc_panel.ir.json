@@ -15,8 +15,8 @@
       "line": 10,
       "kind": "Rapid",
       "end": {
-        "X": 0.0,
-        "Y": 0.0,
+        "X": -1000.0,
+        "Y": -1250.0,
         "Z": 0.0
       },
       "tool": 0,
@@ -26,8 +26,8 @@
       "line": 12,
       "kind": "Rapid",
       "end": {
-        "X": 0.0,
-        "Y": 0.0,
+        "X": -1000.0,
+        "Y": -1250.0,
         "Z": -40.0
       },
       "tool": 0,
@@ -37,8 +37,8 @@
       "line": 14,
       "kind": "Rapid",
       "end": {
-        "X": -29.21,
-        "Y": 29.21,
+        "X": -1029.21,
+        "Y": -1220.79,
         "Z": -40.0
       },
       "tool": 0,
@@ -48,8 +48,8 @@
       "line": 15,
       "kind": "Linear",
       "end": {
-        "X": -29.21,
-        "Y": 29.21,
+        "X": -1029.21,
+        "Y": -1220.79,
         "Z": -68.0
       },
       "feed": 4000.0,
@@ -60,8 +60,8 @@
       "line": 16,
       "kind": "Linear",
       "end": {
-        "X": -8.0,
-        "Y": 8.0,
+        "X": -1008.0,
+        "Y": -1242.0,
         "Z": -68.0
       },
       "feed": 4000.0,
@@ -72,8 +72,8 @@
       "line": 17,
       "kind": "Linear",
       "end": {
-        "X": -8.0,
-        "Y": -1018.0,
+        "X": -1008.0,
+        "Y": -2268.0,
         "Z": -68.0
       },
       "feed": 4000.0,
@@ -84,8 +84,8 @@
       "line": 18,
       "kind": "Linear",
       "end": {
-        "X": 2976.0,
-        "Y": -1018.0,
+        "X": 1976.0,
+        "Y": -2268.0,
         "Z": -68.0
       },
       "feed": 4000.0,
@@ -96,8 +96,8 @@
       "line": 19,
       "kind": "Linear",
       "end": {
-        "X": 2976.0,
-        "Y": 8.0,
+        "X": 1976.0,
+        "Y": -1242.0,
         "Z": -68.0
       },
       "feed": 4000.0,
@@ -108,8 +108,8 @@
       "line": 20,
       "kind": "Linear",
       "end": {
-        "X": -8.0,
-        "Y": 8.0,
+        "X": -1008.0,
+        "Y": -1242.0,
         "Z": -68.0
       },
       "feed": 4000.0,
@@ -120,8 +120,8 @@
       "line": 21,
       "kind": "Linear",
       "end": {
-        "X": -8.0,
-        "Y": -15.0,
+        "X": -1008.0,
+        "Y": -1265.0,
         "Z": -68.0
       },
       "feed": 4000.0,
@@ -132,8 +132,8 @@
       "line": 22,
       "kind": "Rapid",
       "end": {
-        "X": -8.0,
-        "Y": -15.0,
+        "X": -1008.0,
+        "Y": -1265.0,
         "Z": -40.0
       },
       "tool": 0,
@@ -143,8 +143,8 @@
       "line": 23,
       "kind": "Linear",
       "end": {
-        "X": -8.0,
-        "Y": 184.59,
+        "X": -1008.0,
+        "Y": -1065.41,
         "Z": -40.0
       },
       "feed": 4000.0,
@@ -155,8 +155,8 @@
       "line": 24,
       "kind": "Linear",
       "end": {
-        "X": -8.0,
-        "Y": 199.59,
+        "X": -1008.0,
+        "Y": -1050.41,
         "Z": -40.0
       },
       "feed": 4000.0,
@@ -167,8 +167,8 @@
       "line": 25,
       "kind": "Rapid",
       "end": {
-        "X": -8.0,
-        "Y": 199.59,
+        "X": -1008.0,
+        "Y": -1050.41,
         "Z": -12.0
       },
       "tool": 0,
@@ -213,8 +213,8 @@
     {
       "line": 5,
       "severity": "Warning",
-      "code": "UnsupportedGCode",
-      "message": "G92 (Workpiece coordinate system setting) is not simulated and is ignored: its values are not a move, and later moves are drawn without its effect, so they may differ from the machine"
+      "code": "ControllerDependent",
+      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
     },
     {
       "line": 6,
@@ -227,12 +227,6 @@
       "severity": "Warning",
       "code": "ControllerDependent",
       "message": "assumed G00 (rapid): the program has not selected this mode yet. The power-on motion mode is set by a parameter (3402 bit 0). Add G00 (rapid) near the start of the program to make it explicit."
-    },
-    {
-      "line": 7,
-      "severity": "Warning",
-      "code": "ControllerDependent",
-      "message": "assumed G21 (mm): the program has not selected this mode yet. A Fanuc control keeps the units that were active when it was switched off, so the machine may be in inches. Add G21 (mm) near the start of the program to make it explicit."
     },
     {
       "line": 8,
@@ -268,13 +262,13 @@
   "tools_used": [],
   "bbox": {
     "min": {
-      "X": -29.21,
-      "Y": -1018.0,
+      "X": -1029.21,
+      "Y": -2268.0,
       "Z": -68.0
     },
     "max": {
-      "X": 2976.0,
-      "Y": 199.59,
+      "X": 1976.0,
+      "Y": 0.0,
       "Z": 0.0
     }
   }

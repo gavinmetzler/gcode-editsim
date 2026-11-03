@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.6d (cutter compensation once, M6 without T a note, 2026-11-03).
+Last updated: M5.6e (G92 presetting, Fanuc and Osai, 2026-11-03).
 Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
 and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
@@ -220,8 +220,8 @@ Changing any of these is a deliberate, documented change.
 - A rejected block has **no** effect at all, because it is validated
   before anything is applied.
 - **Never hide moves** (owner decision, 2026-10-31; ARCHITECTURE.md
-  §7.3a): G92, G52, G10, G65, G68, G51, G51.1, G16, M98, M99 and unknown G
-  codes give one diagnostic, their words are data, and later moves are
+  §7.3a): G52, G10, G65, G68, G51, G51.1, G16 and unknown G codes give
+  one diagnostic, their words are data, and later moves are
   drawn as programmed. Canned cycles draw their hole positions as rapids
   in the plane. (The M1 motion blockers are gone.)
 - G28 (via `reference` in the machine file) and G53 are simulated. G30

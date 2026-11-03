@@ -44,9 +44,9 @@ theme would replace that table; the interface colours are in
 
 *Put on hold by the owner, 2026-10-31 (was M3.5); left to the community.*
 
-Today G92, G52, G10, rotation (G68), scaling (G51), mirroring (G51.1),
-polar input (G16) and Osai presetting (G92/G98) and per-axis origins
-(`(UAO,n,axes)`) are ignored with a warning, and later moves are drawn
+Today G52, G10, rotation (G68), scaling (G51), mirroring (G51.1),
+polar input (G16) and Osai per-axis origins (`(UAO,n,axes)`) are ignored
+with a warning, and later moves are drawn
 without their effect. A contributor implementing them would need:
 
 - **Frames:** the program zero each segment was programmed in (work
@@ -54,9 +54,8 @@ without their effect. A contributor implementing them would need:
   frame table and an index per segment; version bump, new fixture,
   regenerated constants), so the readout can show program coordinates
   with a Program/Machine toggle.
-- **G92** relative to the machine's position when it runs (the machine
-  file's reference position, at program start), and what cancels it
-  (G92.1, reset, reference return: controller-dependent).
+- Presetting (Fanuc G92, Osai G92/G98/G99) is supported since M5.6e;
+  Osai G98's mirroring is not.
 - **G52, G10 L2/L20,** rotation, scaling, mirroring, polar input, sourced
   from a manual for the control, or marked *(unverified)*.
 - Care: on some machines (the owner's gang router) work offsets select
