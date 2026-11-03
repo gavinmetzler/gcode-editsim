@@ -37,6 +37,22 @@ expect fail v0.1.0
 repo 1.0.0-rc.1 1.0.0-rc.1
 expect ok v1.0.0-rc.1
 
+# --print-tag (the Run workflow button): the tag for the app's version,
+# when the two files agree.
+# expect_tag <expected output, or "fail">
+expect_tag() {
+  local got
+  got=$("$here/check-version.sh" --print-tag "$tmp/r" 2> /dev/null) || got=fail
+  if [ "$got" != "$1" ]; then
+    echo "FAIL: --print-tag expected [$1], got [$got]"
+    failures=$((failures + 1))
+  fi
+}
+repo 0.5.0 0.5.0
+expect_tag v0.5.0
+repo 0.5.0 0.4.0
+expect_tag fail
+
 # The repository's own files agree with each other.
 real="$(cd "$here/../.." && pwd)"
 v=$(sed -n 's/^  "version": "\(.*\)",$/\1/p' "$real/app/shell/tauri.conf.json")

@@ -249,8 +249,9 @@ The owner approved the workflow changes (2026-11-03). In three PRs:
 - **M5.7a: Linux and the release.** `.deb` and `.rpm` (built on Ubuntu
   22.04, checked and the `.deb` installed by CI; `packaging/linux/`), a
   reusable `packages.yml` (also run by CI when the packaging changes) and
-  `release.yml`: pushing a tag `vX.Y.Z` that matches the app's version
-  publishes a GitHub Release with the `.deb`, `.rpm` and Flatpak under
+  `release.yml`: the **Run workflow** button on main (added for the owner,
+  who has no clone, 2026-11-04), or pushing a tag `vX.Y.Z` that matches
+  the app's version, publishes a GitHub Release with the `.deb`, `.rpm` and Flatpak under
   fixed names. README "Installing" with the "latest" links. No AppImage
   (not asked for).
 - **M5.7b: Windows** installer (NSIS, current user, `.nc`/`.ngc`/`.tap`
