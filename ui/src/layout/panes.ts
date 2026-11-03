@@ -43,6 +43,16 @@ export interface PaneLayout {
   readonly legend_folded?: boolean;
   /** The diagnostics severities whose filter is unticked (M4.2a). */
   readonly hidden_diagnostics?: readonly string[];
+  /** How the toolpath is coloured (M5.5): "tool", or missing for by move. */
+  readonly colour_by?: string;
+}
+
+/** How the toolpath is coloured: by move type or by tool (M5.5). */
+export type Colouring = "move" | "tool";
+
+/** The remembered colouring; by move for anything else. */
+export function colouringFrom(layout: PaneLayout | null | undefined): Colouring {
+  return layout?.colour_by === "tool" ? "tool" : "move";
 }
 
 /**
@@ -78,6 +88,7 @@ export interface LayoutState {
   readonly maximised: PaneName | null;
   readonly legendFolded: boolean;
   readonly shown: ReadonlySet<SeverityName>;
+  readonly colouring: Colouring;
 }
 
 /** The layout to remember, leaving out what is at its default. */
@@ -89,5 +100,6 @@ export function layoutToSave(state: LayoutState): PaneLayout {
     ...(state.maximised === null ? {} : { maximised: state.maximised }),
     ...(state.legendFolded ? { legend_folded: true } : {}),
     ...(hidden.length === 0 ? {} : { hidden_diagnostics: hidden }),
+    ...(state.colouring === "tool" ? { colour_by: "tool" } : {}),
   };
 }

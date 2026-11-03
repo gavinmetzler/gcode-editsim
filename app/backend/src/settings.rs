@@ -128,6 +128,10 @@ pub struct PaneLayout {
     /// by the UI's names; `None` for the default (all shown).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hidden_diagnostics: Option<Vec<String>>,
+    /// How the toolpath is coloured (M5.5): the UI's name, `"tool"`, or
+    /// `None` for the default (by move).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour_by: Option<String>,
 }
 
 impl PaneLayout {
@@ -459,12 +463,21 @@ fn read_layout(fields: &Map<String, Value>, problems: &mut Vec<String>) -> PaneL
             }
         },
     };
+    let colour_by = match fields.get("colour_by") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(s)) => Some(s.clone()),
+        Some(_) => {
+            problems.push("the colouring setting is not a name".to_owned());
+            None
+        }
+    };
     PaneLayout {
         editor,
         panel,
         maximised,
         legend_folded,
         hidden_diagnostics,
+        colour_by,
     }
 }
 

@@ -6,7 +6,14 @@
 // draws from the same index lists). The statistics always cover the whole
 // program, and the hidden tools are not remembered (owner, M5_PLAN §6).
 
+import { SEG_KIND } from "../generated/render_buffer";
 import type { Toolpath } from "./toolpath";
+
+/** What else is shown: `rapids` false hides every rapid (the owner's
+ *  addition to M5.5, a toggle in the view). */
+export interface FilterOptions {
+  readonly rapids?: boolean;
+}
 
 /** What to draw for one filter. */
 export interface FilteredDrawing {
@@ -45,13 +52,18 @@ export function filterToolpath(
     | "eventSegment"
     | "singlePoints"
     | "segmentTool"
+    | "segmentKind"
     | "vertexSegment"
     | "endpoints"
   >,
   hidden: ReadonlySet<number>,
+  options: FilterOptions = {},
 ): FilteredDrawing {
-  const shown = (segment: number): boolean => !hidden.has(tp.segmentTool[segment] ?? 0);
-  if (hidden.size === 0) {
+  const rapids = options.rapids ?? true;
+  const toolShown = (segment: number): boolean => !hidden.has(tp.segmentTool[segment] ?? 0);
+  const shown = (segment: number): boolean =>
+    toolShown(segment) && (rapids || tp.segmentKind[segment] !== SEG_KIND.Rapid);
+  if (hidden.size === 0 && rapids) {
     return {
       feedIndex: tp.feedIndex,
       rapidIndex: tp.rapidIndex,
@@ -85,8 +97,8 @@ export function filterToolpath(
   const singles = tp.singlePoints;
   const keptSingles = Array.from(singles.segments).filter(shown);
   return {
-    feedIndex: pairs(tp.feedIndex),
-    rapidIndex: pairs(tp.rapidIndex),
+    feedIndex: hidden.size === 0 ? tp.feedIndex : pairs(tp.feedIndex),
+    rapidIndex: rapids ? pairs(tp.rapidIndex) : new Uint32Array(),
     eventPositions: points(tp.eventPositions, 3, tp.eventSegment),
     eventColors: points(tp.eventColors, 3, tp.eventSegment),
     singlePoints: {

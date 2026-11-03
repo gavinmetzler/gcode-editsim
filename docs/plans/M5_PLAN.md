@@ -173,6 +173,11 @@ CLAUDE.md, the README and DEVELOPMENT_STATUS.md point to it.
   rapids are a dimmed version; the key lists the tools with their colours.
 - Unit tests for the palette (distinct, readable, dimmed rapids) and the
   colouring; a browser check.
+- **Added by the owner (2026-11-03): hiding rapids**, with its own toggle
+  button in the 3D view, easy to switch on and off. Hidden rapids are
+  treated like hidden tools (not drawn, not picked, snapped or measured
+  to, left out of the highlight); not remembered, so the app always
+  starts showing them.
 
 ### M5.6: Osai level with Fanuc
 - First an audit, in the PR description and `docs/dialect-notes/osai.md`:
