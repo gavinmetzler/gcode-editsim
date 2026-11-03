@@ -1,0 +1,19 @@
+{
+  "bundle": {
+    "targets": ["nsis"],
+    "fileAssociations": [
+      {
+        "ext": ["nc", "ngc", "tap"],
+        "name": "CNC G-code program",
+        "description": "CNC G-code program",
+        "role": "Editor"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "startMenuFolder": "GCode EditSim"
+      }
+    }
+  }
+}

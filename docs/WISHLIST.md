@@ -173,3 +173,16 @@ Check with the diagnostics panel, on the owner's machine, that held
 Page Up/Down keeps up and that the Flatpak can still drop
 `WEBKIT_DISABLE_DMABUF_RENDERER`. Costs to weigh: a much larger
 download (Chromium), and whether it builds as a Flatpak.
+
+## Opening G-code files from the macOS Finder
+
+*Found in M5.7c (2026-11-03).* On Linux and Windows the desktop starts the
+app with the file on its command line, which the app reads. macOS instead
+sends the file to the app as an event (Tauri's `RunEvent::Opened`, also
+when the app is already running), which the app does not handle, so the
+macOS app does not register G-code files. To add it: declare the file
+types in `tauri.macos.conf.json` (`fileAssociations`), handle `Opened` in
+`app/shell/src/lib.rs` (before the page asks for the start-up file, keep
+it; after, tell the page to open it, asking first if the program has
+unsaved changes), and test on a Mac.
+

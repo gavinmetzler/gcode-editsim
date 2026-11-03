@@ -253,9 +253,18 @@ The owner approved the workflow changes (2026-11-03). In three PRs:
   publishes a GitHub Release with the `.deb`, `.rpm` and Flatpak under
   fixed names. README "Installing" with the "latest" links. No AppImage
   (not asked for).
-- **M5.7b: Windows** installer, added to `packages.yml` and the release.
-- **M5.7c: macOS** app, likewise (unsigned unless the owner wants to pay
-  for an Apple developer account).
+- **M5.7b: Windows** installer (NSIS, current user, `.nc`/`.ngc`/`.tap`
+  registered), added to `packages.yml` and the release; CI installs it
+  and starts the app.
+- **M5.7c: macOS** app (universal, macOS 11+, a `.dmg`), signed ad hoc,
+  not notarised (an Apple developer account costs a yearly fee: the
+  owner's choice later); CI checks and starts it. Opening files from the
+  Finder is in `docs/WISHLIST.md`.
+
+The owner set the version to 0.5.0 for the first release (2026-11-03) and,
+going to bed, asked for Windows and macOS straight after Linux whatever
+Linux's CI said, so all three are in one PR (#85) as separate commits;
+the Tauri CLI comes from npm (prebuilt) instead of `cargo install`.
 
 ### M5.8: Wrap-up
 - The owner's programs through every new feature; README, ARCHITECTURE.md,

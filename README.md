@@ -254,11 +254,24 @@ with every version):
 | Ubuntu, Debian, Linux Mint, … (22.04 / 12 or newer) | [gcode-editsim-amd64.deb](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim-amd64.deb) | `sudo apt install ./gcode-editsim-amd64.deb` |
 | Fedora, openSUSE, … | [gcode-editsim-x86_64.rpm](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim-x86_64.rpm) | `sudo dnf install ./gcode-editsim-x86_64.rpm` |
 | Any Linux with Flatpak | [gcode-editsim.flatpak](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim.flatpak) | `flatpak install --user gcode-editsim.flatpak` |
+| Windows 10 and 11 (64-bit) | [gcode-editsim-windows-x64-setup.exe](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim-windows-x64-setup.exe) | Run it (see below) |
+| macOS 11 and newer (Apple silicon and Intel) | [gcode-editsim-macos.dmg](https://github.com/gavinmetzler/gcode-editsim/releases/latest/download/gcode-editsim-macos.dmg) | Open it and drag the app to Applications (see below) |
 
-Windows and macOS installers are coming next (M5.7). Details, where your
-machine files are, and how to remove the app:
-[packaging/linux/README.md](packaging/linux/README.md) (`.deb`, `.rpm`)
-and [packaging/flatpak/README.md](packaging/flatpak/README.md).
+Details, where your machine files are, and how to remove the app:
+[packaging/linux/README.md](packaging/linux/README.md) (`.deb`, `.rpm`),
+[packaging/flatpak/README.md](packaging/flatpak/README.md) and
+[packaging/windows-macos.md](packaging/windows-macos.md).
+
+The Windows and macOS packages are not signed with a paid certificate, so
+the first time:
+
+- **Windows** may show "Windows protected your PC": click **More info**,
+  then **Run anyway**. The installer needs no administrator rights and
+  makes `.nc`, `.ngc` and `.tap` files open in the app.
+- **macOS** says the app "cannot be opened" or is from an unidentified
+  developer: open **System Settings → Privacy & Security**, scroll down
+  and click **Open Anyway** next to GCode EditSim (on macOS 14 and older,
+  Control-click the app and choose **Open** instead). Only the first time.
 
 ## Trying it out
 

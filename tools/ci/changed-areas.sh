@@ -34,12 +34,12 @@ while IFS= read -r path || [ -n "$path" ]; do
   case "$path" in ui/*) mark ui app flatpak ;; esac
   case "$path" in app/*) mark app flatpak ;; esac
   case "$path" in packaging/* | LICENSE) mark flatpak ;; esac
-  # The Linux packages (packages.yml): their settings and the files they
+  # The packages (packages.yml): their settings and the files they
   # install. The rest of the app is built for them too, but the Flatpak
   # and app jobs already check that it builds.
   case "$path" in
     packaging/linux/* | packaging/icons/* | packaging/flatpak/*.xml | LICENSE | \
-      app/shell/tauri.conf.json | app/shell/Cargo.toml | app/shell/Cargo.lock | app/shell/icons/*)
+      app/shell/tauri.conf.json | app/shell/tauri.*.conf.json | app/shell/Cargo.toml | app/shell/Cargo.lock | app/shell/icons/*)
       mark packages ;;
   esac
   # Lock files say which dependency versions are used: audit them.

@@ -190,8 +190,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # The Linux packages (M5.7), built and checked as the release workflow
-  # builds them, when their settings change (the Flatpak is built above).
+  # The packages (M5.7: Linux, Windows, macOS), built, checked and
+  # installed as the release workflow builds them, when their settings
+  # change (the Flatpak is built above).
   packages:
     needs: changes
     if: needs.changes.outputs.packages == 'true'

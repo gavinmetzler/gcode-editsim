@@ -39,13 +39,16 @@ expect "app/shell/Cargo.lock" "app flatpak audit packages"
 expect "core/gcode-syntax/fuzz/Cargo.lock" "rust fuzz app flatpak audit"
 expect "ui/package-lock.json" "ui app flatpak audit"
 expect "ui/package.json" "ui app flatpak"
-# The Linux packages (M5.7): their settings, files and tools.
+# The packages (M5.7): their settings, files and tools.
 expect "packaging/linux/desktop.hbs" "flatpak packages"
 expect "packaging/linux/check-packages.sh" "flatpak packages"
 expect "packaging/flatpak/com.ncsoftbyai.gcodeeditsim.xml" "flatpak packages"
 expect "packaging/icons/com.ncsoftbyai.gcodeeditsim.svg" "flatpak packages"
 expect "app/shell/tauri.conf.json" "app flatpak packages"
 expect "app/shell/Cargo.toml" "app flatpak packages"
+expect "app/shell/tauri.windows.conf.json" "app flatpak packages"
+expect "app/shell/tauri.macos.conf.json" "app flatpak packages"
+expect "app/shell/icons/icon.ico" "app flatpak packages"
 expect "app/shell/icons/32x32.png" "app flatpak packages"
 expect "tools/release/check-version.sh" "packages"
 # No files: nothing to do.
