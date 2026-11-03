@@ -98,6 +98,38 @@ fn shipped_machines_are_the_fallback_when_the_folder_has_none() {
 }
 
 #[test]
+fn each_machine_is_listed_with_the_dialect_its_file_names() {
+    // M5.6b: choosing the machine sets the dialect. The shipped router is
+    // an Osai control (the owner's router is), the mill a Fanuc one, and
+    // the lathe stub names none.
+    let dir = TempDir::new("dialects");
+    let shipped = list_machine_files(&dir.path("none")).expect("list");
+    let dialect = |label: &str| {
+        shipped
+            .iter()
+            .find(|m| m.label == label)
+            .and_then(|m| m.dialect.clone())
+    };
+    assert_eq!(dialect("Generic 3-axis VMC").as_deref(), Some("fanuc"));
+    assert_eq!(
+        dialect("Generic 3-axis router (no travel limits)").as_deref(),
+        Some("osai")
+    );
+    assert_eq!(dialect("Generic 2-axis lathe"), None);
+
+    let text = shipped_machine("generic_3axis_router")
+        .expect("shipped")
+        .replace("dialect = \"osai\"", "dialect = \"Fanuc\"");
+    fs::write(dir.path("mine.toml"), text).expect("write");
+    fs::write(dir.path("broken.toml"), "[machine]\nname = \"x\"\n").expect("write");
+    let list = list_machine_files(&dir.0).expect("list");
+    let mine = list.iter().find(|m| m.problem.is_none()).expect("listed");
+    assert_eq!(mine.dialect.as_deref(), Some("fanuc"));
+    let broken = list.iter().find(|m| m.problem.is_some()).expect("listed");
+    assert_eq!(broken.dialect, None);
+}
+
+#[test]
 fn seeding_copies_the_examples_into_a_new_folder() {
     let dir = TempDir::new("seed");
     let folder = dir.path("config/machines");

@@ -189,6 +189,8 @@ pub struct MachineEntry {
     label: String,
     source: MachineRef,
     problem: Option<String>,
+    /// The dialect the machine file names (M5.6b), if it names one.
+    dialect: Option<String>,
 }
 
 /// The machine files in the user's machine folder, or the shipped examples
@@ -209,6 +211,7 @@ async fn list_machines(state: State<'_, AppState>) -> Result<Vec<MachineEntry>, 
                 MachineSource::User(path) => MachineRef::User(path.display().to_string()),
             },
             problem: m.problem,
+            dialect: m.dialect,
         })
         .collect())
 }

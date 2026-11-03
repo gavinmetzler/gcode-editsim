@@ -28,7 +28,28 @@ your programs use.
 | `max_feed` | no | Fastest cutting feed, mm/min |
 | `max_spindle_rpm` | no | Fastest spindle speed, rpm |
 | `tool_change_time` | no | Seconds a tool change takes, for the time estimate in **Statistics…** (0 if not set). Zero or more. |
+| `dialect` | no | The dialect the machine's control speaks: `"fanuc"` or `"osai"` (M5.6b). Choosing the machine in the app sets the dialect; the dialect list can still override it for a program. The shipped router says `"osai"`, the mill `"fanuc"`. |
 | `ignore_codes` | no | M codes your programs use that do not move the machine (head selection, clamps, vacuum), e.g. `["M92", "M213"]`. They are removed from every block with one note per code. Only M codes: a G code's axis words would be left behind and read as a move. Codes not listed that the dialect does not know are still noted once each and ignored. |
+
+## `[power_on]` (optional)
+
+How the control starts up (M5.6b). Programs often rely on it instead of
+selecting every mode; with it stated, they are not warned about
+"assumed" modes. Leave out what you do not know: the warning stays for
+that mode. A Fanuc control keeps the units it was switched off in, so
+state `units` only if your machine always runs in one.
+
+| Setting | Meaning |
+|---|---|
+| `units` | `"mm"` or `"inch"` |
+| `plane` | The working plane, as two linear axis letters of this machine in order, e.g. `["X", "Y"]` (Fanuc G17; `["Z", "X"]` is G18, `["Y", "Z"]` G19; Osai's G17-G19 are the axes in positions 1-2, 3-1 and 2-3). A pair the dialect cannot name is left to the program. |
+| `motion` | `"rapid"` (G00) or `"linear"` (G01) |
+| `distance` | `"absolute"` (G90) or `"incremental"` (G91) |
+
+The app copies the shipped examples into your machine folder only when
+it has no machine files, and never overwrites them: to use these
+settings with a router file copied before M5.6, add the `dialect` line
+and the `[power_on]` section to it (see the shipped router).
 
 ## `[[axis]]`, one block per axis
 

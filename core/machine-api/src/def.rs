@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use ir::{Pos, WorkOffsetId, MAX_AXES};
+use ir::{LengthUnit, Pos, WorkOffsetId, MAX_AXES};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -65,6 +65,42 @@ pub struct AxisDef {
     pub diameter_mode_capable: bool,
 }
 
+/// What the control does at power-on (M5.6b), as far as the machine file
+/// says: programs that rely on it are then not warned about assumed modes.
+/// Dialect-neutral: each dialect turns it into its own codes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PowerOnDef {
+    /// The units lengths are read in, if stated.
+    pub units: Option<LengthUnit>,
+    /// The working plane, as two of the machine's linear axis letters in
+    /// order (`('X', 'Y')`), if stated.
+    pub plane: Option<(char, char)>,
+    /// The motion mode before the program selects one, if stated.
+    pub motion: Option<PowerOnMotion>,
+    /// Absolute or incremental positions, if stated.
+    pub distance: Option<PowerOnDistance>,
+}
+
+/// The motion mode at power-on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PowerOnMotion {
+    /// Rapid positioning.
+    Rapid,
+    /// Linear interpolation at the feed rate.
+    Linear,
+}
+
+/// Absolute or incremental positions at power-on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PowerOnDistance {
+    /// Positions are absolute.
+    Absolute,
+    /// Positions are distances from the current position.
+    Incremental,
+}
+
 /// Machine-wide speed limits and timings.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct SpeedLimits {
@@ -95,6 +131,12 @@ pub struct MachineDef {
     /// the dialect sees them. Upper-case, as written. Only M codes: a G
     /// code's axis words would be left behind and read as a move.
     pub ignore_codes: Vec<String>,
+    /// The dialect this machine's control speaks (lower case, such as
+    /// `"osai"`), if the file says: choosing the machine then sets the
+    /// dialect (M5.6b). The app checks it against the dialects it has.
+    pub dialect: Option<String>,
+    /// The control's power-on state, as far as the file states it.
+    pub power_on: PowerOnDef,
     work_offsets: BTreeMap<WorkOffsetId, Pos>,
 }
 
@@ -146,6 +188,17 @@ pub enum MachineDefError {
         /// The letter given.
         axis: String,
     },
+    /// A `dialect` that is empty.
+    #[error("dialect: {0:?} is not a dialect name such as \"osai\" or \"fanuc\"")]
+    InvalidDialect(String),
+    /// A power-on plane that is not two different linear axes of the machine.
+    #[error(
+        "power_on plane: {0} is not two different linear axes of this machine, such as [\"X\", \"Y\"]"
+    )]
+    InvalidPowerOnPlane(String),
+    /// A power-on units setting that is not "mm" or "inch".
+    #[error("power_on units: {0:?} is not \"mm\" or \"inch\"")]
+    InvalidPowerOnUnits(String),
     /// An `ignore_codes` entry that is not an M code such as `M92`.
     #[error(
         "ignore_codes: {0:?} is not an M code such as \"M92\" (only M codes can be ignored: a \
@@ -170,6 +223,21 @@ struct RawDef {
     axis: Vec<RawAxis>,
     #[serde(default)]
     work_offsets: BTreeMap<String, BTreeMap<String, f64>>,
+    #[serde(default)]
+    power_on: Option<RawPowerOn>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawPowerOn {
+    #[serde(default)]
+    units: Option<String>,
+    #[serde(default)]
+    plane: Option<Vec<String>>,
+    #[serde(default)]
+    motion: Option<PowerOnMotion>,
+    #[serde(default)]
+    distance: Option<PowerOnDistance>,
 }
 
 #[derive(Deserialize)]
@@ -185,6 +253,8 @@ struct RawMachine {
     tool_change_time: Option<f64>,
     #[serde(default)]
     ignore_codes: Vec<String>,
+    #[serde(default)]
+    dialect: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -211,6 +281,24 @@ fn letter(text: &str) -> Result<char, MachineDefError> {
     match (chars.next(), chars.next()) {
         (Some(c), None) if c.is_ascii_alphabetic() => Ok(c.to_ascii_uppercase()),
         _ => Err(MachineDefError::InvalidLetter(text.to_owned())),
+    }
+}
+
+/// Checks a power-on plane: two different linear axes of the machine.
+fn power_on_plane(letters: &[String], axes: &[AxisDef]) -> Result<(char, char), MachineDefError> {
+    let bad = || MachineDefError::InvalidPowerOnPlane(format!("{letters:?}"));
+    let linear = |text: &String| {
+        let l = letter(text).ok()?;
+        axes.iter()
+            .any(|a| a.name == l && a.kind == AxisKind::Linear)
+            .then_some(l)
+    };
+    match letters {
+        [a, b] => match (linear(a), linear(b)) {
+            (Some(a), Some(b)) if a != b => Ok((a, b)),
+            _ => Err(bad()),
+        },
+        _ => Err(bad()),
     }
 }
 
@@ -342,12 +430,37 @@ impl MachineDef {
             .map(|c| ignore_code(c))
             .collect::<Result<_, _>>()?;
 
+        let dialect = match raw.machine.dialect {
+            None => None,
+            Some(d) if d.trim().is_empty() => return Err(MachineDefError::InvalidDialect(d)),
+            Some(d) => Some(d.trim().to_ascii_lowercase()),
+        };
+        let power_on = match raw.power_on {
+            None => PowerOnDef::default(),
+            Some(p) => PowerOnDef {
+                units: match p.units.as_deref().map(str::trim) {
+                    None => None,
+                    Some(u) if u.eq_ignore_ascii_case("mm") => Some(LengthUnit::Metric),
+                    Some(u) if u.eq_ignore_ascii_case("inch") => Some(LengthUnit::Inch),
+                    Some(u) => return Err(MachineDefError::InvalidPowerOnUnits(u.to_owned())),
+                },
+                plane: match p.plane {
+                    None => None,
+                    Some(letters) => Some(power_on_plane(&letters, &axes)?),
+                },
+                motion: p.motion,
+                distance: p.distance,
+            },
+        };
+
         Ok(Self {
             name: raw.machine.name,
             family: raw.machine.family,
             axes,
             speeds,
             ignore_codes,
+            dialect,
+            power_on,
             work_offsets,
         })
     }

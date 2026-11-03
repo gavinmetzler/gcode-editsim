@@ -24,8 +24,8 @@ mod three_letter;
 use std::collections::BTreeMap;
 
 use dialect_api::{
-    AxisSet, BlockContext, CodeKey, CodeTable, CodeTableError, Command, Dialect, ModalState,
-    ValueKind,
+    AxisSet, BlockContext, CodeKey, CodeTable, CodeTableError, Command, Dialect, DistanceMode,
+    ModalState, PowerOn, StartMotion, ValueKind,
 };
 use gcode_syntax::{Block, Number, NumberStyle};
 use ir::{ArcPlane, Diagnostics, LengthUnit, WorkOffsetId};
@@ -121,6 +121,76 @@ impl Dialect for Osai {
         // (UAO, p. 2-95): machine coordinates.
         state.work_offset = WorkOffsetId(0);
         state
+    }
+
+    /// The machine file's power-on state (M5.6b), as the codes that select
+    /// it: G70/G71, the plane code whose axis positions match the stated
+    /// letters on this machine (G17 1-2, G18 3-1, G19 2-3; another pair is
+    /// left to the program), G00/G01 and G90/G91. Units and plane then
+    /// count as set, so they are not reported as power-up defaults.
+    fn apply_power_on(&self, state: &mut ModalState, axes: &AxisSet, power_on: &PowerOn) {
+        let activate = |state: &mut ModalState, text: &str| {
+            let def = CodeKey::parse(text).and_then(|k| self.table.get(k));
+            if let Some((group, code)) = def.and_then(|d| Some((d.group?, d.code))) {
+                state.set_active(group, code);
+            }
+        };
+        if let Some(units) = power_on.units {
+            activate(
+                state,
+                if units == LengthUnit::Inch {
+                    "G70"
+                } else {
+                    "G71"
+                },
+            );
+            state.units = units;
+            state.first_report(block::SET_UNITS);
+        }
+        if let Some((a, b)) = power_on.plane {
+            let positions = (axes.index_of(a), axes.index_of(b));
+            let code = self
+                .handlers
+                .iter()
+                .find_map(|(key, handler)| match (handler, positions) {
+                    (Handler::Plane(x, y), (Some(i), Some(j)))
+                        if usize::from(*x) == i && usize::from(*y) == j =>
+                    {
+                        Some((*key, *x, *y))
+                    }
+                    _ => None,
+                });
+            if let Some((key, x, y)) = code {
+                if let Some(plane) = plane_by_position(axes, x, y) {
+                    if let Some(group) = self.table.get(key).and_then(|d| d.group) {
+                        state.set_active(group, key);
+                    }
+                    state.plane = Some(plane);
+                    state.first_report(block::SET_PLANE);
+                }
+            }
+        }
+        if let Some(motion) = power_on.motion {
+            activate(
+                state,
+                if motion == StartMotion::Linear {
+                    "G01"
+                } else {
+                    "G00"
+                },
+            );
+        }
+        if let Some(distance) = power_on.distance {
+            activate(
+                state,
+                if distance == DistanceMode::Incremental {
+                    "G91"
+                } else {
+                    "G90"
+                },
+            );
+            state.distance = distance;
+        }
     }
 
     fn interpret_block(

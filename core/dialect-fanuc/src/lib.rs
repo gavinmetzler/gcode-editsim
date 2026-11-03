@@ -22,8 +22,8 @@ mod numbers;
 use std::collections::BTreeMap;
 
 use dialect_api::{
-    AxisSet, BlockContext, CodeKey, CodeTable, CodeTableError, Command, Dialect, ModalState,
-    ValueKind,
+    AxisSet, BlockContext, CodeKey, CodeTable, CodeTableError, Command, Dialect, DistanceMode,
+    ModalState, PowerOn, StartMotion, ValueKind,
 };
 use gcode_syntax::{Block, Number, NumberStyle};
 use ir::{Diagnostics, LengthUnit, WorkOffsetId};
@@ -141,6 +141,62 @@ impl Dialect for Fanuc {
         state.plane = axes.plane('X', 'Y');
         state.work_offset = WorkOffsetId(1);
         state
+    }
+
+    /// The machine file's power-on state (M5.6b), as the codes that select
+    /// it: G20/G21, G17/G18/G19 (XY, ZX, YZ; another pair is left to the
+    /// program), G00/G01 and G90/G91.
+    fn apply_power_on(&self, state: &mut ModalState, axes: &AxisSet, power_on: &PowerOn) {
+        let activate = |state: &mut ModalState, text: &str| {
+            let def = CodeKey::parse(text).and_then(|k| self.table.get(k));
+            if let Some((group, code)) = def.and_then(|d| Some((d.group?, d.code))) {
+                state.set_active(group, code);
+            }
+        };
+        if let Some(units) = power_on.units {
+            activate(
+                state,
+                if units == LengthUnit::Inch {
+                    "G20"
+                } else {
+                    "G21"
+                },
+            );
+            state.units = units;
+        }
+        if let Some((a, b)) = power_on.plane {
+            let code = match (a, b) {
+                ('X', 'Y') => Some("G17"),
+                ('Z', 'X') => Some("G18"),
+                ('Y', 'Z') => Some("G19"),
+                _ => None,
+            };
+            if let (Some(code), Some(plane)) = (code, axes.plane(a, b)) {
+                activate(state, code);
+                state.plane = Some(plane);
+            }
+        }
+        if let Some(motion) = power_on.motion {
+            activate(
+                state,
+                if motion == StartMotion::Linear {
+                    "G01"
+                } else {
+                    "G00"
+                },
+            );
+        }
+        if let Some(distance) = power_on.distance {
+            activate(
+                state,
+                if distance == DistanceMode::Incremental {
+                    "G91"
+                } else {
+                    "G90"
+                },
+            );
+            state.distance = distance;
+        }
     }
 
     fn interpret_block(

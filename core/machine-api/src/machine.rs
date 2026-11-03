@@ -2,7 +2,7 @@
 
 use ir::{Pos, WorkOffsetId};
 
-use crate::def::{AxisDef, LimitViolation, SpeedLimits};
+use crate::def::{AxisDef, LimitViolation, PowerOnDef, SpeedLimits};
 
 /// Where the tool tip is and which way the tool points, in the machine's
 /// Cartesian space (mm).
@@ -48,6 +48,12 @@ pub trait Machine {
     /// machine file's `ignore_codes`), such as `"M92"`. The default is none.
     fn ignored_codes(&self) -> &[String] {
         &[]
+    }
+
+    /// The control's power-on state as the machine file states it (M5.6b).
+    /// The default states nothing.
+    fn power_on(&self) -> PowerOnDef {
+        PowerOnDef::default()
     }
 
     /// Converts a programmed value for `axis` to the machine's convention,

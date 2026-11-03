@@ -605,6 +605,9 @@ pub trait Machine {
 
 Machine definitions are **user-editable text files** (TOML) describing the user's own machine: name, machine family, axis list (letters, kinds, directions, arc-offset letters, travel limits, rapid rates), maximum feed and spindle speed, and work offsets. `machine-api` loads and validates the file into a `MachineDef` (unknown settings are rejected, not ignored); the machine type named by `family` then checks it makes sense for that type (e.g. `Mill::new`). The format is documented for users in `docs/machine-definition.md`. A UI for editing them comes later; until then users edit the file directly. The dialect's `AxisSet` (§7.2) is built from this definition by the interpreter.
 
+
+**Dialect and power-on state (M5.6b).** A machine file may name the dialect its control speaks (`dialect = "osai"`; the app sets the dialect when the machine is chosen, and `files::list_machine_files` reports it) and its power-on state (`[power_on]`: units, plane by axis letters, motion and distance mode; `machine_api::PowerOnDef`, reached through `Machine::power_on`). The machine and dialect crates share no types beyond `ir`, so the interpreter turns it into the dialect-neutral `dialect_api::PowerOn` and calls `Dialect::apply_power_on` after `initial_state`; Fanuc and Osai set the codes that select those modes (a plane they cannot name is left to the program), so a program relying on them gets no "assumed" warning. The default implementation does nothing.
+
 ## 10. Simulation (material removal)
 
 `sim` consumes Segments plus a `Stock` and a `ToolGeometry`, and produces a removable-volume representation. It is organised **per machine family** behind a trait so milling (voxel / dexel) and turning (2D profile revolve) can differ:

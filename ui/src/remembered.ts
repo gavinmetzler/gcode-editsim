@@ -50,7 +50,8 @@ export function startChoice(
     }
   }
 
-  let dialect = dialects[0]?.id ?? "fanuc";
+  // With no dialect remembered, the start-up machine's own (M5.6b).
+  let dialect = machineDialect(usable[machine], dialects) ?? dialects[0]?.id ?? "fanuc";
   const wanted = remembered.dialect;
   if (wanted !== null) {
     if (dialects.some((d) => d.id === wanted)) {
@@ -61,4 +62,11 @@ export function startChoice(
   }
 
   return { machine, dialect, note: notes.length > 0 ? notes.join(" ") : null };
+}
+
+/** The dialect a machine's file names (M5.6b), if the app has it: choosing
+ *  the machine sets it. Null otherwise. */
+export function machineDialect(entry: MachineEntry | undefined, dialects: readonly DialectEntry[]): string | null {
+  const id = entry?.dialect ?? null;
+  return id !== null && dialects.some((d) => d.id === id) ? id : null;
 }

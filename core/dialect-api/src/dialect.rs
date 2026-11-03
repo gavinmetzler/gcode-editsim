@@ -5,7 +5,7 @@ use ir::{ArcPlane, Diagnostics, LengthUnit, SourceRef};
 
 use crate::axes::AxisSet;
 use crate::command::Command;
-use crate::state::ModalState;
+use crate::state::{DistanceMode, ModalState};
 use crate::table::CodeTable;
 
 /// What a dialect needs to know about the block it is interpreting, beyond
@@ -17,6 +17,31 @@ pub struct BlockContext<'a> {
     pub axes: &'a AxisSet,
     /// Source location of the block, for diagnostics.
     pub src: SourceRef,
+}
+
+/// The control's power-on state as the machine file states it (M5.6b),
+/// in dialect-neutral terms; `None` where it does not say. A dialect turns
+/// it into its own codes ([`Dialect::apply_power_on`]), so programs that
+/// rely on it are not warned about assumed modes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PowerOn {
+    /// The units lengths are read in.
+    pub units: Option<LengthUnit>,
+    /// The working plane, as two axis letters in order (`('X', 'Y')`).
+    pub plane: Option<(char, char)>,
+    /// The motion mode before the program selects one.
+    pub motion: Option<StartMotion>,
+    /// Absolute or incremental positions.
+    pub distance: Option<DistanceMode>,
+}
+
+/// The motion mode at power-on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StartMotion {
+    /// Rapid positioning.
+    Rapid,
+    /// Linear interpolation at the feed rate.
+    Linear,
 }
 
 /// What a number in a word measures, for reading and writing it.
@@ -40,6 +65,14 @@ pub trait Dialect {
 
     /// The modal state the controller starts in.
     fn initial_state(&self, axes: &AxisSet) -> ModalState;
+
+    /// Applies the power-on state the machine file states to `state` (fresh
+    /// from [`Dialect::initial_state`]), as if the program had selected
+    /// those modes, so it is not warned about assuming them. A setting the
+    /// dialect cannot express is left alone. The default does nothing.
+    fn apply_power_on(&self, state: &mut ModalState, axes: &AxisSet, power_on: &PowerOn) {
+        let _ = (state, axes, power_on);
+    }
 
     /// Interprets one block: updates `state`, appends the block's commands
     /// to `out` in the order they take effect, and reports problems to

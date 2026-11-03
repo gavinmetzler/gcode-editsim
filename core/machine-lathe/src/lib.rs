@@ -167,6 +167,10 @@ impl Machine for Lathe {
         &self.def.ignore_codes
     }
 
+    fn power_on(&self) -> machine_api::PowerOnDef {
+        self.def.power_on
+    }
+
     /// A diameter-mode axis is programmed as a diameter; the machine
     /// position is the radius, so the value is halved. Other axes are
     /// unchanged.
