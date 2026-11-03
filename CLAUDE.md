@@ -85,7 +85,7 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 **Milestones renumbered (owner, 2026-11-02):** a new M5 comes before mobile, so mobile is now M6, machine state and accuracy M7, material removal M8, more dialects and machine types M9+.
 
-**Next: M5, everyday use, Osai level with Fanuc, and packages** (`ARCHITECTURE.md` §13 and `docs/plans/M5_PLAN.md`, **agreed by the owner, 2026-11-02**). Proposed steps, in order:
+**Next: M5, everyday use, Osai level with Fanuc, and packages** (`ARCHITECTURE.md` §13 and `docs/plans/M5_PLAN.md`, **agreed by the owner, 2026-11-02**; steps 1-6 done, 2026-11-03). Steps, in order:
 
 0. Plan *(agreed)*
 1. The out-of-date border always visible (bug)

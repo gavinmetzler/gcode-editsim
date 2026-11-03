@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.6e (G92 presetting, Fanuc and Osai, 2026-11-03).
+Last updated: M5.6f (diagnostics audit wrapped up, 2026-11-03).
 Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
 and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
 order is in ARCHITECTURE.md §13.
@@ -35,7 +35,9 @@ icon; `.nc` files opening from the Linux file manager (Flatpak).
 
 **Next: M5, everyday use, Osai level with Fanuc, and packages**
 (`docs/plans/M5_PLAN.md`). The owner agreed the plan and its order
-(2026-11-02); M5.1 is in progress. The milestones were
+(2026-11-02); M5.1-M5.6 are done (M5.6: every "not supported"
+message on the owner's programs gone, 2026-11-03), M5.7 (packages) is
+next. The milestones were
 renumbered on 2026-11-02 (section 8): mobile is now M6, machine state
 M7, material removal M8, more dialects and machine types M9+.
 

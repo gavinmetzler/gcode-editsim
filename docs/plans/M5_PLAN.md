@@ -1,6 +1,6 @@
 # M5 plan: everyday use, Osai level with Fanuc, and packages
 
-**Status: agreed (owner, 2026-11-02); M5.1 in progress.** The owner set
+**Status: agreed (owner, 2026-11-02); M5.1-M5.6 done (2026-11-03), M5.7 next.** The owner set
 the content of M5 at the end of M4 (2026-11-02) and moved the earlier
 milestones back by one: mobile is now M6, machine state and accuracy M7,
 material removal M8, more dialects and machine types M9+
