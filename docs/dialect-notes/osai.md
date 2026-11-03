@@ -178,3 +178,39 @@ programs. Our choices, not controller behaviour, except where cited.
   `UIO` and any other not known to leave the path alone. A plain
   `(UAO,n)` changes the origin for every axis, like Fanuc's G54, and is
   allowed. Messages and graphics commands (`DIS`, `UGS`, …) are ignored.
+
+## Parity with Fanuc, and the owner's programs (M5.6 audit, 2026-11-03)
+
+Every app feature against both dialects, and what M5.6 does
+(`docs/plans/M5_PLAN.md`, M5.6). "Programs" are the owner's private
+programs (2 Osai, 4 Fanuc) run through `tools/corpus`.
+
+| Feature | Fanuc | Osai | M5.6 |
+|---|---|---|---|
+| Drawing, arcs, travel limits, picking, measuring | yes | yes | - |
+| Statistics and time estimate | yes, dwell times read (G04 X/P) | yes, but dwells have no time (`DWT` not read) | `DWT` silenced when listed in the machine file; times stay without dwells |
+| Transformations (M4) | yes | yes | - |
+| Tool filter, colour by tool, Find, files, settings | yes (no dialect involved) | yes | - |
+| Presetting (G92) | not simulated (warning) | not simulated (warning) | supported (M5.6e) |
+| Origins by axis (`UAO`) | (no equivalent) | not simulated (warning) | silenced when listed (M5.6c) |
+| Tool length compensation (G43) | ignored (note) | ignored (note) | silenced when listed (M5.6c) |
+| Cutter compensation (G41/G42) | warning per block | warning per block | one warning per program (M5.6d) |
+| Assumed power-on modes | warnings | warnings | none when the machine file states its power-on state (M5.6b) |
+| Machine-specific M codes | one note each | one note each | none when listed (M5.6c) |
+| Subprograms | followed (M98/M99) | not read | M9: no program of the owner's uses them |
+| Helices (K pitch), G16 by axis name, labels, E parameters, lower-case `r` and `t`, quoted strings | - | refused or not read | M9: not used by the owner's programs |
+
+Messages the owner's programs give today (machine: the generic router):
+
+| Message | Programs | M5.6 |
+|---|---|---|
+| Machine-specific M codes (M11, M13, M20, M21, M23, M40, M92, M93, M95, M211, M213, M400, M401), notes | all 4 Fanuc | listed in the owner's machine file (M5.6c) |
+| Assumed G00 / G21 / G17 (Fanuc), G17 / G71 (Osai), warnings | all 6 | machine file power-on state (M5.6b) |
+| G92 not simulated, warning | all 4 Fanuc | supported (M5.6e) |
+| G43 not simulated, note | all 4 Fanuc | listed in the machine file (M5.6c) |
+| G42 cutter compensation, warning per block | 1 Fanuc | one warning (M5.6d) |
+| M6 with no tool selected (`G92 … M06`), warning | 2 Fanuc | a note (M5.6d) |
+| `(UAO,1,Z)` not simulated, warning | 1 Osai | listed in the machine file (M5.6c) |
+
+`300sl_X1.nc` (Osai, 21 diagnostics in the owner's report) is not in the
+private repository yet; to be audited when it is.

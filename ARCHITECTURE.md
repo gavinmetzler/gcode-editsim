@@ -411,7 +411,9 @@ Some unsupported codes change how *later* blocks move: coordinate shifts (G92, G
 
 Until M3.0–M3.5 these codes started a *motion blocker* that hid every later move until a cancel code; that mechanism is gone. A position that is genuinely unknown (G30 to a reference the machine file does not give, an Osai line that cannot be read) still makes the interpreter wait for an absolute position on every axis before drawing again: nothing is drawn from a guessed starting point.
 
-Coordinate shifts and canned cycles are on hold, left to the community (`docs/WISHLIST.md`).
+Coordinate shifts and canned cycles are on hold, left to the community (`docs/WISHLIST.md`), except presetting (G92, Fanuc and Osai), which M5.6 supports.
+
+**Useful diagnostics (M5.6, owner, 2026-11-03).** Messages should be about the program, not about what the software does not do. A code the machine file lists in `ignore_codes` produces no message: M codes are removed from the block as before, while listed G codes and Osai three-letter commands (such as `G43`, `UAO`, `DWT`) keep their behaviour and only lose their message. Codes the dialect does not know are still always reported, so a typo is caught. The machine file also names its dialect (choosing the machine sets it) and the control's power-on state, so programs that rely on it are not warned about assumed modes.
 
 ### 7.4 Macros and expressions
 
