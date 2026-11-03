@@ -214,3 +214,23 @@ Messages the owner's programs give today (machine: the generic router):
 
 `300sl_X1.nc` (Osai, 21 diagnostics in the owner's report) is not in the
 private repository yet; to be audited when it is.
+
+**After M5.6 (M5.6f, 2026-11-03).** With machine files that list the
+owner's codes and state the power-on state, the owner's programs give:
+
+| Programs | Messages |
+|---|---|
+| 2 Osai (`bot_s1.nc`, `scratch.nc`) | none |
+| `18mm panel.NC` | none |
+| `PROFILING.nc` | one warning: G42 cutter compensation is not simulated (the path is drawn without it) |
+| `Slotted panel.nc`, `chair parts.NC` | one note each: M6 with no tool selected |
+
+No "not supported" message is left. A Fanuc machine file without
+`[power_on]` still gives "assumed G21/G00/G17" warnings, on purpose: a
+Fanuc keeps the units it was switched off in, so only the owner can say
+the machine always runs in mm. The test
+`core/interpreter/tests/everyday_router_programs_give_only_useful_messages.rs`
+keeps this true for programs written in the same style. Not used by the
+owner's programs, so left for M9: Osai subprograms, helices, G16 by axis
+name, labels, E parameters and the parser's lexical differences (table
+above).
