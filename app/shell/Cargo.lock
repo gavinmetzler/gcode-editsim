@@ -938,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "gcode-editsim"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "app-backend",
  "glib",
