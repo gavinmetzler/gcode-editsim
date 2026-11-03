@@ -116,7 +116,15 @@ export interface Toolpath {
   readonly vertexLine: Float32Array;
   /** The single-vertex segments (events), highlighted as dots: their
    *  positions (x, y, z relative to `origin`) and program lines. */
-  readonly singlePoints: { readonly positions: Float32Array; readonly lines: Float32Array };
+  readonly singlePoints: {
+    readonly positions: Float32Array;
+    readonly lines: Float32Array;
+    /** The segment of each point. */
+    readonly segments: Uint32Array;
+  };
+  /** The tool of each segment (the render buffer's tool number), for the
+   *  tool filter (M5.4). */
+  readonly segmentTool: Uint16Array;
   /** Where vertex coordinates are measured from (machine coordinates, mm). */
   readonly origin: readonly [number, number, number];
   /** The vertices of segment `index`, or null if there is no such segment. */
@@ -137,6 +145,7 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
   const colors = new Float32Array(vertexCount * 3);
   const vertexSegment = new Uint32Array(vertexCount);
   const vertexLine = new Float32Array(vertexCount);
+  const segmentTool = new Uint16Array(segmentCount);
   const singles: number[] = [];
   const feed: number[] = [];
   const rapid: number[] = [];
@@ -147,6 +156,7 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
   for (let s = 0; s < segmentCount; s += 1) {
     const seg = rb.segment(s);
     const color = linear(segmentColor(seg.kind, seg.flags));
+    segmentTool[s] = seg.tool;
     const end = seg.firstVertex + seg.vertexCount;
     for (let v = seg.firstVertex; v < end; v += 1) {
       vertexSegment[v] = s;
@@ -200,7 +210,8 @@ export function buildToolpath(rb: RenderBuffer): Toolpath {
     eventSegment: Uint32Array.from(events),
     vertexSegment,
     vertexLine,
-    singlePoints: { positions: singlePositions, lines: singleLines },
+    singlePoints: { positions: singlePositions, lines: singleLines, segments: Uint32Array.from(singles) },
+    segmentTool,
     origin: rb.header.origin,
     endpoints: moveEndpoints(rb),
     segmentVertices: (index: number) => {
