@@ -91,13 +91,24 @@ fn the_app_icons_exist_in_the_sizes_tauri_and_desktops_use() {
         .collect();
     let shell = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut sizes = Vec::new();
-    for icon in &icons {
+    for icon in icons.iter().filter(|i| i.ends_with(".png")) {
         let (w, h) = png_size(&shell.join(icon));
         assert_eq!(w, h, "{icon} is square");
         sizes.push(w);
     }
     sizes.sort_unstable();
     assert_eq!(sizes, vec![32, 128, 256, 512], "{icons:?}");
+    // M5.7: the Windows (.ico) and macOS (.icns) icons, rendered from the
+    // same drawing (`cargo tauri icon`), are real files of their kind.
+    for (icon, magic) in [
+        ("icons/icon.ico", &b"\x00\x00\x01\x00"[..]),
+        ("icons/icon.icns", &b"icns"[..]),
+    ] {
+        assert!(icons.contains(&icon), "{icon} is listed: {icons:?}");
+        let bytes = std::fs::read(shell.join(icon)).unwrap_or_else(|e| panic!("{icon}: {e}"));
+        assert!(bytes.starts_with(magic), "{icon} is that kind of file");
+    }
+    assert_eq!(icons.len(), 6, "only these icons: {icons:?}");
 
     let id = identifier();
     let svg = std::fs::read_to_string(shell.join(format!("../../packaging/icons/{id}.svg")))

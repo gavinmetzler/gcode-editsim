@@ -38,6 +38,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.5.0" date="2026-11-04">
+      <description>
+        <p>Installers for Linux, Windows and macOS; find and replace; filter and colour the toolpath by tool; presetting (G92); Osai level with Fanuc; useful diagnostics.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-10-31">
       <description>
         <p>First packaged preview: editor, 3D toolpath, line and toolpath sync, diagnostics in the editor.</p>

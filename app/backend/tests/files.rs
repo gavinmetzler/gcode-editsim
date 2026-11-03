@@ -285,6 +285,19 @@ mod startup_file {
     }
 
     #[test]
+    fn a_windows_path_is_the_file() {
+        // The Windows installer registers `"<the app>.exe" "%1"`
+        // for G-code files (M5.7b).
+        assert_eq!(
+            startup_file(args(&[
+                "gcode-editsim.exe",
+                r"C:\Users\Me\My Parts\PART.NC"
+            ])),
+            Some(PathBuf::from(r"C:\Users\Me\My Parts\PART.NC"))
+        );
+    }
+
+    #[test]
     fn no_file_means_none() {
         assert_eq!(startup_file(args(&["gcode-editsim"])), None);
         assert_eq!(startup_file(args(&[])), None);

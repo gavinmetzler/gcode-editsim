@@ -55,9 +55,8 @@ does not change.
 ## Building locally
 
 ```bash
-cargo install tauri-cli --version 2.12.4 --locked   # once
 cd ui && npm ci && npm run build && cd ..
-cd app/shell && cargo tauri build --bundles deb,rpm --config ../../packaging/linux/package-name.conf.json
+cd app/shell && npx --yes @tauri-apps/cli@2.12.4 build --bundles deb,rpm --config ../../packaging/linux/package-name.conf.json
 ```
 
 The packages are in `app/shell/target/release/bundle/deb/` and `rpm/`.

@@ -24,9 +24,12 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # Pinned like the other tools (CI changes only when we bump it); matches
-  # the tauri crate's minor version in app/shell/Cargo.toml.
-  TAURI_CLI_VERSION: 2.12.4
+  # Tauri's command-line tool, which builds the packages: pinned like the
+  # other tools (CI changes only when we bump it), matching the tauri
+  # crate's minor version in app/shell/Cargo.toml. Run from npm, where it
+  # is prebuilt for every system (`cargo install tauri-cli` builds the same
+  # tool from source in about 10 minutes); it is not a project dependency.
+  TAURI_CLI: "@tauri-apps/cli@2.12.4"
 
 jobs:
   linux:
@@ -61,14 +64,12 @@ jobs:
         with:
           workspaces: app/shell -> target
           key: packages
-      - name: Install the Tauri command-line tool
-        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
       # The UI is built above. package-name.conf.json names the packages
       # gcode-editsim (Tauri would make g-code-edit-sim from the product
       # name); the app's settings folder goes by its identifier, unchanged.
       - name: Build the packages
         working-directory: app/shell
-        run: cargo tauri build --bundles deb,rpm --config ../../packaging/linux/package-name.conf.json
+        run: npx --yes "$TAURI_CLI" build --bundles deb,rpm --config ../../packaging/linux/package-name.conf.json
       # Fixed names, so the README's "latest" download links always work.
       - name: Name the packages
         run: |
@@ -88,6 +89,120 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: gcode-editsim-linux
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  windows:
+    name: Windows installer
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Build the UI
+        working-directory: ui
+        run: npm ci && npm run build
+      - name: Install pinned toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/shell -> target
+          key: packages
+      # tauri.windows.conf.json: an NSIS installer for the current user (no
+      # administrator needed), registering .nc, .ngc and .tap files. It
+      # installs Microsoft's WebView2 if Windows lacks it (Windows 10 and
+      # 11 normally have it).
+      - name: Build the installer
+        working-directory: app/shell
+        run: npx --yes "$TAURI_CLI" build --bundles nsis
+      - name: Name the installer
+        run: |
+          mkdir -p dist
+          cp app/shell/target/release/bundle/nsis/*-setup.exe dist/gcode-editsim-windows-x64-setup.exe
+          ls -l dist
+      # Installs it silently as a user would, then starts the app and
+      # checks it is still running a few seconds later.
+      - name: Install and start
+        shell: pwsh
+        run: |
+          $setup = Start-Process -FilePath dist\gcode-editsim-windows-x64-setup.exe -ArgumentList '/S' -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "the installer failed: $($setup.ExitCode)" }
+          $dir = Join-Path $env:LOCALAPPDATA 'GCode EditSim'
+          Get-ChildItem $dir
+          $exe = Get-ChildItem $dir -Filter *.exe | Where-Object { $_.Name -notlike 'uninstall*' } | Select-Object -First 1
+          if (-not $exe) { throw "no app in $dir" }
+          if (-not (Test-Path 'Registry::HKEY_CURRENT_USER\Software\Classes\.nc')) { throw '.nc files are not registered' }
+          $app = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 15
+          if ($app.HasExited) { throw "the app exited at start with code $($app.ExitCode)" }
+          Stop-Process -Id $app.Id
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gcode-editsim-windows
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  macos:
+    name: macOS app
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Build the UI
+        working-directory: ui
+        run: npm ci && npm run build
+      # One app for both Apple silicon and Intel Macs.
+      - name: Install pinned toolchain, for both processors
+        run: |
+          rustup toolchain install
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/shell -> target
+          key: packages
+      # tauri.macos.conf.json: macOS 11 and newer, signed ad hoc (no Apple
+      # developer account), so macOS asks before opening it the first time
+      # (README, "Installing").
+      - name: Build the app and disk image
+        working-directory: app/shell
+        run: npx --yes "$TAURI_CLI" build --bundles app,dmg --target universal-apple-darwin
+      - name: Name the disk image
+        run: |
+          mkdir -p dist
+          cp app/shell/target/universal-apple-darwin/release/bundle/dmg/*.dmg dist/gcode-editsim-macos.dmg
+          ls -l dist
+      # Checks the app runs on both processors and is signed, then starts it
+      # and checks it is still running a few seconds later.
+      - name: Check and start
+        run: |
+          app=$(ls -d app/shell/target/universal-apple-darwin/release/bundle/macos/*.app)
+          exe="$app/Contents/MacOS/$(defaults read "$PWD/$app/Contents/Info" CFBundleExecutable)"
+          lipo -archs "$exe" | tee /dev/stderr | grep -q arm64
+          lipo -archs "$exe" | grep -q x86_64
+          codesign --verify --verbose "$app"
+          hdiutil verify dist/gcode-editsim-macos.dmg
+          "$exe" &
+          pid=$!
+          sleep 15
+          kill -0 "$pid" || { echo "the app exited at start"; exit 1; }
+          kill "$pid"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gcode-editsim-macos
           path: dist/
           if-no-files-found: error
           retention-days: 30

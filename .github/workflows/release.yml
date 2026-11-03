@@ -58,4 +58,6 @@ jobs:
             --verify-tag \
             artifacts/gcode-editsim-amd64.deb \
             artifacts/gcode-editsim-x86_64.rpm \
+            artifacts/gcode-editsim-windows-x64-setup.exe \
+            artifacts/gcode-editsim-macos.dmg \
             artifacts/gcode-editsim.flatpak
