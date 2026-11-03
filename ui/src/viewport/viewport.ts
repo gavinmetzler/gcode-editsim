@@ -31,6 +31,7 @@ import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
 import type { DiagnosticsInfo } from "../diagnostics/report";
 import { LINE_ATTRIBUTE, LineHighlight, type LineRange } from "./highlight";
+import { filterToolpath, type FilteredDrawing } from "./tool-filter";
 
 type GraphicsInfo = { webgl: NonNullable<DiagnosticsInfo["webgl"]>; gpu: NonNullable<DiagnosticsInfo["gpu"]> };
 import { PALETTE, srgbToLinear, type Toolpath } from "./toolpath";
@@ -63,6 +64,13 @@ export class Viewport {
   private axes: AxesHelper | null = null;
   /** The selected lines in yellow, built once per toolpath (M5.2). */
   private highlighted: LineHighlight | null = null;
+  /** The highlighted lines, kept so a redraw (tool filter) keeps them. */
+  private highlightRange: LineRange | null = null;
+  /** The tools not drawn (M5.4), and what is drawn for them. */
+  private hiddenTools: ReadonlySet<number> = new Set();
+  private drawing: FilteredDrawing | null = null;
+  /** GPU resources of the drawn toolpath, released by clearDrawing(). */
+  private drawingDisposables: { dispose(): void }[] = [];
   private view: ViewName = "iso";
   private readonly resizeObserver: ResizeObserver;
   private frame = 0;
@@ -218,14 +226,38 @@ export class Viewport {
     this.resize();
   }
 
-  /** Shows `toolpath`, replacing what was shown. With `fit` (a new
-   *  program) the view is fitted to it; without (an edit) the camera stays. */
-  show(toolpath: Toolpath, fit = true): void {
+  /** Shows `toolpath`, replacing what was shown, without the `hidden`
+   *  tools (M5.4). With `fit` (a new program) the view is fitted to it;
+   *  without (an edit) the camera stays. */
+  show(toolpath: Toolpath, fit = true, hidden: ReadonlySet<number> = new Set()): void {
     this.clear();
     this.toolpath = toolpath;
+    this.hiddenTools = new Set(hidden);
     const [ox, oy, oz] = toolpath.origin;
     this.group.position.set(ox, oy, oz);
 
+    this.drawToolpath();
+
+    // Axes at machine zero (X red, Y green, Z blue), not at the buffer's
+    // internal origin, sized to the toolpath.
+    const b = toolpath.bounds;
+    const size = b ? Math.max(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2], 1e-3) : 10;
+    const axes = new AxesHelper(Math.max(size * 0.08, 1));
+    this.scene.add(axes);
+    this.axes = axes;
+    this.disposables.push(axes);
+    if (fit) this.fit();
+    else this.requestRender();
+  }
+
+  /** Draws the stored toolpath without the hidden tools, replacing what
+   *  was drawn (the camera, axes and measurement stay). */
+  private drawToolpath(): void {
+    const toolpath = this.toolpath;
+    if (!toolpath) return;
+    this.clearDrawing();
+    const drawing = filterToolpath(toolpath, this.hiddenTools);
+    this.drawing = drawing;
     const position = new BufferAttribute(toolpath.positions, 3);
     const color = new BufferAttribute(toolpath.colors, 3);
     // Each vertex's program line, read only by the highlight's shader.
@@ -243,22 +275,23 @@ export class Viewport {
     // on real programs; owner's request).
     const rapidMaterial = new LineBasicMaterial({ vertexColors: true });
     const markerMaterial = new PointsMaterial({ vertexColors: true, size: 7, sizeAttenuation: false });
-    this.feed = new LineSegments(lines(toolpath.feedIndex), feedMaterial);
-    this.rapid = new LineSegments(lines(toolpath.rapidIndex), rapidMaterial);
+    this.feed = new LineSegments(lines(drawing.feedIndex), feedMaterial);
+    this.rapid = new LineSegments(lines(drawing.rapidIndex), rapidMaterial);
     const markerGeometry = new BufferGeometry();
-    markerGeometry.setAttribute("position", new BufferAttribute(toolpath.eventPositions, 3));
-    markerGeometry.setAttribute("color", new BufferAttribute(toolpath.eventColors, 3));
+    markerGeometry.setAttribute("position", new BufferAttribute(drawing.eventPositions, 3));
+    markerGeometry.setAttribute("color", new BufferAttribute(drawing.eventColors, 3));
     this.markers = new Points(markerGeometry, markerMaterial);
     this.group.add(this.feed, this.rapid, this.markers);
     const [hr, hg, hb] = PALETTE.selected.map(srgbToLinear);
     this.highlighted = new LineHighlight(
       [this.feed.geometry, this.rapid.geometry],
-      toolpath.singlePoints,
+      drawing.singlePoints,
       new Color().setRGB(hr ?? 1, hg ?? 1, hb ?? 0),
       11 * this.renderer.getPixelRatio(),
     );
+    this.highlighted.set(this.highlightRange);
     this.group.add(...this.highlighted.objects);
-    this.disposables.push(
+    this.drawingDisposables.push(
       this.feed.geometry,
       feedMaterial,
       this.rapid.geometry,
@@ -267,16 +300,27 @@ export class Viewport {
       markerMaterial,
     );
 
-    // Axes at machine zero (X red, Y green, Z blue), not at the buffer's
-    // internal origin, sized to the toolpath.
-    const b = toolpath.bounds;
-    const size = b ? Math.max(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2], 1e-3) : 10;
-    const axes = new AxesHelper(Math.max(size * 0.08, 1));
-    this.scene.add(axes);
-    this.axes = axes;
-    this.disposables.push(axes);
-    if (fit) this.fit();
-    else this.requestRender();
+  }
+
+  /** Leaves out the moves of the `hidden` tools (M5.4): they are not
+   *  drawn, cannot be picked, snapped or measured to, and the highlight
+   *  leaves them out. Rebuilt once per change, not per frame. */
+  setHiddenTools(hidden: ReadonlySet<number>): void {
+    this.hiddenTools = new Set(hidden);
+    this.drawToolpath();
+    this.requestRender();
+  }
+
+  private clearDrawing(): void {
+    this.clearHighlight();
+    for (const o of [this.feed, this.rapid, this.markers]) if (o) this.group.remove(o);
+    for (const d of this.drawingDisposables) d.dispose();
+    this.drawingDisposables = [];
+    this.feed = null;
+    this.rapid = null;
+    this.markers = null;
+    this.drawing = null;
+    this.screen = null;
   }
 
   /** Highlights the program lines `range.first` to `range.last` in bright
@@ -284,6 +328,7 @@ export class Viewport {
    *  for null. Costs the same for one line or the whole program: the
    *  shader picks the lines from data already on the graphics card. */
   highlightLines(range: LineRange | null): void {
+    this.highlightRange = range;
     this.highlighted?.set(range);
     this.requestRender();
   }
@@ -486,6 +531,8 @@ export class Viewport {
     const p = toolpath.endpoints.positions;
     const n = p.length / 3;
     const out = new Float32Array(n * 2);
+    // Hidden tools' end points are off screen, so they are never picked.
+    const visible = this.drawing?.endpointVisible;
     const e = (k: number): number => m[k] ?? 0;
     for (let i = 0; i < n; i += 1) {
       const x = (p[i * 3] ?? NaN) + ox;
@@ -494,8 +541,9 @@ export class Viewport {
       // Orthographic: w is 1, so clip coordinates are normalised already.
       const nx = e(0) * x + e(4) * y + e(8) * z + e(12);
       const ny = e(1) * x + e(5) * y + e(9) * z + e(13);
-      out[i * 2] = ((nx + 1) / 2) * width;
-      out[i * 2 + 1] = ((1 - ny) / 2) * height;
+      const on = !visible || visible[i] === 1;
+      out[i * 2] = on ? ((nx + 1) / 2) * width : NaN;
+      out[i * 2 + 1] = on ? ((1 - ny) / 2) * height : NaN;
     }
     return out;
   }
@@ -511,7 +559,7 @@ export class Viewport {
   }
 
   private clear(): void {
-    this.clearHighlight();
+    this.clearDrawing();
     this.group.clear();
     if (this.axes) this.scene.remove(this.axes);
     this.axes = null;

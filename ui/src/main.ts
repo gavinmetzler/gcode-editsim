@@ -55,6 +55,8 @@ import { showTransformDialog } from "./transform/dialog";
 import { decodeEdits, editorChanges } from "./transform/edits";
 import { buildRequest } from "./transform/request";
 import { showStatsDialog } from "./panels/stats-dialog";
+import { ToolsMenu } from "./panels/tools-menu";
+import { keepHidden, toolsInOrder } from "./viewport/tool-filter";
 import { measurePanel, type Measurement } from "./viewport/measure";
 import {
   preferArrivingMove,
@@ -111,6 +113,13 @@ async function main(app: HTMLElement): Promise<void> {
     title: "Default pane sizes and window size",
   });
   const findButton = el("button", { type: "button", textContent: "Find…", title: FIND_TOOLTIP });
+  /** The tools hidden in the view (M5.4): not remembered, and all shown
+   *  again for another file (owner, M5_PLAN §6). */
+  let hiddenTools: ReadonlySet<number> = new Set();
+  const toolsMenu = new ToolsMenu((hidden) => {
+    hiddenTools = hidden;
+    viewport.setHiddenTools(hidden);
+  });
   const statsButton = el("button", { type: "button", textContent: "Statistics…", disabled: true });
   const transformButton = el("button", {
     type: "button",
@@ -144,6 +153,7 @@ async function main(app: HTMLElement): Promise<void> {
       sampleButton,
       fileLabel,
       findButton,
+      toolsMenu.button,
       statsButton,
       transformButton,
       measureButton,
@@ -506,8 +516,11 @@ async function main(app: HTMLElement): Promise<void> {
       statsButton.disabled = false;
       const building = performance.now();
       const toolpath = buildToolpath(rb);
+      const tools = toolsInOrder(toolpath.segmentTool);
+      hiddenTools = keepHidden(hiddenTools, tools);
+      toolsMenu.setTools(tools, hiddenTools);
       const showing = performance.now();
-      viewport.show(toolpath, fitNext);
+      viewport.show(toolpath, fitNext, hiddenTools);
       lastRun = { interpretMs, buildMs: showing - building, showMs: performance.now() - showing, bytes };
       fitNext = false;
       allMarks = lineMarks(rb.diagnostics, editor.lineCount());
@@ -851,6 +864,8 @@ async function main(app: HTMLElement): Promise<void> {
 
   const load = (text: string, next: ProgramFile): void => {
     panel.setNotes([]);
+    // Another file: every tool shown again.
+    hiddenTools = new Set();
     file = next;
     dirty = false;
     showFileName();
