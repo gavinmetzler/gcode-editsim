@@ -134,8 +134,9 @@ M code acts with or after motion. *(unverified)*
   program (`UnsupportedMCode`, info) and ignored: no movement. A machine
   file can list them in `ignore_codes` instead (owner decision,
   2026-10-31).
-- **M06 without a T word** is a warning, not an error: router programs
-  use it on their own (a head change). No tool change is recorded.
+- **M06 without a T word** is a note, not an error (a warning until M5.6d):
+  router programs use M06 alone for their own purposes, such as a head
+  change (`G92 … M06`); the tool stays unknown.
 - **What we do:** M03/M04/M05 (spindle), M06 (tool change), M08/M09
   (coolant) follow the near-universal convention. M07 (mist) is not mapped
   because builders disagree. *(unverified)*
@@ -248,7 +249,7 @@ Each of these produces a diagnostic, never silence:
 
 | Code(s) | Severity | Does the block still move? | Notes |
 |---|---|---|---|
-| G41/G42 (cutter compensation) | warning (`NotYetSimulated`) | yes | Shown without the compensation |
+| G41/G42 (cutter compensation) | warning (`NotYetSimulated`), once per program (M5.6d) | yes | Shown without the compensation |
 | G43/G44 (tool length compensation) | info, once per program | yes | Never simulated, by design |
 | G92, G10, G52, G65, G68, G51, G51.1, G16 | warning | no (its words are data) | Ignored; later moves drawn without its effect (see above) |
 | G04 | error | no | X/P is a dwell time, not a move |
