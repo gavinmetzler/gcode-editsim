@@ -5,6 +5,10 @@
 # app/shell/Cargo.toml. Run by the release workflow before publishing.
 #
 # Usage: tools/release/check-version.sh TAG [REPOSITORY_ROOT]
+#        tools/release/check-version.sh --print-tag [REPOSITORY_ROOT]
+# The second form prints the tag for the app's version (`v0.5.0`), after
+# checking the two files agree: the release workflow's Run workflow
+# button tags the release with it.
 set -euo pipefail
 tag="${1-}"
 root="${2:-$(cd "$(dirname "$0")/../.." && pwd)}"
@@ -21,6 +25,10 @@ fi
 if [ "$conf" != "$cargo" ]; then
   echo "error: app/shell/tauri.conf.json says $conf but app/shell/Cargo.toml says $cargo" >&2
   exit 1
+fi
+if [ "$tag" = "--print-tag" ]; then
+  echo "v$conf"
+  exit 0
 fi
 if [ "$tag" != "v$conf" ]; then
   echo "error: the tag is '$tag' but the app's version is $conf: tag it v$conf, or change the version in both files first" >&2

@@ -1,32 +1,62 @@
 name: Release
 
-# Publishes a GitHub Release with every package (M5.7) when a version tag
-# is pushed, for example:
+# Publishes a GitHub Release with every package (M5.7), in either of two
+# ways:
 #
-#   git tag v0.2.0 && git push origin v0.2.0
+# - The Run workflow button: Actions -> Release -> Run workflow, on main.
+#   The release is tagged `v` and the version in app/shell/tauri.conf.json
+#   (for example v0.5.0) at the commit it runs on. Refused if that tag
+#   exists already: change the version first.
+# - Pushing a version tag: `git tag v0.5.0 && git push origin v0.5.0`. The
+#   tag must be `v` and the version in app/shell/tauri.conf.json and
+#   app/shell/Cargo.toml (tools/release/check-version.sh).
 #
-# The tag must be `v` and the version in app/shell/tauri.conf.json and
-# app/shell/Cargo.toml (tools/release/check-version.sh). The packages keep
-# fixed names, so https://github.com/<owner>/<repo>/releases/latest/download/<name>
-# always gives the newest (README, "Installing").
+# The packages keep fixed names, so
+# https://github.com/<owner>/<repo>/releases/latest/download/<name> always
+# gives the newest (README, "Installing").
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   version:
-    name: tag matches the app's version
+    name: the tag for the app's version
     runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
       - name: Test the check
         run: tools/release/test-check-version.sh
-      - name: Check
-        run: tools/release/check-version.sh "$GITHUB_REF_NAME"
+      - name: Decide the tag
+        id: tag
+        env:
+          EVENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            # Releases come from main only.
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "error: run this on main (it was run on $GITHUB_REF)" >&2
+              exit 1
+            fi
+            tag=$(tools/release/check-version.sh --print-tag)
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 \
+              || git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+              echo "error: $tag is released already: change the version in app/shell/tauri.conf.json and app/shell/Cargo.toml first" >&2
+              exit 1
+            fi
+          else
+            tag="$GITHUB_REF_NAME"
+            tools/release/check-version.sh "$tag"
+          fi
+          echo "Releasing $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
   packages:
     needs: version
@@ -35,27 +65,38 @@ jobs:
       flatpak: true
 
   publish:
-    needs: packages
+    needs: [version, packages]
     name: publish the release
     runs-on: ubuntu-24.04
     permissions:
-      # Creating a release and uploading its files.
+      # Creating a release (and, from the button, its tag) and uploading
+      # its files.
       contents: write
     steps:
       - uses: actions/download-artifact@v7
         with:
           path: artifacts
           merge-multiple: true
+      # From a pushed tag, the tag must exist (--verify-tag); from the
+      # button, gh creates it at the commit the packages were built from.
+      # (A tag made with this workflow's token starts no second run.)
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          EVENT: ${{ github.event_name }}
         run: |
           ls -l artifacts
-          gh release create "$GITHUB_REF_NAME" \
+          if [ "$EVENT" = workflow_dispatch ]; then
+            where=(--target "$GITHUB_SHA")
+          else
+            where=(--verify-tag)
+          fi
+          gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "GCode EditSim ${GITHUB_REF_NAME#v}" \
+            --title "GCode EditSim ${TAG#v}" \
             --generate-notes \
-            --verify-tag \
+            "${where[@]}" \
             artifacts/gcode-editsim-amd64.deb \
             artifacts/gcode-editsim-x86_64.rpm \
             artifacts/gcode-editsim-windows-x64-setup.exe \
