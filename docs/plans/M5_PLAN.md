@@ -263,8 +263,9 @@ The owner approved the workflow changes (2026-11-03). In three PRs:
 
 The owner set the version to 0.5.0 for the first release (2026-11-03) and,
 going to bed, asked for Windows and macOS straight after Linux whatever
-Linux's CI said, so all three are in one PR (#85) as separate commits;
-the Tauri CLI comes from npm (prebuilt) instead of `cargo install`.
+Linux's CI said: M5.7a merged as #85, and the version bump, M5.7b and
+M5.7c followed in one PR as separate commits. The Tauri CLI comes from
+npm (prebuilt) instead of `cargo install`.
 
 ### M5.8: Wrap-up
 - The owner's programs through every new feature; README, ARCHITECTURE.md,
