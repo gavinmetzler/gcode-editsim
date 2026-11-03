@@ -4,7 +4,10 @@
 
 <img width="2265" height="1631" alt="Screenshot_20261103_215202" src="https://github.com/user-attachments/assets/55a45710-dce8-4511-9e50-30cb13f0d77d" />
 
-GCode EditSim is an open-source project to develop a dedicated G-code editor, visualiser and machining simulator, in the spirit of tools such as CIMCOEdit and NCPlot. It emphasises accurate CNC program interpretation, clear visual feedback and a modular architecture.
+GCode EditSim is an open-source project to develop a dedicated G-code editor, visualiser / backplotter and machining simulator. It emphasises CNC program interpretation, clear visual feedback and a modular architecture.
+
+Note from the developer:
+I made this using Claude Code to suit my needs, but I also tasked Claude with building it in such a way that it could be easily modified to suit other controllers and machine types. At present, it has limited support for Fanuc and Osai dialects. Using the lowest tier Claude Code plan, this was built in less than a week. So if you want to extend it yourself, point your favourite AI coding tool at this repo and ask for what you want. 
 
 The long-term goal is to provide a practical environment where CNC programmers can write, edit, inspect, analyse and simulate programs before sending them to a machine. The same codebase targets desktop (Linux, Windows, macOS) and mobile (Android, iOS).
 
