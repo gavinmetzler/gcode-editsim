@@ -10,12 +10,24 @@
 [machine]
 name = "Generic 3-axis router (no travel limits)"
 family = "mill"
+# The dialect this control speaks: choosing the machine sets it ("osai" or
+# "fanuc"). This router has an Osai 10 Series control.
+dialect = "osai"
 # tool_change_time = 6.0 # seconds per tool change, for the time estimate
 max_feed = 30000.0
 max_spindle_rpm = 24000.0
 # M codes your programs use that do not move the machine (head selection,
 # clamps, vacuum). Listed codes are ignored with one note each. Example:
 # ignore_codes = ["M92", "M213"]
+
+# How the control starts up, so programs that rely on it are not warned
+# about assumed modes: the Osai 10 Series power-up defaults (the machine
+# builder can change them; change these to match your machine).
+[power_on]
+units = "mm"            # or "inch"
+plane = ["X", "Y"]      # the working plane, by axis letters
+motion = "rapid"        # or "linear"
+distance = "absolute"   # or "incremental"
 
 [[axis]]
 letter = "X"

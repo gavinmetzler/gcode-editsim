@@ -26,6 +26,9 @@ export interface MachineEntry {
   readonly label: string;
   readonly source: MachineRef;
   readonly problem: string | null;
+  /** The dialect the machine file names (M5.6b): choosing the machine sets
+   *  it. Null when it names none. */
+  readonly dialect: string | null;
 }
 
 /** What the app remembers from the last session (M4.1). The machine or

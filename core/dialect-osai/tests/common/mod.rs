@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use dialect_api::{AxisInfo, AxisSet, AxisWord, BlockContext, Command, Dialect};
+use dialect_api::{AxisInfo, AxisSet, AxisWord, BlockContext, Command, Dialect, PowerOn};
 use dialect_osai::Osai;
 use ir::{DiagCode, Diagnostic, Diagnostics, Severity, SourceRef};
 
@@ -82,9 +82,19 @@ pub fn run(src: &str) -> Run {
 
 /// Runs `src` with the given axes.
 pub fn run_on(src: &str, axes: &AxisSet) -> Run {
+    run_power_on_axes(src, axes, &PowerOn::default())
+}
+
+/// Runs `src` on a machine whose file states the power-on state `power_on`.
+pub fn run_power_on(src: &str, power_on: &PowerOn) -> Run {
+    run_power_on_axes(src, &xyz(), power_on)
+}
+
+pub fn run_power_on_axes(src: &str, axes: &AxisSet, power_on: &PowerOn) -> Run {
     let osai = Osai::new().expect("dialect loads");
     let parsed = gcode_syntax::parse(src.as_bytes());
     let mut state = osai.initial_state(axes);
+    osai.apply_power_on(&mut state, axes, power_on);
     let mut commands = Vec::new();
     let mut diag = Diagnostics::new();
     for (i, block) in parsed.blocks.iter().enumerate() {

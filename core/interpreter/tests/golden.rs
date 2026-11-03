@@ -24,9 +24,11 @@ fn golden_dir() -> PathBuf {
 fn golden_programs() {
     let fanuc = Fanuc::new().unwrap();
     let mill = Mill::generic().unwrap();
-    let router =
-        Mill::new(MachineDef::from_toml_str(machine_mill::ROUTER_EXAMPLE_DEFINITION).unwrap())
-            .unwrap();
+    // The router excerpts come from a Fanuc router. Since M5.6b the shipped
+    // router describes an Osai control (its dialect and power-on state), so
+    // they run on the same machine without those, as a Fanuc router whose
+    // power-on state is unknown: the expected files stay as reviewed.
+    let router = Mill::new(MachineDef::from_toml_str(&fanuc_router()).unwrap()).unwrap();
     let letters: Vec<char> = mill.axes().iter().map(|a| a.name).collect();
 
     let mut inputs: Vec<PathBuf> = fs::read_dir(golden_dir())
@@ -64,4 +66,19 @@ fn golden_programs() {
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+/// The shipped router without its Osai dialect and power-on section.
+fn fanuc_router() -> String {
+    let text = machine_mill::ROUTER_EXAMPLE_DEFINITION;
+    let start = text
+        .find("[power_on]")
+        .expect("the router states its power-on state");
+    let end = start + text[start..].find("[[axis]]").expect("axes follow");
+    let without = format!("{}{}", &text[..start], &text[end..]);
+    without
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dialect ="))
+        .collect::<Vec<_>>()
+        .join("\n")
 }

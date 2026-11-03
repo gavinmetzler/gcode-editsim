@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use dialect_api::{AxisInfo, AxisSet, AxisWord, BlockContext, Command, Dialect};
+use dialect_api::{AxisInfo, AxisSet, AxisWord, BlockContext, Command, Dialect, PowerOn};
 use dialect_fanuc::{Fanuc, FanucOptions};
 use ir::{DiagCode, Diagnostic, Diagnostics, Severity, SourceRef};
 
@@ -88,8 +88,18 @@ pub fn run(src: &str) -> Run {
 }
 
 pub fn run_with(options: FanucOptions, axes: &AxisSet, src: &str) -> Run {
+    run_full(options, axes, &PowerOn::default(), src)
+}
+
+/// Runs `src` on a machine whose file states the power-on state `power_on`.
+pub fn run_power_on(power_on: &PowerOn, src: &str) -> Run {
+    run_full(FanucOptions::default(), &xyz(), power_on, src)
+}
+
+pub fn run_full(options: FanucOptions, axes: &AxisSet, power_on: &PowerOn, src: &str) -> Run {
     let dialect = Fanuc::with_options(options).expect("table loads");
     let mut state = dialect.initial_state(axes);
+    dialect.apply_power_on(&mut state, axes, power_on);
     let mut commands = Vec::new();
     let mut diag = Diagnostics::new();
     for (index, block) in gcode_syntax::parse_str(src).blocks.iter().enumerate() {

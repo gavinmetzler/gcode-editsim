@@ -5,12 +5,24 @@
 
 [machine]
 name = "Generic 3-axis VMC"
-family = "mill"          # which machine type reads this file
+family = "mill"
+# The dialect this control speaks: choosing the machine sets it ("fanuc" or
+# "osai").
+dialect = "fanuc"          # which machine type reads this file
 # tool_change_time = 6.0 # seconds per tool change, for the time estimate
 max_feed = 10000.0       # fastest cutting feed, mm/min
 max_spindle_rpm = 12000.0
 
 # Axes, in the order positions are stored.
+# How the control starts up, if you know it: programs that rely on it are
+# then not warned about assumed modes. A Fanuc control keeps the units it
+# was switched off in, so only state them if your machine always uses one.
+# [power_on]
+# units = "mm"            # or "inch"
+# plane = ["X", "Y"]      # the working plane, by axis letters
+# motion = "rapid"        # or "linear"
+# distance = "absolute"   # or "incremental"
+
 [[axis]]
 letter = "X"
 kind = "linear"

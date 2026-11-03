@@ -202,7 +202,9 @@ fn run(
         .filter_map(|c| CodeKey::parse(c))
         .collect();
     let mut noted_ignored = BTreeSet::new();
-    let mut exec = Executor::new(dialect.initial_state(&axes), machine);
+    let mut start = dialect.initial_state(&axes);
+    dialect.apply_power_on(&mut start, &axes, &power_on(machine.power_on()));
+    let mut exec = Executor::new(start, machine);
     let mut commands = Vec::new();
 
     // Where each program in the file starts (its number block), and which
@@ -505,6 +507,22 @@ fn dedupe(diags: Vec<Diagnostic>) -> Vec<Diagnostic> {
             ))
         })
         .collect()
+}
+
+/// The machine file's power-on state (M5.6b) in the dialect's terms.
+fn power_on(def: machine_api::PowerOnDef) -> dialect_api::PowerOn {
+    dialect_api::PowerOn {
+        units: def.units,
+        plane: def.plane,
+        motion: def.motion.map(|m| match m {
+            machine_api::PowerOnMotion::Rapid => dialect_api::StartMotion::Rapid,
+            machine_api::PowerOnMotion::Linear => dialect_api::StartMotion::Linear,
+        }),
+        distance: def.distance.map(|d| match d {
+            machine_api::PowerOnDistance::Absolute => dialect_api::DistanceMode::Absolute,
+            machine_api::PowerOnDistance::Incremental => dialect_api::DistanceMode::Incremental,
+        }),
+    }
 }
 
 /// `true` if the block would do something if executed.

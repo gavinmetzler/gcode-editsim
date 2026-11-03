@@ -58,7 +58,7 @@ import type { DiagnosticsInfo } from "./diagnostics/report";
 import { newPerf } from "./diagnostics/stats";
 import { KeyHold, behind } from "./catch-up";
 import { showMachinesDialog } from "./machines-dialog";
-import { startChoice } from "./remembered";
+import { machineDialect, startChoice } from "./remembered";
 import { showTransformDialog } from "./transform/dialog";
 import { decodeEdits, editorChanges } from "./transform/edits";
 import { buildRequest } from "./transform/request";
@@ -887,6 +887,10 @@ async function main(app: HTMLElement): Promise<void> {
     });
   };
   machineSelect.addEventListener("change", () => {
+    // The machine's control speaks its own dialect (M5.6b): choosing the
+    // machine sets it; the dialect list can still override it.
+    const dialect = machineDialect(usable[Number(machineSelect.value)], dialects);
+    if (dialect !== null) dialectSelect.value = dialect;
     void applySettings().then(rerunFitted);
     remember();
   });

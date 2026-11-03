@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import type { DialectEntry, MachineEntry, MachineRef, Remembered } from "../src/ipc/backend";
-import { startChoice } from "../src/remembered";
+import { machineDialect, startChoice } from "../src/remembered";
 
 const user = (path: string): MachineRef => ({ kind: "user", id: path });
-const machine = (label: string, source: MachineRef, problem: string | null = null): MachineEntry => ({
+const machine = (
+  label: string,
+  source: MachineRef,
+  problem: string | null = null,
+  dialect: string | null = null,
+): MachineEntry => ({
   label,
   source,
   problem,
+  dialect,
 });
 
 const MILL = machine("Generic 3-axis VMC", user("/cfg/machines/generic_3axis_mill.toml"));
@@ -90,5 +96,25 @@ describe("startChoice", () => {
       "The machine you used last (broken.toml) cannot be used (machine file: bad TOML), and no other machine file is usable.",
     );
     expect(startChoice([BROKEN], DIALECTS, NOTHING)).toEqual({ machine: -1, dialect: "fanuc", note: null });
+  });
+});
+
+describe("the machine's dialect (M5.6b)", () => {
+  const OSAI_ROUTER = machine("Osai router", user("/cfg/machines/router.toml"), null, "osai");
+
+  it("is the dialect the machine file names, when the app has it", () => {
+    expect(machineDialect(OSAI_ROUTER, DIALECTS)).toBe("osai");
+    expect(machineDialect(machine("x", user("/x.toml"), null, "heidenhain"), DIALECTS)).toBeNull();
+    expect(machineDialect(MILL, DIALECTS)).toBeNull();
+    expect(machineDialect(undefined, DIALECTS)).toBeNull();
+  });
+
+  it("sets the dialect at start-up when none is remembered", () => {
+    expect(startChoice([OSAI_ROUTER, MILL], DIALECTS, NOTHING).dialect).toBe("osai");
+  });
+
+  it("gives way to a remembered dialect, which the user may have chosen over the machine's", () => {
+    const remembered: Remembered = { layout: null, machine: OSAI_ROUTER.source, dialect: "fanuc", problem: null };
+    expect(startChoice([OSAI_ROUTER], DIALECTS, remembered).dialect).toBe("fanuc");
   });
 });

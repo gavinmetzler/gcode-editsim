@@ -31,8 +31,8 @@ const SPINDLE_MODE_GROUP: u16 = 13;
 
 /// Marks (in `ModalState::reported_once`) that the program chose units or
 /// a plane itself, so the power-up default need not be pointed out.
-const SET_UNITS: &str = "osai.set.units";
-const SET_PLANE: &str = "osai.set.plane";
+pub(crate) const SET_UNITS: &str = "osai.set.units";
+pub(crate) const SET_PLANE: &str = "osai.set.plane";
 
 /// The canned cycle group (power-up G80).
 const CANNED_CYCLE_GROUP: u16 = 7;

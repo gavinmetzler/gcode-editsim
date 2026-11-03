@@ -157,4 +157,8 @@ impl Machine for Mill {
     fn ignored_codes(&self) -> &[String] {
         &self.def.ignore_codes
     }
+
+    fn power_on(&self) -> machine_api::PowerOnDef {
+        self.def.power_on
+    }
 }

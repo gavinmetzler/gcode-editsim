@@ -123,6 +123,9 @@ pub struct MachineFile {
     pub source: MachineSource,
     /// Why it cannot be used, if it cannot.
     pub problem: Option<String>,
+    /// The dialect the file names (M5.6b), lower case, if it names one and
+    /// can be used: choosing the machine sets the dialect.
+    pub dialect: Option<String>,
 }
 
 /// The examples shipped with the app: `(id, text)`.
@@ -148,10 +151,17 @@ pub fn shipped_machine(id: &str) -> Option<&'static str> {
         .map(|(_, text)| *text)
 }
 
-fn describe(text: &str) -> (Option<String>, Option<String>) {
+/// A machine file's name, why it cannot be used (if it cannot), and the
+/// dialect it names.
+fn describe(text: &str) -> (Option<String>, Option<String>, Option<String>) {
     match crate::load_machine(text) {
-        Ok(m) => (Some(m.name().to_owned()), None),
-        Err(e) => (None, Some(e.to_string())),
+        Ok(m) => {
+            let dialect = machine_api::MachineDef::from_toml_str(text)
+                .ok()
+                .and_then(|d| d.dialect);
+            (Some(m.name().to_owned()), None, dialect)
+        }
+        Err(e) => (None, Some(e.to_string()), None),
     }
 }
 
@@ -220,11 +230,12 @@ pub fn list_machine_files(user_dir: &Path) -> Result<Vec<MachineFile>, BackendEr
         return Ok(SHIPPED_MACHINES
             .iter()
             .map(|(id, text)| {
-                let (name, problem) = describe(text);
+                let (name, problem, dialect) = describe(text);
                 MachineFile {
                     label: name.unwrap_or_else(|| (*id).to_owned()),
                     source: MachineSource::Shipped(id),
                     problem,
+                    dialect,
                 }
             })
             .collect());
@@ -234,17 +245,18 @@ pub fn list_machine_files(user_dir: &Path) -> Result<Vec<MachineFile>, BackendEr
         let file_label = path
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        let (name, problem) = match read_limited(&path, MAX_MACHINE_FILE_BYTES) {
+        let (name, problem, dialect) = match read_limited(&path, MAX_MACHINE_FILE_BYTES) {
             Ok(bytes) => match String::from_utf8(bytes) {
                 Ok(text) => describe(&text),
-                Err(_) => (None, Some("not UTF-8 text".to_owned())),
+                Err(_) => (None, Some("not UTF-8 text".to_owned()), None),
             },
-            Err(e) => (None, Some(e.to_string())),
+            Err(e) => (None, Some(e.to_string()), None),
         };
         list.push(MachineFile {
             label: name.unwrap_or(file_label),
             source: MachineSource::User(path),
             problem,
+            dialect,
         });
     }
     Ok(list)

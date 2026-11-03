@@ -255,6 +255,25 @@ fn bad_save_requests_are_errors() {
 }
 
 #[test]
+fn each_listed_machine_carries_the_dialect_its_file_names() {
+    // M5.6b: the UI sets the dialect when the user chooses the machine.
+    let dir = TempDir::new("machine-dialects");
+    let w = window(dir.0.join("no-machines-yet"));
+    let list = json(&w, "list_machines", serde_json::json!({})).expect("list");
+    let entries = list.as_array().expect("a list");
+    let by_label = |label: &str| {
+        entries
+            .iter()
+            .find(|e| e["label"] == label)
+            .map(|e| e["dialect"].clone())
+            .expect("listed")
+    };
+    assert_eq!(by_label("Generic 3-axis VMC"), "fanuc");
+    assert_eq!(by_label("Generic 3-axis router (no travel limits)"), "osai");
+    assert!(by_label("Generic 2-axis lathe").is_null());
+}
+
+#[test]
 fn user_machine_files_are_listed_and_selectable() {
     let dir = TempDir::new("machines");
     let w = window(dir.0.join("machines"));

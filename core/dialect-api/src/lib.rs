@@ -27,7 +27,7 @@ mod table;
 pub use axes::{AxisInfo, AxisSet, AxisSetError};
 pub use code::CodeKey;
 pub use command::{ArcCenter, ArcDir, AxisOffset, AxisWord, Command};
-pub use dialect::{BlockContext, Dialect, ValueKind};
+pub use dialect::{BlockContext, Dialect, PowerOn, StartMotion, ValueKind};
 pub use helpers::{
     format_as_written, length_to_internal, literal, report_syntax_errors, MM_PER_INCH,
 };
