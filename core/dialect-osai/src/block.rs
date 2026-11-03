@@ -200,20 +200,26 @@ pub(crate) fn interpret(
     for (letter, number, span) in &unknown {
         let what = format!("{letter}{}", number.value);
         if *letter == 'G' {
-            diag.error(
-                DiagCode::UnsupportedGCode,
-                format!(
-                    "{what} is not supported and is ignored: this block is not moved, and \
-                     later moves are drawn as programmed, so they may differ from the machine"
-                ),
-                at(src, *span),
+            diag.push(
+                Diagnostic::error(
+                    DiagCode::UnsupportedGCode,
+                    format!(
+                        "{what} is not supported and is ignored: this block is not moved, and \
+                         later moves are drawn as programmed, so they may differ from the machine"
+                    ),
+                    at(src, *span),
+                )
+                .about(&what),
             );
             motion_effect = Motion::Consumed;
         } else {
-            diag.error(
-                DiagCode::UnsupportedMCode,
-                format!("{what} is not supported"),
-                at(src, *span),
+            diag.push(
+                Diagnostic::error(
+                    DiagCode::UnsupportedMCode,
+                    format!("{what} is not supported"),
+                    at(src, *span),
+                )
+                .about(&what),
             );
         }
         out.push(Command::Unsupported { what });
@@ -266,7 +272,8 @@ pub(crate) fn interpret(
                      without its time. Further cases are not reported.",
                     at(src, code.span),
                 )
-                .dialect_specific(),
+                .dialect_specific()
+                .about("DWT"),
             );
         }
         out.push(Command::Dwell { seconds: 0.0 });
@@ -303,7 +310,8 @@ fn unreadable(
                  G18 or G19",
                 at(ctx.src, w.span),
             )
-            .dialect_specific(),
+            .dialect_specific()
+            .about("G16"),
         );
     }
     out.push(all_unknown(
@@ -345,7 +353,8 @@ fn three_letter_command(
                         ),
                         src,
                     )
-                    .dialect_specific(),
+                    .dialect_specific()
+                    .about("UAO"),
                 );
                 return;
             }
@@ -369,7 +378,8 @@ fn three_letter_command(
                 ),
                 src,
             )
-            .dialect_specific(),
+            .dialect_specific()
+            .about("UAO"),
         );
         out.push(Command::Unsupported {
             what: format!("({name})"),
@@ -394,7 +404,8 @@ fn three_letter_command(
             ),
             src,
         )
-        .dialect_specific(),
+        .dialect_specific()
+        .about(name),
     );
     out.push(Command::Unsupported {
         what: format!("({name})"),
@@ -568,13 +579,16 @@ fn apply_gcode(
         Handler::NoEffect => set_active(osai, state, code.key),
         Handler::NotSimulated => {
             set_active(osai, state, code.key);
-            diag.warning(
-                DiagCode::NotYetSimulated,
-                format!(
-                    "{} is not simulated yet; the path is shown without it",
-                    description(osai, code.key)
-                ),
-                src,
+            diag.push(
+                Diagnostic::warning(
+                    DiagCode::NotYetSimulated,
+                    format!(
+                        "{} is not simulated yet; the path is shown without it",
+                        description(osai, code.key)
+                    ),
+                    src,
+                )
+                .about(code.key.to_string()),
             );
         }
         Handler::Ignored => {
@@ -590,7 +604,8 @@ fn apply_gcode(
                     ),
                     src,
                 )
-                .dialect_specific(),
+                .dialect_specific()
+                .about(code.key.to_string()),
             );
             out.push(Command::Unsupported {
                 what: code.key.to_string(),
@@ -612,7 +627,8 @@ fn apply_gcode(
                         ),
                         src,
                     )
-                    .dialect_specific(),
+                    .dialect_specific()
+                    .about(code.key.to_string()),
                 );
             }
             out.push(Command::Unsupported {
@@ -674,11 +690,14 @@ fn apply_values(
                     .active_code(SPINDLE_MODE_GROUP)
                     .is_some_and(|k| k.value() == 96.0);
                 if surface_speed {
-                    diag.warning(
-                        DiagCode::NotYetSimulated,
-                        "S is a surface speed under G96, which is not simulated; the spindle \
-                         speed is left unchanged",
-                        at(src, v.span),
+                    diag.push(
+                        Diagnostic::warning(
+                            DiagCode::NotYetSimulated,
+                            "S is a surface speed under G96, which is not simulated; the \
+                             spindle speed is left unchanged",
+                            at(src, v.span),
+                        )
+                        .about("G96"),
                     );
                 } else {
                     state.spindle_rpm = n;
@@ -887,10 +906,13 @@ fn motion(
         if mode == Handler::Rapid {
             out.push(Command::MachineRapid { target });
         } else {
-            diag.error(
-                DiagCode::NotYetSimulated,
-                format!("G79 with {mode_key} is not supported, only with G00"),
-                at(src, code.span),
+            diag.push(
+                Diagnostic::error(
+                    DiagCode::NotYetSimulated,
+                    format!("G79 with {mode_key} is not supported, only with G00"),
+                    at(src, code.span),
+                )
+                .about("G79"),
             );
             out.push(all_unknown(ctx, format!("G79 on line {}", src.line)));
         }

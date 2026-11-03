@@ -413,7 +413,7 @@ Until M3.0–M3.5 these codes started a *motion blocker* that hid every later mo
 
 Coordinate shifts and canned cycles are on hold, left to the community (`docs/WISHLIST.md`), except presetting (G92, Fanuc and Osai), which M5.6 supports.
 
-**Useful diagnostics (M5.6, owner, 2026-11-03).** Messages should be about the program, not about what the software does not do. A code the machine file lists in `ignore_codes` produces no message: M codes are removed from the block as before, while listed G codes and Osai three-letter commands (such as `G43`, `UAO`, `DWT`) keep their behaviour and only lose their message. Codes the dialect does not know are still always reported, so a typo is caught. The machine file also names its dialect (choosing the machine sets it) and the control's power-on state, so programs that rely on it are not warned about assumed modes.
+**Useful diagnostics (M5.6, owner, 2026-11-03).** Messages should be about the program, not about what the software does not do. A code the machine file lists in `ignore_codes` produces no message: M codes are removed from the block as before, while listed G codes and Osai three-letter commands (such as `G43`, `UAO`, `DWT`) keep their behaviour and only lose their message. Codes the dialect does not know are still always reported, so a typo is caught. Mechanism (M5.6c): a dialect tags each "not supported" message with the code it is about (`Diagnostic::about`, such as `"G43"`, `"UAO"`, or `"DWT"` for the G04 dwell-time message), and the interpreter drops the tagged messages whose code the machine lists; the tag is not part of the golden or render-buffer output. The machine file also names its dialect (choosing the machine sets it) and the control's power-on state, so programs that rely on it are not warned about assumed modes.
 
 ### 7.4 Macros and expressions
 
@@ -583,10 +583,11 @@ pub trait Machine {
 
     fn speeds(&self) -> &SpeedLimits;   // max feed, max spindle rpm
 
-    /// M codes the machine file lists in `ignore_codes` (M3.0). The
-    /// interpreter removes them from every block, with one note per code,
-    /// before the dialect sees it. M codes only: a G code's axis words
-    /// would be left behind and read as a move.
+    /// Codes the machine file lists in `ignore_codes` (M3.0, M5.6c). The
+    /// interpreter removes listed M codes from every block before the
+    /// dialect sees it, never G codes (their axis words would be left
+    /// behind and read as a move), and drops every message about a listed
+    /// code (`Diagnostic::about`).
     fn ignored_codes(&self) -> &[String] { &[] }
 
     /// Lathe-style X diameter handling etc. is applied here, not in the dialect.
