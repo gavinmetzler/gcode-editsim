@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MARKER, markerShape } from "../src/viewport/marker";
+import { MARKER, markerShape, tailOnScreen } from "../src/viewport/marker";
 
 describe("markerShape", () => {
   it("points up the screen from the tip when Z is up in the view", () => {
@@ -24,5 +24,32 @@ describe("markerShape", () => {
   it("is a ring when looking along Z (Top view)", () => {
     expect(markerShape(5, 6, 0, -0.0002, 2)).toEqual({ kind: "ring", x: 5, y: 6, r: MARKER.ring });
     expect(markerShape(5, 6, 0, 0, 0).kind).toBe("ring");
+  });
+});
+
+describe("tailOnScreen (M5.6g)", () => {
+  // A Front view: X to the right, Z up, 2 px per mm on a 200 x 100 canvas
+  // (column-major projection matrix: x' = X/50, y' = Z/25).
+  const m = [1 / 50, 0, 0, 0, 0, 0, 0, 0, 0, 1 / 25, 0, 0, 0, 0, 0, 1];
+
+  it("is +Z on screen with no direction (the vertical arrow)", () => {
+    expect(tailOnScreen(null, m, 200, 100)).toEqual([0, -2]);
+  });
+
+  it("points back along the travel, so the arrow points along it", () => {
+    // Travelling +X: the shaft trails to the left of the tip.
+    expect(tailOnScreen([1, 0, 0], m, 200, 100)).toEqual([-2, 0]);
+    const s = markerShape(100, 50, ...tailOnScreen([1, 0, 0], m, 200, 100), 2);
+    expect(s.kind === "arrow" && s.shaft[2]).toBe(100 - MARKER.length);
+  });
+
+  it("falls back to +Z for a direction that is not a number", () => {
+    expect(tailOnScreen([NaN, NaN, NaN], m, 200, 100)).toEqual([0, -2]);
+  });
+
+  it("is short when the travel is toward the viewer, so a ring is drawn", () => {
+    // Travelling along Y (into the Front view's screen).
+    const [tx, ty] = tailOnScreen([0, 1, 0], m, 200, 100);
+    expect(markerShape(100, 50, tx, ty, 2).kind).toBe("ring");
   });
 });

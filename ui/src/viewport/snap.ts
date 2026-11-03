@@ -21,6 +21,11 @@ export interface Endpoints {
   /** 1 where the point is the start of its move (no move ends there), 0 for
    *  the end of its move. */
   readonly isStart: Uint8Array;
+  /** x, y, z per end point: the unit direction of travel arriving there
+   *  (M5.6g), for the marker to point along. At a start, the direction its
+   *  move leaves in; on an arc, its last piece's (the tangent, to within
+   *  the drawing tolerance). NaN for a move of zero length. */
+  readonly direction: Float32Array;
 }
 
 const MOTION: ReadonlySet<number> = new Set([SEG_KIND.Rapid, SEG_KIND.Linear, SEG_KIND.ArcCw, SEG_KIND.ArcCcw]);
@@ -36,6 +41,7 @@ export function moveEndpoints(
   const xyz: number[] = [];
   const segment: number[] = [];
   const isStart: number[] = [];
+  const direction: number[] = [];
   const pos = rb.positions;
   let last: [number, number, number] | null = null;
   const at = (v: number): [number, number, number] => [pos[v * 3] ?? NaN, pos[v * 3 + 1] ?? NaN, pos[v * 3 + 2] ?? NaN];
@@ -48,17 +54,44 @@ export function moveEndpoints(
       xyz.push(...start);
       segment.push(s);
       isStart.push(1);
+      direction.push(...travel(at, seg.firstVertex, seg.vertexCount, true));
     }
     xyz.push(...end);
     segment.push(s);
     isStart.push(0);
+    direction.push(...travel(at, seg.firstVertex, seg.vertexCount, false));
     last = end;
   }
   return {
     positions: Float32Array.from(xyz),
     segment: Uint32Array.from(segment),
     isStart: Uint8Array.from(isStart),
+    direction: Float32Array.from(direction),
   };
+}
+
+/** The unit direction a move of `count` vertices from `first` leaves in
+ *  (`leaving`) or arrives in, skipping repeated points; NaN if it has no
+ *  length. */
+function travel(
+  at: (v: number) => [number, number, number],
+  first: number,
+  count: number,
+  leaving: boolean,
+): [number, number, number] {
+  const last = first + count - 1;
+  const from = leaving ? first : last;
+  const step = leaving ? 1 : -1;
+  const p = at(from);
+  for (let v = from + step; v >= first && v <= last; v += step) {
+    const q = at(v);
+    const d: [number, number, number] = leaving
+      ? [q[0] - p[0], q[1] - p[1], q[2] - p[2]]
+      : [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
+    const n = Math.hypot(...d);
+    if (n > 0) return [d[0] / n, d[1] / n, d[2] / n];
+  }
+  return [NaN, NaN, NaN];
 }
 
 /**
