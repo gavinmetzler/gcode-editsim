@@ -9,11 +9,11 @@ GCode EditSim is an open-source project to develop a dedicated G-code editor, vi
 Note from the developer:
 I made this using Claude Code to suit my needs, but I also tasked Claude with building it in such a way that it could be easily modified to suit other controllers and machine types. At present, it has limited support for Fanuc and Osai dialects. Using the lowest tier Claude Code plan, this was built in less than a week. So if you want to extend it yourself, point your favourite AI coding tool at this repo and ask for what you want. 
 
-The long-term goal is to provide a practical environment where CNC programmers can write, edit, inspect, analyse and simulate programs before sending them to a machine. The same codebase targets desktop (Linux, Windows, macOS) and mobile (Android, iOS).
+The long-term goal is to provide a practical environment where CNC programmers can write, edit, inspect, analyse and simulate programs before sending them to a machine. It runs on Linux, Windows and macOS; the codebase is built so it could also be taken to Android and iOS (on the [wishlist](docs/WISHLIST.md)).
 
 The G-code processing engine is written in Rust. A thin Tauri 2 application shell and a TypeScript user interface sit on top of it, with a clean separation between them.
 
-> **Development status:** Early but usable. The desktop app is an editor beside a synced 3D backplot, with diagnostics and toolpath statistics, for Fanuc milling programs (Osai 10 Series as a stub). Milestones 1 (the core pipeline), 2 (render buffer and minimal desktop UI), 3 (a dependable backplotter: real programs without false alarms, subprograms, hover, measuring, orbiting, statistics with a time estimate, million-block programs) and 4 (code transformations: translate, rotate and scale selected lines) are complete. Next is Milestone 5: everyday-use improvements, Osai level with Fanuc, and installers for every desktop platform ([plan](docs/plans/M5_PLAN.md)). On Linux it installs from a `.deb`, `.rpm` or Flatpak ([Installing](#installing)).
+> **Development status:** Usable, and it meets its author's needs (version 0.5.0, November 2026). The desktop app is an editor beside a synced 3D backplot of 3-axis milling programs, Fanuc and Osai 10 Series, with diagnostics, statistics, a time estimate and line transformations. Milestones 1 to 5 are complete; installers for Linux, Windows and macOS are on the [Releases page](https://github.com/gavinmetzler/gcode-editsim/releases) ([Installing](#installing)). From here the plan is **bug fixes and small requests found through use** (M6). Preparing for and building a material removal simulation (M7, M8) may follow, but they are not high priority and not promised. Everything else is on the [wishlist](docs/WISHLIST.md), open to anyone who wants to adapt the app to their own machines.
 
 GCode EditSim is a visualisation and analysis aid. It is not a safety verification tool (see the [Safety Disclaimer](#safety-disclaimer)).
 
@@ -129,11 +129,11 @@ These are the project's intended direction. Items marked *(built)* exist today; 
   - work offsets G54–G59
   - F, S and T words
   - common M codes: stops, program end, spindle, tool change, coolant
-- **Done in M3:** machine-specific M codes are noted once and skipped rather than reported as errors (a machine file can list them in `ignore_codes`); tool length compensation is noted, not simulated; G92 is ignored with a warning; M98/M99 subprogram calls within the file, with repeat counts, are followed and drawn; G95 feed per revolution.
+- **Done in M3:** machine-specific M codes are noted once and skipped rather than reported as errors (a machine file can list them in `ignore_codes`); tool length compensation is noted, not simulated; G92 was ignored with a warning (supported since M5); M98/M99 subprogram calls within the file, with repeat counts, are followed and drawn; G95 feed per revolution.
 - **On hold, left to the community:** coordinate shifts and canned cycles. They are reported and drawn without their effect, never hiding moves. Macro variables are on the wishlist.
-- **Then (M7):** cutter radius compensation.
+- **On the wishlist:** cutter radius compensation (shown without it, with one warning).
 - **Not planned:** tool length (height) and wear compensation. The backplot shows the path as programmed and notes these codes.
-- **Later:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.
+- **On the wishlist:** further dialects (Haas, then Siemens, Heidenhain, GRBL, LinuxCNC and others), mostly as code-table overlays on a shared base.
 
 ### Machine Support
 
@@ -197,14 +197,14 @@ See [Trying it out](#trying-it-out).
 - **Unknown position.** After the machine has gone somewhere the machine file doesn't describe (G30), nothing is drawn until the position is known again.
 - **Assumed defaults.** Modes a program relies on without setting them (units, G90/G91, plane, motion mode) are warned about. On a real control they depend on parameters or on the state at power-off.
 
-**Known limitations**, tracked for later milestones:
+**Known limitations** (the fixes are on the [wishlist](docs/WISHLIST.md)):
 
 - **Tool length compensation (G43) is not applied.** Z is shown as programmed, so Z positions and Z limit checks ignore the tool length. This is intended: height and wear compensation are not planned, and the path is shown as programmed.
-- **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is (M7).
-- **Speed limits aren't checked yet.** The machine file's maximum feed and rapid rates are used only by the time estimate; moves are not checked against them, and the maximum spindle speed is unused (M7).
+- **Rapids are drawn as straight lines.** Fanuc controls often move each axis independently at its own rapid rate, a "dog-leg" path, so clearance near clamps can look better than it is.
+- **Speed limits aren't checked yet.** The machine file's maximum feed and rapid rates are used only by the time estimate; moves are not checked against them, and the maximum spindle speed is unused.
 - **Positions are machine coordinates.** Program (work) coordinates are on hold.
 - **Fanuc G04 (dwell) is reported as an error** and adds no time to the estimate; Osai dwells are drawn without their time.
-- **Memory:** a program of a million blocks needs about 850 MB. Fine on a desktop; to be reduced before mobile (M6).
+- **Memory:** a program of a million blocks needs about 850 MB. Fine on a desktop; it would need reducing for mobile.
 - **Not all Fanuc behaviour is verified.** Much of it is still marked "unverified" in [docs/dialect-notes/fanuc.md](docs/dialect-notes/fanuc.md) until it is checked against a control's manual.
 
 ### M2 – Render Buffer and Minimal UI (complete)
@@ -236,13 +236,22 @@ See [Trying it out](#trying-it-out).
 - [x] The editor selection shown bright yellow in the 3D view
 - [x] A new icon, and `.nc`, `.ngc` and `.tap` files opening in the app from the Linux file manager (Flatpak)
 
-### Later Milestones
+### M5 – Everyday Use, Osai and Packages (complete, version 0.5.0)
 
-- **M5 – Everyday use, Osai and packages:** the out-of-date border always visible; smooth Page Up/Down scrolling; Find and Replace easy to find; filtering and colouring the toolpath by tool; every feature working for Osai programs as for Fanuc ones; `.deb`, `.rpm`, Windows and macOS packages with install instructions. See [docs/plans/M5_PLAN.md](docs/plans/M5_PLAN.md).
-- **M6 – Mobile:** the same app on Android; iOS later.
-- **M7 – Machine state and accuracy:** tool table, cutter radius compensation, cycle-time estimation with acceleration, the dog-leg rapid path, limits checking.
-- **M8 – Material removal (mill).**
-- **M9+ – More dialects and machine types:** Haas, then others; the full Osai 10 Series; lathe and mill-turn.
+- [x] The out-of-date border always visible; smooth Page Up/Down scrolling; Find and Replace easy to find
+- [x] Filtering the toolpath by tool, colouring by tool, hiding rapids; the marker points along the move when snapped to a node
+- [x] Useful diagnostics: every "not supported" message on the author's programs gone, by supporting the code (G92 presetting) or listing it in the machine file, which also names its dialect and power-on state; every feature working for Osai programs as for Fanuc ones
+- [x] Installers: `.deb`, `.rpm`, Flatpak, Windows and macOS, published as GitHub Releases
+
+### What Next
+
+The app meets its author's needs (owner, 2026-11-04), so the plan is now small:
+
+- **M6 – Bug fixes and small requests** found through everyday use.
+- **M7 – Preparing for material removal:** tool table and tool shapes, the stock (the raw part), and the simulator's interface. *Not high priority and not promised.*
+- **M8 – Material removal simulation (mill).** *Not high priority and not promised.*
+
+Everything else that was planned (mobile; cutter compensation, acceleration in the time estimate, the dog-leg rapid path and speed checks; more dialects, the full Osai 10 Series, lathes and mill-turn) is on the [wishlist](docs/WISHLIST.md). The code is structured so others can add these for their own machines: see [ARCHITECTURE.md](ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md).
 
 ---
 
@@ -355,7 +364,7 @@ The project is in active development. Architectural decisions and development co
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture and technical design (the source of truth).
 - [CLAUDE.md](CLAUDE.md): development rules, including for AI-assisted development.
 - [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md): where the project stands, the decisions made so far, open issues and lessons learned. Start here when picking up work.
-- [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md), [M3](docs/plans/M3_PLAN.md) and [M4](docs/plans/M4_PLAN.md), all complete, and [M5](docs/plans/M5_PLAN.md) (agreed, in progress).
+- [docs/plans/](docs/plans/): milestone plans: [M2](docs/plans/M2_PLAN.md), [M3](docs/plans/M3_PLAN.md) and [M4](docs/plans/M4_PLAN.md) and [M5](docs/plans/M5_PLAN.md), all complete. M6 (bug fixes and small requests) needs no plan.
 - [docs/dialect-notes/](docs/dialect-notes/): controller-specific behaviour and its sources.
 - [docs/WISHLIST.md](docs/WISHLIST.md): ideas kept for later, not yet planned.
 - [docs/machine-definition.md](docs/machine-definition.md): the machine definition file format.

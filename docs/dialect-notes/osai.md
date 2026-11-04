@@ -2,9 +2,9 @@
 
 Behaviour of `core/dialect-osai`, a **stub** written in M2 to check that
 the dialect interfaces suit a controller other than Fanuc. It covers a
-small milling subset. Every app feature is to work for Osai programs as for
-Fanuc ones in M5 (`docs/plans/M5_PLAN.md`, M5.6); full Osai support is
-planned for M9 (ARCHITECTURE.md §13).
+small milling subset. Every app feature works for Osai programs as for
+Fanuc ones since M5 (`docs/plans/M5_PLAN.md`, M5.6); full Osai support is
+on the wishlist (`docs/WISHLIST.md`, owner 2026-11-04).
 
 **Source.** Osai, *10 Series CNC Programming Manual* (2006/2007 edition),
 cited below by page ("p. 2-4" is chapter 2, page 4). The manual is
@@ -197,8 +197,8 @@ programs (2 Osai, 4 Fanuc) run through `tools/corpus`.
 | Cutter compensation (G41/G42) | warning per block | warning per block | one warning per program (M5.6d) |
 | Assumed power-on modes | warnings | warnings | none when the machine file states its power-on state (M5.6b) |
 | Machine-specific M codes | one note each | one note each | none when listed (M5.6c) |
-| Subprograms | followed (M98/M99) | not read | M9: no program of the owner's uses them |
-| Helices (K pitch), G16 by axis name, labels, E parameters, lower-case `r` and `t`, quoted strings | - | refused or not read | M9: not used by the owner's programs |
+| Subprograms | followed (M98/M99) | not read | wishlist: no program of the owner's uses them |
+| Helices (K pitch), G16 by axis name, labels, E parameters, lower-case `r` and `t`, quoted strings | - | refused or not read | wishlist: not used by the owner's programs |
 
 Messages the owner's programs give today (machine: the generic router):
 
@@ -231,6 +231,6 @@ Fanuc keeps the units it was switched off in, so only the owner can say
 the machine always runs in mm. The test
 `core/interpreter/tests/everyday_router_programs_give_only_useful_messages.rs`
 keeps this true for programs written in the same style. Not used by the
-owner's programs, so left for M9: Osai subprograms, helices, G16 by axis
+owner's programs, so left for the wishlist: Osai subprograms, helices, G16 by axis
 name, labels, E parameters and the parser's lexical differences (table
 above).

@@ -8,10 +8,10 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M5.7 (packages for Linux, Windows and macOS, releases from a button or a tag, version 0.5.0, 2026-11-04).
-Each milestone has a plan in `docs/plans/` (M2 to M4 complete, M5 agreed
-and in progress, [`docs/plans/M5_PLAN.md`](docs/plans/M5_PLAN.md)); the milestone
-order is in ARCHITECTURE.md §13.
+Last updated: M5.8 (M5 complete, version 0.5.0; replanned: M6 bug fixes, M7/M8 material removal not promised, the rest on the wishlist, 2026-11-04).
+Each milestone has a plan in `docs/plans/` (M2 to M5 complete); M6 (bug
+fixes and small requests) needs none. The milestone order is in
+ARCHITECTURE.md §13.
 
 ---
 
@@ -32,19 +32,24 @@ rewriting only the words that must change, applied as one undoable edit;
 the machine, dialect, layout, colour key and diagnostics filters
 remembered; the editor selection shown bright yellow in the view; a new
 icon; `.nc` files opening from the Linux file manager (Flatpak).
+**M5 (everyday use, Osai level with Fanuc, packages) is complete**
+(`docs/plans/M5_PLAN.md`; version 0.5.0 released 2026-11-04): the
+out-of-date border, smooth Page Up/Down, Find and Replace, filtering and
+colouring by tool, hiding rapids, the marker pointing along the move;
+no "not supported" message left on the owner's programs (G92
+supported; the machine file names its dialect and power-on state and
+silences listed codes); `.deb`, `.rpm`, Flatpak, Windows and macOS
+packages published by a Release button.
 
-**Next: M5, everyday use, Osai level with Fanuc, and packages**
-(`docs/plans/M5_PLAN.md`). The owner agreed the plan and its order
-(2026-11-02); M5.1-M5.6 are done (M5.6: every "not supported"
-message on the owner's programs gone, 2026-11-03), M5.7 (packages) is
-next. The milestones were
-renumbered on 2026-11-02 (section 8): mobile is now M6, machine state
-M7, material removal M8, more dialects and machine types M9+.
+**Next: M6, bug fixes and small requests** found through use. The app
+meets the owner's needs (owner, 2026-11-04, section 8). M7 (preparing
+for material removal) and M8 (the simulator) may follow but are not high
+priority and not promised; everything else is in `docs/WISHLIST.md`.
 
-The app is usable today as an editor beside a synced 3D backplot of Fanuc
-(and, as a stub, Osai 10 Series) milling programs, with diagnostics,
-statistics and a time estimate, that opens and saves files and transforms
-selected lines.
+The app is usable today as an editor beside a synced 3D backplot of
+3-axis Fanuc and Osai 10 Series milling programs, with diagnostics,
+statistics and a time estimate, that opens and saves files, transforms
+selected lines, and installs on Linux, Windows and macOS.
 
 | Area | Status |
 |---|---|
@@ -154,7 +159,7 @@ in ARCHITECTURE.md §5).
 User-facing documentation:
 - `docs/machine-definition.md`: the machine file format.
 - `docs/dialect-notes/fanuc.md`, `docs/dialect-notes/osai.md`: dialect behaviour and its sources.
-- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md` (complete), `docs/plans/M5_PLAN.md` (agreed, in progress): milestone plans.
+- `docs/plans/M2_PLAN.md`, `docs/plans/M3_PLAN.md`, `docs/plans/M4_PLAN.md`, `docs/plans/M5_PLAN.md` (complete): milestone plans.
 - `packaging/flatpak/README.md`: building and installing the Flatpak.
 - `docs/WISHLIST.md`: ideas kept for later, not yet planned.
 - `tests/golden/README.md`: the golden-file formats.
@@ -410,7 +415,7 @@ self-review: the same agent wrote the code.
 | I5: power-on defaults assumed silently | **Fixed** (#9): "assumed" warnings |
 | I8: CI did not enforce the dependency rule; fuzz not in CI; no abs/inc test | **Fixed** (#9, #10) |
 | I2: G43 tool length not applied (Z and Z limits off by the tool length) | Not planned (owner decision 2026-10-31): ignored with an info note, M3.0 |
-| I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, M7 |
+| I3: rapids drawn straight; Fanuc default is non-linear "dog-leg" (param 1401#1 LRP, unverified) | Open, wishlist |
 | I4: IR lacks stop/pause, coolant, spindle direction, program end | **Fixed** (M2.0): event segments |
 | I6: max feed / max rpm / rapid rates loaded but unused | Partly fixed (M3.8): rapid rates and max feed are used by the time estimate; max rpm is still unused |
 | I7: about 19 Fanuc behaviours marked *(unverified)* | Open; needs the owner's control manual |
@@ -432,7 +437,7 @@ errors; every warning or note names a real gap. Run it with
   design: height and wear compensation are not planned).
 - Rapids are straight lines.
 - Speed limits are not checked (max feed and rapid rates are used only by
-  the time estimate); the time estimate has no acceleration (M7).
+  the time estimate); the time estimate has no acceleration (wishlist).
 - Fanuc G04 (dwell) is an error and adds no time (owner decision,
   M3.8); Osai dwells have no time (`DWT` is not read).
 - A million blocks needs about 715 MB in the core (850 MB in the app);
@@ -747,7 +752,9 @@ Decided (2026-11-02), at the end of M4:
 - **Milestones renumbered.** A new M5 before mobile; mobile is M6,
   machine state and accuracy M7, material removal M8, more dialects and
   machine types M9+. Older plans (M2, M3) keep the old numbers as a
-  record; M4_PLAN and the living documents use the new ones.
+  record; M4_PLAN and the living documents use the new ones. *(Replanned
+  again on 2026-11-04, below: M6 is now bug fixes, M7 and M8 material
+  removal, and the rest moved to the wishlist.)*
 - **M5 holds the owner's list:** a tool filter (a checkbox per tool,
   right-click for one tool), Find and Replace (plain text, Ctrl+F, F3),
   packages (`.deb`, `.rpm`, Windows, macOS, the Flatpak easy to find,
@@ -827,30 +834,46 @@ Still open:
    alone, before that, was not enough.) (The M5 plan's §6
    questions were answered on 2026-11-02.)
 
+Decided (2026-11-04), after M5 and the 0.5.0 release:
+- **The app meets the owner's needs.** The plan becomes: **M6** bug fixes
+  and small requests found through use; **M7** preparing for material
+  removal (tool table and geometry, stock, the simulator's interface and
+  mesh buffer); **M8** the material removal simulator (mill). M7 and M8
+  are not high priority and not promised.
+- **Everything else moves to `docs/WISHLIST.md`**, open to anyone
+  adapting the app: mobile, machine state and accuracy (cutter
+  compensation, acceleration, dog-leg rapids, speed checks), more
+  dialects, the full Osai 10 Series, lathes and mill-turn. The
+  architecture keeps their boundaries.
+- Releases: **Actions → Release → Run workflow** (the owner has no
+  clone).
+
 ---
 
-## 9. Starting M5 in a new session
+## 9. Starting M6 in a new session
 
-1. Read `CLAUDE.md`, `ARCHITECTURE.md` (§7, §8.4a, §8.6, §8.7, §13),
-   this file (§2 working agreement, §7 practical lessons) and
-   `docs/plans/M5_PLAN.md`.
-2. **Ask the owner** to agree the M5 order and answer the plan's
-   section 6 if they have not (look for an "agreed" status at the top of
-   the plan). Record the answers in the plan (as M4_PLAN §6 does) in the
-   M5.1 PR or a small PR of its own, and set the plan's status to agreed.
-3. Work one step per PR, in order, on the session's designated branch;
-   after each merge restart it from `origin/main`. Bug fixes and
-   features start with a failing test.
+1. Read `CLAUDE.md`, `ARCHITECTURE.md` (§13 for the plan), this file
+   (§2 working agreement, §7 practical lessons, §8 decisions) and
+   `docs/WISHLIST.md`.
+2. M6 is **bug fixes and small requests** from the owner's use. Check
+   every request against the plan: anything bigger, or on the wishlist,
+   say so and ask before building. M7 and M8 start only if the owner
+   asks.
+3. Work one change per PR on the session's designated branch; after
+   each merge restart it from `origin/main`. Bug fixes and features
+   start with a failing test.
 4. Before every push, joined with `&&` and never piped into `grep`:
    `cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && cargo run -q -p depcheck`;
    when the UI changes, `cd ui && npm run lint && npm run typecheck && npm test && npm run build`;
    when the shell changes (or the UI it embeds), the same fmt, clippy
    and tests in `app/shell` (its own workspace).
 5. UI work: check it in a real browser (Playwright, preinstalled), as
-   §7 describes, and send the owner a screenshot; the owner tests the
-   Flatpak from the CI run on `main` after each merge.
+   §7 describes, and send the owner a screenshot.
 6. The owner's private programs are in `gavinmetzler/gcode-editsim-manuals`
    (`Fanuc_examples/`, `Osai10Series_examples/`): clone beside this
    repository and use them locally (`tools/corpus`, throwaway tests);
-   never copy them in. They matter most for M5.6 (Osai).
-7. M5.7 changes `.github/workflows/`: ask the owner before that step.
+   never copy them in.
+7. Ask before changing `.github/workflows/`. A new release: raise the
+   version in `app/shell/tauri.conf.json` and `app/shell/Cargo.toml` in
+   a PR; after it merges the owner presses **Actions → Release → Run
+   workflow**.

@@ -186,3 +186,29 @@ types in `tauri.macos.conf.json` (`fileAssociations`), handle `Opened` in
 it; after, tell the page to open it, asking first if the program has
 unsaved changes), and test on a Mac.
 
+## Moved from the plan (owner, 2026-11-04)
+
+*After M5 (version 0.5.0) the app met the owner's needs, so these planned
+milestones moved here. Each is a good place for someone adapting the app;
+ARCHITECTURE.md describes where it fits.*
+
+- **Mobile** (was M6): the app on Android (the M2.3 spike of the binary
+  boundary passed on a real phone, `app/shell/SPIKE.md` on branch
+  `claude/android-spike`) and iOS; a mobile layout. First reduce the
+  core's memory for large programs (ARCHITECTURE.md §8.5: about 715 MB
+  for a million blocks; a smaller syntax tree and a struct-of-arrays
+  segment list).
+- **Machine state and accuracy** (was M7): cutter radius compensation
+  (G41/G42; one warning per program today), an acceleration model for
+  the time estimate, the dog-leg rapid path (Fanuc moves each axis at its
+  own rapid rate; clearance near clamps can look better than it is),
+  checks of feeds, rapids and spindle speed against the machine file.
+  Tool table and tool geometry stay in the plan (M7, preparing for
+  material removal).
+- **More dialects and machine types** (was M9+): Haas, then Siemens,
+  Heidenhain, GRBL, LinuxCNC and others (mostly code-table overlays on a
+  shared base); the full Osai 10 Series (subprograms, helices, G16 by
+  axis name, labels, E parameters, lower-case `r`/`t`, a per-dialect
+  lexical profile in `gcode-syntax`; `docs/dialect-notes/osai.md`);
+  lathes (the `machine-lathe` stub) and mill-turn.
+

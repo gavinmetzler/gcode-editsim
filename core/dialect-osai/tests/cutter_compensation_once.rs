@@ -1,4 +1,4 @@
-//! M5.6d (owner, 2026-11-03): cutter compensation is not simulated (M7),
+//! M5.6d (owner, 2026-11-03): cutter compensation is not simulated (wishlist),
 //! and a program that uses it gets a single warning, not one per block.
 
 mod common;

@@ -1,6 +1,6 @@
 # M5 plan: everyday use, Osai level with Fanuc, and packages
 
-**Status: agreed (owner, 2026-11-02); M5.1-M5.6g done (2026-11-03), M5.7 in progress.** The owner set
+**Status: complete (2026-11-04); released as version 0.5.0.** The owner set
 the content of M5 at the end of M4 (2026-11-02) and moved the earlier
 milestones back by one: mobile is now M6, machine state and accuracy M7,
 material removal M8, more dialects and machine types M9+
@@ -268,9 +268,20 @@ Linux's CI said: M5.7a merged as #85, and the version bump, M5.7b and
 M5.7c followed in one PR as separate commits. The Tauri CLI comes from
 npm (prebuilt) instead of `cargo install`.
 
-### M5.8: Wrap-up
-- The owner's programs through every new feature; README, ARCHITECTURE.md,
-  DEVELOPMENT_STATUS.md; packages to try.
+### M5.8: Wrap-up *(done, 2026-11-04)*
+- The owner's programs through the finished M5 (`tools/corpus`, machine
+  files listing their codes and stating the power-on state): the two Osai
+  programs and one Fanuc program give no message; the others one G42
+  warning or one M6-without-T note each, as agreed in M5.6. Unchanged
+  since M5.6f.
+- Version 0.5.0 released (Linux `.deb`, `.rpm`, Flatpak, Windows, macOS)
+  with the Release button.
+- README, ARCHITECTURE.md, DEVELOPMENT_STATUS.md and CLAUDE.md updated.
+- **Replanned (owner, 2026-11-04):** the app meets the owner's needs. M6
+  is bug fixes and small requests found through use; M7 prepares for
+  material removal and M8 builds it, both not high priority and not
+  promised; everything else planned after M5 moved to `docs/WISHLIST.md`
+  (ARCHITECTURE.md §13).
 
 ## 5. Risks
 
