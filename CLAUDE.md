@@ -4,7 +4,7 @@ Project conventions for AI coding agents. Read `ARCHITECTURE.md` first; it is th
 
 ## Project in one paragraph
 
-A cross-platform G-code simulator (desktop + mobile). Rust core (`core/`), Tauri 2 shell (`app/`), TypeScript UI (`ui/`). Modular by *dialect* and *machine type*; initial implementation is **3-axis mill with Fanuc and the Osai 10 Series** (Osai is brought level with Fanuc in M5).
+A cross-platform G-code editor and backplotter (desktop: Linux, Windows, macOS; mobile is on the wishlist, and the core stays portable for it). Rust core (`core/`), Tauri 2 shell (`app/`), TypeScript UI (`ui/`). Modular by *dialect* and *machine type*; initial implementation is **3-axis mill with Fanuc and the Osai 10 Series** (Osai is brought level with Fanuc in M5).
 
 ## Hard rules (never break these)
 
@@ -81,22 +81,14 @@ cd ui && npm ci && npm run lint && npm run typecheck && npm test
 
 ## Current milestone
 
-**M4 is complete** (2026-11-02; see `docs/plans/M4_PLAN.md`): translate, rotate and scale selected lines (Fanuc and Osai), and remembering the machine, dialect, layout, colour key and diagnostics filters, the selection in the 3D view, the icon, `.nc` files on the Linux desktop. Transformations are an operator's aid, not a robust feature for every edge case: the operator is responsible for the moves before and after the selection (owner decision, 2026-11-02, M4_PLAN §6 item 7). Coordinate shifts and program coordinates (M3.5) and canned cycles (M3.6) are on hold, left to the community; macro variables are on the wishlist.
+**M5 is complete** (2026-11-04; see `docs/plans/M5_PLAN.md`), released as **version 0.5.0**: the out-of-date border, smooth Page Up/Down, Find and Replace, filtering and colouring by tool, hiding rapids, the marker pointing along the move; useful diagnostics (no "not supported" message on the owner's programs: G92 supported, the machine file names its dialect and power-on state and silences listed codes); `.deb`, `.rpm`, Flatpak, Windows and macOS packages, published by **Actions → Release → Run workflow**.
 
-**Milestones renumbered (owner, 2026-11-02):** a new M5 comes before mobile, so mobile is now M6, machine state and accuracy M7, material removal M8, more dialects and machine types M9+.
+**Replanned (owner, 2026-11-04):** the app meets the owner's needs, and the project's aim is to be open source and structured so others can adapt it to their own machines. So:
 
-**Next: M5, everyday use, Osai level with Fanuc, and packages** (`ARCHITECTURE.md` §13 and `docs/plans/M5_PLAN.md`, **agreed by the owner, 2026-11-02**; steps 1-6 done, 2026-11-03). Steps, in order:
+- **M6 (now): bug fixes and small requests** found through use. Bug fixes start with a failing test. Check every request against the plan: anything bigger, or on the wishlist, say so and ask before building.
+- **M7: preparing for material removal** (tool table and tool geometry, the stock, the `MaterialSim` trait and its mesh buffer, `ARCHITECTURE.md` §10 and §13). **Not high priority and not promised;** start only if the owner asks.
+- **M8: material removal simulation (mill).** **Not high priority and not promised.**
 
-0. Plan *(agreed)*
-1. The out-of-date border always visible (bug)
-2. Smooth scrolling with Page Up/Down (performance)
-3. Find and Replace (CodeMirror's panel, made visible and dark)
-4. Filter the toolpath by tool
-5. Colour by tool
-6. Useful diagnostics, and Osai level with Fanuc: every "not supported" message removed by supporting the code or listing it in the machine file; the machine file names its dialect and power-on state; G92 supported (M5.6a–f)
-7. Packages (`.deb`, `.rpm`, Windows, macOS; workflow changes need the owner's approval)
-8. Wrap-up
+Everything else that was planned is in `docs/WISHLIST.md`: mobile (Android, iOS; reduce memory first), machine state and accuracy (cutter compensation, acceleration in the time estimate, the dog-leg rapid path, speed-limit checks), more dialects, the full Osai 10 Series, lathes and mill-turn. Keep the trait boundaries (dialect, machine, IR) clean so they can be added. Coordinate shifts other than G92, canned cycles and macro variables stay on hold or on the wishlist.
 
-Desktop only. The lathe crate stays a stub; full Osai support is M9, but every app feature must work for Osai programs in M5. Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Check every request against the plan before building, and put ideas that are not planned in `docs/WISHLIST.md` (the timeline player is there).
-
-**Then:** M6 mobile (reduce memory for large programs first), M7 machine state and accuracy, M8 material removal, M9+ dialects and machine types (`ARCHITECTURE.md` §13).
+Tool height and wear compensation are never simulated: ignore them with an info note. Never hide moves: a code that changes later moves but is not simulated gets one diagnostic, its words are data, and later moves are drawn as programmed. Put ideas that are not planned in `docs/WISHLIST.md`.

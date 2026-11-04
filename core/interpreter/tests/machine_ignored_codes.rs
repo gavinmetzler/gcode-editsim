@@ -107,7 +107,7 @@ fn a_listed_g43_gives_no_note_and_its_move_is_still_drawn() {
 
 #[test]
 fn a_listed_g_code_loses_its_not_simulated_warning() {
-    // Cutter compensation, for example, until M7 simulates it.
+    // Cutter compensation, for example, while it is not simulated.
     let src = "G21 G90 G17 G0 X0. Y0.\nG42 G1 X10. D1 F100.\nG40 X20.\n";
     assert!(!about(&run(src, ""), "Cutter compensation").is_empty());
     assert_eq!(
