@@ -2,7 +2,7 @@
 
 use ir::{Pos, WorkOffsetId};
 
-use crate::def::{AxisDef, LimitViolation, PowerOnDef, SpeedLimits};
+use crate::def::{AxisDef, LimitViolation, MeasurePlane, PowerOnDef, SpeedLimits};
 
 /// Where the tool tip is and which way the tool points, in the machine's
 /// Cartesian space (mm).
@@ -55,6 +55,12 @@ pub trait Machine {
     /// The default states nothing.
     fn power_on(&self) -> PowerOnDef {
         PowerOnDef::default()
+    }
+
+    /// The plane of the drawing the measurement panel gives a distance in,
+    /// besides the 3D distance (M6). The default is XY.
+    fn measure_plane(&self) -> MeasurePlane {
+        MeasurePlane::XY
     }
 
     /// Converts a programmed value for `axis` to the machine's convention,

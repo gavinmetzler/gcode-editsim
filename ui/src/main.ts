@@ -754,7 +754,8 @@ async function main(app: HTMLElement): Promise<void> {
   };
   /** Shows the measurement panel in place of the hover readout. */
   const showMeasurement = (m: Measurement | null): void => {
-    const panel = measurePanel(m);
+    // The machine's plane (M6): XY for mills and routers, XZ for lathes.
+    const panel = measurePanel(m, usable[Number(machineSelect.value)]?.measurePlane ?? "XY");
     const cells = (values: readonly string[], cls = ""): HTMLElement[] =>
       values.map((v) => el("span", { className: `num ${cls}`, textContent: v }));
     readout.replaceChildren(
@@ -770,6 +771,16 @@ async function main(app: HTMLElement): Promise<void> {
       ...(panel.distance === null
         ? []
         : [el("div", { className: "row distance" }, el("span", { textContent: "Distance" }), el("span", { textContent: panel.distance }))]),
+      ...(panel.planeDistance === null
+        ? []
+        : [
+            el(
+              "div",
+              { className: "row distance" },
+              el("span", { textContent: panel.planeDistance.label }),
+              el("span", { textContent: panel.planeDistance.value }),
+            ),
+          ]),
       ...(panel.hint === null ? [] : [el("div", { className: "hint", textContent: panel.hint })]),
     );
     readout.hidden = false;

@@ -7,6 +7,7 @@
 [machine]
 name = "Generic 2-axis lathe"
 family = "lathe"
+# measure_plane = "XZ"  # plane of the second distance when measuring (XY, XZ or YZ)
 max_feed = 5000.0
 max_spindle_rpm = 4000.0
 

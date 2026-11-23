@@ -156,3 +156,12 @@ fn bad_definition_is_an_error_not_a_panic() {
         Err(LatheError::Definition(_))
     ));
 }
+
+#[test]
+fn lathes_measure_in_xz() {
+    // M6: a lathe draws X (radius) and Z, so its plane distance is XZ.
+    assert_eq!(
+        Lathe::generic().unwrap().measure_plane(),
+        machine_api::MeasurePlane::XZ
+    );
+}

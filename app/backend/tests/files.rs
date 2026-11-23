@@ -130,6 +130,37 @@ fn each_machine_is_listed_with_the_dialect_its_file_names() {
 }
 
 #[test]
+fn each_machine_is_listed_with_the_plane_its_measurements_use() {
+    // M6: the measurement panel's plane distance. Mills and routers
+    // measure in XY and the lathe in XZ unless the file says otherwise.
+    let dir = TempDir::new("planes");
+    let shipped = list_machine_files(&dir.path("none")).expect("list");
+    let plane = |label: &str| {
+        shipped
+            .iter()
+            .find(|m| m.label == label)
+            .and_then(|m| m.measure_plane)
+    };
+    assert_eq!(plane("Generic 3-axis VMC"), Some("XY"));
+    assert_eq!(
+        plane("Generic 3-axis router (no travel limits)"),
+        Some("XY")
+    );
+    assert_eq!(plane("Generic 2-axis lathe"), Some("XZ"));
+
+    let text = shipped_machine("generic_3axis_mill")
+        .expect("shipped")
+        .replace("[machine]\n", "[machine]\nmeasure_plane = \"yz\"\n");
+    fs::write(dir.path("mine.toml"), text).expect("write");
+    fs::write(dir.path("broken.toml"), "[machine]\nname = \"x\"\n").expect("write");
+    let list = list_machine_files(&dir.0).expect("list");
+    let mine = list.iter().find(|m| m.problem.is_none()).expect("listed");
+    assert_eq!(mine.measure_plane, Some("YZ"));
+    let broken = list.iter().find(|m| m.problem.is_some()).expect("listed");
+    assert_eq!(broken.measure_plane, None);
+}
+
+#[test]
 fn seeding_copies_the_examples_into_a_new_folder() {
     let dir = TempDir::new("seed");
     let folder = dir.path("config/machines");

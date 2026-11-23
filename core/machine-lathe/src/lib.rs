@@ -171,6 +171,13 @@ impl Machine for Lathe {
         self.def.power_on
     }
 
+    /// The file's choice, or XZ: a lathe draws X (radius) and Z.
+    fn measure_plane(&self) -> machine_api::MeasurePlane {
+        self.def
+            .measure_plane
+            .unwrap_or(machine_api::MeasurePlane::XZ)
+    }
+
     /// A diameter-mode axis is programmed as a diameter; the machine
     /// position is the radius, so the value is halved. Other axes are
     /// unchanged.

@@ -15,7 +15,7 @@ mod def;
 mod machine;
 
 pub use def::{
-    AxisDef, AxisKind, CartesianAxis, LimitViolation, MachineDef, MachineDefError, PowerOnDef,
-    PowerOnDistance, PowerOnMotion, SpeedLimits,
+    AxisDef, AxisKind, CartesianAxis, LimitViolation, MachineDef, MachineDefError, MeasurePlane,
+    PowerOnDef, PowerOnDistance, PowerOnMotion, SpeedLimits,
 };
 pub use machine::{Machine, ToolPose};

@@ -126,6 +126,10 @@ pub struct MachineFile {
     /// The dialect the file names (M5.6b), lower case, if it names one and
     /// can be used: choosing the machine sets the dialect.
     pub dialect: Option<String>,
+    /// The plane the measurement panel gives a distance in (M6), `"XY"`,
+    /// `"XZ"` or `"YZ"`: the file's choice or its machine type's. None
+    /// when the file cannot be used.
+    pub measure_plane: Option<&'static str>,
 }
 
 /// The examples shipped with the app: `(id, text)`.
@@ -151,17 +155,38 @@ pub fn shipped_machine(id: &str) -> Option<&'static str> {
         .map(|(_, text)| *text)
 }
 
-/// A machine file's name, why it cannot be used (if it cannot), and the
-/// dialect it names.
-fn describe(text: &str) -> (Option<String>, Option<String>, Option<String>) {
-    match crate::load_machine(text) {
-        Ok(m) => {
-            let dialect = machine_api::MachineDef::from_toml_str(text)
-                .ok()
-                .and_then(|d| d.dialect);
-            (Some(m.name().to_owned()), None, dialect)
+/// What the list says about one machine file.
+#[derive(Default)]
+struct Described {
+    name: Option<String>,
+    problem: Option<String>,
+    dialect: Option<String>,
+    measure_plane: Option<&'static str>,
+}
+
+impl Described {
+    /// A file that cannot be used, and why.
+    fn problem(problem: String) -> Self {
+        Self {
+            problem: Some(problem),
+            ..Self::default()
         }
-        Err(e) => (None, Some(e.to_string()), None),
+    }
+}
+
+/// A machine file's name, why it cannot be used (if it cannot), the
+/// dialect it names and the plane it is measured in.
+fn describe(text: &str) -> Described {
+    match crate::load_machine(text) {
+        Ok(m) => Described {
+            name: Some(m.name().to_owned()),
+            problem: None,
+            dialect: machine_api::MachineDef::from_toml_str(text)
+                .ok()
+                .and_then(|d| d.dialect),
+            measure_plane: Some(m.measure_plane().name()),
+        },
+        Err(e) => Described::problem(e.to_string()),
     }
 }
 
@@ -230,12 +255,13 @@ pub fn list_machine_files(user_dir: &Path) -> Result<Vec<MachineFile>, BackendEr
         return Ok(SHIPPED_MACHINES
             .iter()
             .map(|(id, text)| {
-                let (name, problem, dialect) = describe(text);
+                let d = describe(text);
                 MachineFile {
-                    label: name.unwrap_or_else(|| (*id).to_owned()),
+                    label: d.name.unwrap_or_else(|| (*id).to_owned()),
                     source: MachineSource::Shipped(id),
-                    problem,
-                    dialect,
+                    problem: d.problem,
+                    dialect: d.dialect,
+                    measure_plane: d.measure_plane,
                 }
             })
             .collect());
@@ -245,18 +271,19 @@ pub fn list_machine_files(user_dir: &Path) -> Result<Vec<MachineFile>, BackendEr
         let file_label = path
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        let (name, problem, dialect) = match read_limited(&path, MAX_MACHINE_FILE_BYTES) {
+        let d = match read_limited(&path, MAX_MACHINE_FILE_BYTES) {
             Ok(bytes) => match String::from_utf8(bytes) {
                 Ok(text) => describe(&text),
-                Err(_) => (None, Some("not UTF-8 text".to_owned()), None),
+                Err(_) => Described::problem("not UTF-8 text".to_owned()),
             },
-            Err(e) => (None, Some(e.to_string()), None),
+            Err(e) => Described::problem(e.to_string()),
         };
         list.push(MachineFile {
-            label: name.unwrap_or(file_label),
+            label: d.name.unwrap_or(file_label),
             source: MachineSource::User(path),
-            problem,
-            dialect,
+            problem: d.problem,
+            dialect: d.dialect,
+            measure_plane: d.measure_plane,
         });
     }
     Ok(list)

@@ -14,6 +14,7 @@ const machine = (
   source,
   problem,
   dialect,
+  measurePlane: problem === null ? "XY" : null,
 });
 
 const MILL = machine("Generic 3-axis VMC", user("/cfg/machines/generic_3axis_mill.toml"));

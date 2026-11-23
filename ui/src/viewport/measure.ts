@@ -1,5 +1,6 @@
-// Measuring between two move end points: the deltas and the distance, and
-// the rows the measurement panel shows. Pure, so it is tested without a
+// Measuring between two move end points: the deltas, the distance and the
+// distance in the machine's plane (XY for mills and routers, M6), and the
+// rows the measurement panel shows. Pure, so it is tested without a
 // browser.
 
 import type { Vec3 } from "./views";
@@ -27,6 +28,23 @@ export function deltas(a: Vec3, b: Vec3): Deltas {
   return { dx, dy, dz, distance: Math.hypot(dx, dy, dz) };
 }
 
+/** A plane of the drawing: the machine file's `measure_plane`, or its
+ *  machine type's (XY for mills and routers, XZ for lathes). */
+export type MeasurePlane = "XY" | "XZ" | "YZ";
+
+/** The distance from `a` to `b` in `plane`, leaving out the third axis. */
+export function planeDistance(a: Vec3, b: Vec3, plane: MeasurePlane): number {
+  const d = deltas(a, b);
+  switch (plane) {
+    case "XY":
+      return Math.hypot(d.dx, d.dy);
+    case "XZ":
+      return Math.hypot(d.dx, d.dz);
+    case "YZ":
+      return Math.hypot(d.dy, d.dz);
+  }
+}
+
 /** One row of the panel: a label and the X, Y and Z columns. */
 export interface MeasureRow {
   readonly label: string;
@@ -39,17 +57,25 @@ export interface MeasurePanel {
   readonly hint: string | null;
   readonly rows: readonly MeasureRow[];
   readonly distance: string | null;
+  /** The distance in the machine's plane, e.g. "XY distance". */
+  readonly planeDistance: { readonly label: string; readonly value: string } | null;
 }
 
 const mm = (v: number): string => v.toFixed(3);
 const xyz = (p: Vec3): [string, string, string] => [mm(p[0]), mm(p[1]), mm(p[2])];
 
-/** The panel for `m` (null before any measurement). */
-export function measurePanel(m: Measurement | null): MeasurePanel {
-  if (!m) return { hint: "Drag from one node to another to measure.", rows: [], distance: null };
+/** The panel for `m` (null before any measurement), with the distance in
+ *  `plane` too. */
+export function measurePanel(m: Measurement | null, plane: MeasurePlane = "XY"): MeasurePanel {
+  if (!m) return { hint: "Drag from one node to another to measure.", rows: [], distance: null, planeDistance: null };
   const rows: MeasureRow[] = [{ label: "Start", values: xyz(m.start) }];
-  if (!m.end) return { hint: "Drag to another node.", rows, distance: null };
+  if (!m.end) return { hint: "Drag to another node.", rows, distance: null, planeDistance: null };
   const d = deltas(m.start, m.end);
   rows.push({ label: "End", values: xyz(m.end) }, { label: "Delta", values: [mm(d.dx), mm(d.dy), mm(d.dz)] });
-  return { hint: null, rows, distance: `${mm(d.distance)} mm` };
+  return {
+    hint: null,
+    rows,
+    distance: `${mm(d.distance)} mm`,
+    planeDistance: { label: `${plane} distance`, value: `${mm(planeDistance(m.start, m.end, plane))} mm` },
+  };
 }
