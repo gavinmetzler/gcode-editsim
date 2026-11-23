@@ -7,7 +7,7 @@
 
 import { SEG_FLAG, SEG_KIND } from "../generated/render_buffer";
 import { toolName } from "../panels/stats";
-import { LEGEND, PALETTE, cssColor, srgbToLinear, type LegendEntry, type Rgb, type Toolpath } from "./toolpath";
+import { LEGEND, PALETTE, cssColor, segmentColor, srgbToLinear, type LegendEntry, type Rgb, type Toolpath } from "./toolpath";
 
 import type { Colouring } from "../layout/panes";
 
@@ -119,4 +119,43 @@ export function contrastRatio(a: Rgb, b: Rgb): number {
   };
   const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/** The colour a segment is drawn in now (sRGB): as `colourArray` colours
+ *  it, by move or by tool (M6, for the hovered move's contrasting colour). */
+export function displayColour(
+  tp: Pick<Toolpath, "segmentTool" | "segmentKind" | "segmentFlags">,
+  segment: number,
+  colouring: Colouring,
+  tools: readonly number[],
+): Rgb {
+  const kind = tp.segmentKind[segment] ?? 0;
+  const flags = tp.segmentFlags[segment] ?? 0;
+  if (colouring === "move") return segmentColor(kind, flags);
+  if ((flags & SEG_FLAG.OUT_OF_LIMITS) !== 0) return PALETTE.outOfLimits;
+  if ((flags & SEG_FLAG.POSITION_UNKNOWN) !== 0) return PALETTE.positionUnknown;
+  const index = Math.max(0, tools.indexOf(tp.segmentTool[segment] ?? 0));
+  if (kind === SEG_KIND.Rapid) return dimmed(toolColour(index));
+  if (kind === SEG_KIND.Linear || kind === SEG_KIND.ArcCw || kind === SEG_KIND.ArcCcw) return toolColour(index);
+  return segmentColor(kind, flags);
+}
+
+/** The colours the hovered move can be drawn in (M6): bright, so never lost
+ *  on the dark background, and clear of the selection's yellow and the
+ *  out-of-limits red. */
+export const HOVER_COLOURS: readonly Rgb[] = ["#ffffff", "#40f0ff", "#ff5cff"].map(hex);
+
+/** Of the hover colours, the one most different from `drawn`, the colour
+ *  the move is drawn in now. */
+export function contrastingColour(drawn: Rgb): Rgb {
+  let best: Rgb = HOVER_COLOURS[0] ?? [1, 1, 1];
+  let bestDelta = -1;
+  for (const c of HOVER_COLOURS) {
+    const d = deltaE(c, drawn);
+    if (d > bestDelta) {
+      best = c;
+      bestDelta = d;
+    }
+  }
+  return best;
 }
