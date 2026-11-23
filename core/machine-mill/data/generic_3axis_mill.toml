@@ -10,6 +10,7 @@ family = "mill"
 # "osai").
 dialect = "fanuc"          # which machine type reads this file
 # tool_change_time = 6.0 # seconds per tool change, for the time estimate
+# measure_plane = "XY"  # plane of the second distance when measuring (XY, XZ or YZ)
 max_feed = 10000.0       # fastest cutting feed, mm/min
 max_spindle_rpm = 12000.0
 

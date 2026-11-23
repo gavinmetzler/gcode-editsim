@@ -14,6 +14,7 @@ family = "mill"
 # "fanuc"). This router has an Osai 10 Series control.
 dialect = "osai"
 # tool_change_time = 6.0 # seconds per tool change, for the time estimate
+# measure_plane = "XY"  # plane of the second distance when measuring (XY, XZ or YZ)
 max_feed = 30000.0
 max_spindle_rpm = 24000.0
 # Codes your programs use whose "not supported" messages you accept: listed

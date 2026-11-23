@@ -39,6 +39,48 @@ impl CartesianAxis {
     }
 }
 
+/// The plane of the drawing the measurement panel gives a distance in,
+/// besides the 3D distance (M6): two of the drawing's x, y and z axes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MeasurePlane {
+    /// x and y: mills and routers.
+    XY,
+    /// x and z: lathes.
+    XZ,
+    /// y and z.
+    YZ,
+}
+
+impl MeasurePlane {
+    /// Indices of its two axes into an `[x, y, z]` array.
+    pub fn axes(self) -> [usize; 2] {
+        match self {
+            MeasurePlane::XY => [0, 1],
+            MeasurePlane::XZ => [0, 2],
+            MeasurePlane::YZ => [1, 2],
+        }
+    }
+
+    /// Its name, as a machine file writes it: `"XY"`, `"XZ"` or `"YZ"`.
+    pub fn name(self) -> &'static str {
+        match self {
+            MeasurePlane::XY => "XY",
+            MeasurePlane::XZ => "XZ",
+            MeasurePlane::YZ => "YZ",
+        }
+    }
+
+    /// Reads a plane name in any letter case, ignoring spaces around it.
+    fn parse(text: &str) -> Option<Self> {
+        match text.trim().to_ascii_uppercase().as_str() {
+            "XY" => Some(MeasurePlane::XY),
+            "XZ" => Some(MeasurePlane::XZ),
+            "YZ" => Some(MeasurePlane::YZ),
+            _ => None,
+        }
+    }
+}
+
 /// One machine axis.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AxisDef {
@@ -140,6 +182,9 @@ pub struct MachineDef {
     pub dialect: Option<String>,
     /// The control's power-on state, as far as the file states it.
     pub power_on: PowerOnDef,
+    /// The plane the measurement panel gives a distance in (M6), if the
+    /// file says; otherwise the machine type chooses.
+    pub measure_plane: Option<MeasurePlane>,
     work_offsets: BTreeMap<WorkOffsetId, Pos>,
 }
 
@@ -191,6 +236,9 @@ pub enum MachineDefError {
         /// The letter given.
         axis: String,
     },
+    /// A `measure_plane` that is not XY, XZ or YZ.
+    #[error("measure_plane: {0:?} is not a plane of the drawing: \"XY\", \"XZ\" or \"YZ\"")]
+    InvalidMeasurePlane(String),
     /// A `dialect` that is empty.
     #[error("dialect: {0:?} is not a dialect name such as \"osai\" or \"fanuc\"")]
     InvalidDialect(String),
@@ -259,6 +307,8 @@ struct RawMachine {
     ignore_codes: Vec<String>,
     #[serde(default)]
     dialect: Option<String>,
+    #[serde(default)]
+    measure_plane: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -443,6 +493,12 @@ impl MachineDef {
             Some(d) if d.trim().is_empty() => return Err(MachineDefError::InvalidDialect(d)),
             Some(d) => Some(d.trim().to_ascii_lowercase()),
         };
+        let measure_plane = match raw.machine.measure_plane {
+            None => None,
+            Some(text) => {
+                Some(MeasurePlane::parse(&text).ok_or(MachineDefError::InvalidMeasurePlane(text))?)
+            }
+        };
         let power_on = match raw.power_on {
             None => PowerOnDef::default(),
             Some(p) => PowerOnDef {
@@ -469,6 +525,7 @@ impl MachineDef {
             ignore_codes,
             dialect,
             power_on,
+            measure_plane,
             work_offsets,
         })
     }

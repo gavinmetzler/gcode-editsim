@@ -191,6 +191,10 @@ pub struct MachineEntry {
     problem: Option<String>,
     /// The dialect the machine file names (M5.6b), if it names one.
     dialect: Option<String>,
+    /// The plane the measurement panel gives a distance in (M6): `"XY"`,
+    /// `"XZ"` or `"YZ"`; null when the file cannot be used.
+    #[serde(rename = "measurePlane")]
+    measure_plane: Option<&'static str>,
 }
 
 /// The machine files in the user's machine folder, or the shipped examples
@@ -212,6 +216,7 @@ async fn list_machines(state: State<'_, AppState>) -> Result<Vec<MachineEntry>, 
             },
             problem: m.problem,
             dialect: m.dialect,
+            measure_plane: m.measure_plane,
         })
         .collect())
 }

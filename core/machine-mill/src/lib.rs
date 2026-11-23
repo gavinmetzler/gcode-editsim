@@ -161,4 +161,11 @@ impl Machine for Mill {
     fn power_on(&self) -> machine_api::PowerOnDef {
         self.def.power_on
     }
+
+    /// The file's choice, or XY: a mill or router is measured in plan.
+    fn measure_plane(&self) -> machine_api::MeasurePlane {
+        self.def
+            .measure_plane
+            .unwrap_or(machine_api::MeasurePlane::XY)
+    }
 }

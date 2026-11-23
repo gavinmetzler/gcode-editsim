@@ -7,6 +7,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import type { SystemInfo } from "../diagnostics/report";
 import type { PaneLayout } from "../layout/panes";
+import type { MeasurePlane } from "../viewport/measure";
 
 /** A dialect the user can choose. */
 export interface DialectEntry {
@@ -29,6 +30,9 @@ export interface MachineEntry {
   /** The dialect the machine file names (M5.6b): choosing the machine sets
    *  it. Null when it names none. */
   readonly dialect: string | null;
+  /** The plane the measurement panel gives a distance in (M6): the file's
+   *  `measure_plane` or its machine type's. Null when it cannot be used. */
+  readonly measurePlane: MeasurePlane | null;
 }
 
 /** What the app remembers from the last session (M4.1). The machine or

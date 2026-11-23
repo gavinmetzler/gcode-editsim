@@ -144,3 +144,19 @@ fn router_example_loads_without_travel_limits() {
         );
     }
 }
+
+#[test]
+fn mills_measure_in_xy_unless_the_file_says() {
+    // M6: the XY distance in the measurement panel.
+    use machine_api::MeasurePlane;
+    let xyz = format!("{}{}{}", axis("X", ""), axis("Y", ""), axis("Z", ""));
+    assert_eq!(mill(&xyz).unwrap().measure_plane(), MeasurePlane::XY);
+    let chosen = Mill::new(
+        MachineDef::from_toml_str(&format!(
+            "[machine]\nname = \"m\"\nfamily = \"mill\"\nmeasure_plane = \"YZ\"\n{xyz}"
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(chosen.measure_plane(), MeasurePlane::YZ);
+}
