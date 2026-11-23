@@ -5,10 +5,13 @@ import { SEG_FLAG, SEG_KIND } from "../src/generated/render_buffer";
 import {
   BACKGROUND,
   TOOL_PALETTE,
+  HOVER_COLOURS,
   colourArray,
   contrastRatio,
+  contrastingColour,
   deltaE,
   dimmed,
+  displayColour,
   legendEntries,
   toolColour,
 } from "../src/viewport/tool-colours";
@@ -121,5 +124,39 @@ describe("hiding rapids (M5.5, owner's addition)", () => {
     expect(f.rapidIndex).toHaveLength(0);
     // Only T2's feeds: the arc (7-9) and the two flagged lines.
     expect(Array.from(f.feedIndex)).toEqual([7, 8, 8, 9, 10, 11, 12, 13]);
+  });
+});
+
+describe("displayColour (M6)", () => {
+  it("is the colour each move is drawn in, by move or by tool", () => {
+    for (const colouring of ["move", "tool"] as const) {
+      const all = colourArray(tp, colouring, [1, 2]);
+      for (let s = 0; s < tp.segmentKind.length; s += 1) {
+        const v = tp.segmentVertices(s)?.first ?? 0;
+        expect(at(all, v), `${colouring} ${String(s)}`).toEqual(lin(displayColour(tp, s, colouring, [1, 2])));
+      }
+    }
+  });
+});
+
+describe("the hovered move's colour (M6)", () => {
+  it("is never dark on the background, and never means selected or outside the limits", () => {
+    for (const c of HOVER_COLOURS) {
+      expect(contrastRatio(c, BACKGROUND)).toBeGreaterThan(7);
+      for (const fixed of [PALETTE.selected, PALETTE.outOfLimits]) expect(deltaE(c, fixed)).toBeGreaterThan(40);
+    }
+  });
+
+  it("contrasts the colour the move is drawn in, whatever it is", () => {
+    const drawn = [PALETTE.rapid, PALETTE.linear, PALETTE.arc, PALETTE.outOfLimits, PALETTE.positionUnknown];
+    for (const c of [...drawn, ...TOOL_PALETTE, ...TOOL_PALETTE.map(dimmed)])
+      expect(deltaE(contrastingColour(c), c), cssColor(c)).toBeGreaterThan(40);
+  });
+
+  it("is the most different of its choices", () => {
+    for (const c of [PALETTE.rapid, PALETTE.linear, PALETTE.arc]) {
+      const best = Math.max(...HOVER_COLOURS.map((h) => deltaE(h, c)));
+      expect(deltaE(contrastingColour(c), c)).toBe(best);
+    }
   });
 });

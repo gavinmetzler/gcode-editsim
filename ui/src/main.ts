@@ -422,8 +422,9 @@ async function main(app: HTMLElement): Promise<void> {
     if (viewport.measureMode) return;
     const rb = current;
     const p = hovered ?? resting;
-    // Only while hovering it points along the move (owner, M5.6g).
-    viewport.setMarker(p?.point ?? null, hovered?.direction ?? null);
+    // Only while hovering: a dot on the node, a short arrow the way the
+    // tool went, and the move that arrived there highlighted (M6).
+    viewport.setMarker(p?.point ?? null, hovered ? { travel: hovered.direction ?? null, segment: hovered.segment } : null);
     if (!rb || !p) {
       readout.hidden = true;
       return;

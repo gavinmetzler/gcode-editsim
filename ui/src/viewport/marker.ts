@@ -1,7 +1,9 @@
 // The tool marker's shape on screen: a thick shaft with an arrowhead whose
-// tip is the point, along the machine's Z axis as the view shows it, or,
-// while the pointer is snapped to a node, pointing the way the tool was
-// travelling when it got there (M5.6g).
+// tip is the point, along the machine's Z axis as the view shows it.
+// While the pointer is snapped to a node it is instead a short arrow
+// starting at a white dot on the node and pointing the way the tool was
+// travelling when it got there (M5.6g; shortened and turned round in M6,
+// owner: an arrow should point away from where we are).
 // Deliberately not a tool shape, so it is not mistaken for a simulated
 // tool. Drawn as a flat overlay over the 3D view, so moving it never
 // redraws the toolpath. Pure, so it is tested without a browser.
@@ -70,4 +72,48 @@ export function tailOnScreen(
   const sy = (-(e(1) * x + e(5) * y + e(9) * z) / 2) * height;
   // + 0 turns -0 into 0.
   return [sx + 0, sy + 0];
+}
+
+/** The hover arrow's size on screen, in pixels (M6): a fifth of the tool
+ *  marker's length and half its thickness, so it covers little of the
+ *  toolpath; a white dot marks the node it starts from. */
+export const TRAVEL_MARKER = { length: 13, shaft: 2.5, headLength: 6, headWidth: 7, dot: 3.5 } as const;
+
+/** What to draw while hovering a node, in screen pixels. */
+export type TravelMarkerShape =
+  | {
+      readonly kind: "arrow";
+      readonly dot: { readonly x: number; readonly y: number; readonly r: number };
+      /** From the node to the head's base. */
+      readonly shaft: readonly [number, number, number, number];
+      /** The head: tip, then the two corners of its base. */
+      readonly head: readonly [number, number, number, number, number, number];
+    }
+  | { readonly kind: "dot"; readonly dot: { readonly x: number; readonly y: number; readonly r: number } };
+
+/**
+ * The hover arrow at the node (`x`, `y`): (`fx`, `fy`) is how far, in
+ * pixels, one mm along the travel moves on screen; `pxPerMm` is the view's
+ * scale. Shortened as the travel tilts toward the viewer, and only the dot
+ * when it points (nearly) straight at or away from them.
+ */
+export function travelMarkerShape(x: number, y: number, fx: number, fy: number, pxPerMm: number): TravelMarkerShape {
+  const dot = { x, y, r: TRAVEL_MARKER.dot };
+  const along = Math.hypot(fx, fy);
+  const f = pxPerMm > 0 ? along / pxPerMm : 0;
+  if (!(f >= MIN_FORESHORTENING) || !Number.isFinite(f)) return { kind: "dot", dot };
+  const ux = fx / along;
+  const uy = fy / along;
+  const k = Math.min(f, 1);
+  const tipX = x + ux * TRAVEL_MARKER.length * k;
+  const tipY = y + uy * TRAVEL_MARKER.length * k;
+  const bx = tipX - ux * TRAVEL_MARKER.headLength * k;
+  const by = tipY - uy * TRAVEL_MARKER.headLength * k;
+  const w = TRAVEL_MARKER.headWidth / 2;
+  return {
+    kind: "arrow",
+    dot,
+    shaft: [x, y, bx, by],
+    head: [tipX, tipY, bx - uy * w, by + ux * w, bx + uy * w, by - ux * w],
+  };
 }

@@ -8,7 +8,7 @@ the decisions made along the way, and what is still open.
 ARCHITECTURE.md remains the source of truth for design. If this file and
 ARCHITECTURE.md disagree, ARCHITECTURE.md wins: fix this file.
 
-Last updated: M6 (the XY distance when measuring, 2026-11-22).
+Last updated: M6 (the hover arrow from the node and the highlighted move, 2026-11-23).
 Each milestone has a plan in `docs/plans/` (M2 to M5 complete); M6 (bug
 fixes and small requests) needs none. The milestone order is in
 ARCHITECTURE.md §13.

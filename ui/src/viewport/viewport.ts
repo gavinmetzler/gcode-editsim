@@ -25,22 +25,25 @@ import {
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import type { ToolPoint } from "./readout";
-import { MARKER, markerShape, tailOnScreen } from "./marker";
+import { MARKER, TRAVEL_MARKER, markerShape, tailOnScreen, travelMarkerShape } from "./marker";
 import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
 import { nearestScreenPoint } from "./snap";
 import type { DiagnosticsInfo } from "../diagnostics/report";
 import { LINE_ATTRIBUTE, LineHighlight, type LineRange } from "./highlight";
 import type { Colouring } from "../layout/panes";
-import { colourArray } from "./tool-colours";
+import { colourArray, contrastingColour, displayColour } from "./tool-colours";
 import { filterToolpath, toolsInOrder, type FilteredDrawing } from "./tool-filter";
 
 type GraphicsInfo = { webgl: NonNullable<DiagnosticsInfo["webgl"]>; gpu: NonNullable<DiagnosticsInfo["gpu"]> };
-import { PALETTE, srgbToLinear, type Toolpath } from "./toolpath";
+import { PALETTE, cssColor, srgbToLinear, type Toolpath } from "./toolpath";
 import { VIEWS, fitOrtho, orbitAbout, orthoWorldPerPixel, type Vec3, type ViewName } from "./views";
 
 
 const SVG = "http://www.w3.org/2000/svg";
+/** Most points drawn for the hovered move (M6); a longer arc is thinned. */
+const HOVER_POINTS = 2000;
+
 /** The marker's colour. */
 const MARKER_COLOR = "#ffd23f";
 
@@ -90,6 +93,8 @@ export class Viewport {
   private markerPoint: Vec3 | null = null;
   /** The direction the marker points along, or null for down Z. */
   private markerTravel: Vec3 | null = null;
+  /** The hovered move, drawn over the toolpath (M6), or null. */
+  private markerSegment: number | null = null;
   /** Measure mode, the measurement shown, whether a measuring drag is in
    *  progress, and the node the pointer is snapped to (measure mode). */
   private measuring = false;
@@ -431,15 +436,22 @@ export class Viewport {
   }
 
   /** Shows the tool marker with its tip at `point` (machine coordinates),
-   *  or hides it for null. With a `travel` direction it points along it
-   *  (M5.6g); without one it points down Z. */
-  setMarker(point: Vec3 | null, travel: Vec3 | null = null): void {
+   *  or hides it for null. Pointing down Z, or, for a hovered node
+   *  (`hover`), a white dot on the node with a short arrow the way the tool
+   *  was travelling (`hover.travel`), and the move that arrived there
+   *  (`hover.segment`) drawn over the toolpath in a contrasting colour
+   *  (M6). Both are drawn on the flat overlay: the toolpath is never
+   *  redrawn for them. */
+  setMarker(point: Vec3 | null, hover: { readonly travel: Vec3 | null; readonly segment: number } | null = null): void {
     const next = point && point.every((c) => Number.isFinite(c)) ? point : null;
+    const travel = hover?.travel ?? null;
+    const segment = hover && next ? hover.segment : null;
     const equal = (a: Vec3 | null, b: Vec3 | null): boolean =>
       a === b || (a !== null && b !== null && a.every((c, k) => Object.is(c, b[k])));
-    if (equal(next, this.markerPoint) && equal(travel, this.markerTravel)) return;
+    if (equal(next, this.markerPoint) && equal(travel, this.markerTravel) && segment === this.markerSegment) return;
     this.markerPoint = next;
     this.markerTravel = travel;
+    this.markerSegment = segment;
     // Only the overlay changes: the toolpath is not redrawn.
     this.drawOverlay();
   }
@@ -533,11 +545,15 @@ export class Viewport {
       return;
     }
     const [tx, ty] = screen(p);
-    // One mm along the shaft (+Z, or back along the travel), on screen.
-    // Linear (orthographic), so read off the matrix rather than projecting
-    // a second point far from the origin.
-    const [zx, zy] = tailOnScreen(this.markerTravel, m, width, height);
     const pxPerMm = 1 / orthoWorldPerPixel(this.halfHeight, this.camera.zoom, height);
+    if (this.markerSegment !== null) {
+      this.overlay.replaceChildren(...this.hoverParts(this.markerSegment, tx, ty, m, width, height, pxPerMm, screen, el));
+      return;
+    }
+    // One mm along the shaft (+Z), on screen. Linear (orthographic), so
+    // read off the matrix rather than projecting a second point far from
+    // the origin.
+    const [zx, zy] = tailOnScreen(null, m, width, height);
     const shape = markerShape(tx, ty, zx, zy, pxPerMm);
     if (shape.kind === "ring") {
       this.overlay.replaceChildren(
@@ -551,6 +567,74 @@ export class Viewport {
       el("line", { x1, y1, x2, y2, stroke: MARKER_COLOR, "stroke-width": MARKER.shaft, "stroke-linecap": "round" }),
       el("polygon", { points: shape.head.join(" "), fill: MARKER_COLOR }),
     );
+  }
+
+  /** The hovered node's overlay (M6): the move that arrived there in a
+   *  colour contrasting the one it is drawn in, a short arrow from the node
+   *  the way the tool went, and a white dot on the node. */
+  private hoverParts(
+    segment: number,
+    tx: number,
+    ty: number,
+    m: ArrayLike<number>,
+    width: number,
+    height: number,
+    pxPerMm: number,
+    screen: (p: Vec3) => [number, number],
+    el: (tag: string, attrs: Record<string, string | number>) => SVGElement,
+  ): SVGElement[] {
+    const parts: SVGElement[] = [];
+    const toolpath = this.toolpath;
+    const range = toolpath?.segmentVertices(segment);
+    if (toolpath && range && range.count >= 2) {
+      const [ox, oy, oz] = toolpath.origin;
+      const pos = toolpath.positions;
+      // At most HOVER_POINTS points: a huge arc is thinned, its ends kept.
+      const step = Math.max(1, Math.ceil(range.count / HOVER_POINTS));
+      const points: string[] = [];
+      for (let k = 0; k < range.count; k += step) points.push(this.svgPoint(pos, range.first + k, ox, oy, oz, screen));
+      if ((range.count - 1) % step !== 0) points.push(this.svgPoint(pos, range.first + range.count - 1, ox, oy, oz, screen));
+      const colour = cssColor(contrastingColour(displayColour(toolpath, segment, this.colouring, this.tools)));
+      parts.push(
+        el("polyline", {
+          points: points.join(" "),
+          fill: "none",
+          stroke: colour,
+          "stroke-width": 3,
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round",
+        }),
+      );
+    }
+    const travel = this.markerTravel;
+    const known = travel !== null && travel.every((c) => Number.isFinite(c));
+    // One mm along the travel, on screen: the opposite of the tail.
+    const [bx, by] = tailOnScreen(travel, m, width, height);
+    const shape = known ? travelMarkerShape(tx, ty, -bx, -by, pxPerMm) : travelMarkerShape(tx, ty, 0, 0, pxPerMm);
+    if (shape.kind === "arrow") {
+      const [x1, y1, x2, y2] = shape.shaft;
+      parts.push(
+        el("line", { x1, y1, x2, y2, stroke: MARKER_COLOR, "stroke-width": TRAVEL_MARKER.shaft, "stroke-linecap": "round" }),
+        el("polygon", { points: shape.head.join(" "), fill: MARKER_COLOR }),
+      );
+    }
+    parts.push(
+      el("circle", { cx: shape.dot.x, cy: shape.dot.y, r: shape.dot.r, fill: "#ffffff", stroke: "#14171c", "stroke-width": 1.5 }),
+    );
+    return parts;
+  }
+
+  /** Vertex `v` of `pos` (relative to the origin) on screen, as "x,y". */
+  private svgPoint(
+    pos: Float32Array,
+    v: number,
+    ox: number,
+    oy: number,
+    oz: number,
+    screen: (p: Vec3) => [number, number],
+  ): string {
+    const [x, y] = screen([(pos[v * 3] ?? 0) + ox, (pos[v * 3 + 1] ?? 0) + oy, (pos[v * 3 + 2] ?? 0) + oz]);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
   }
 
   /** The end points on screen, as x, y pairs in pixels relative to the
