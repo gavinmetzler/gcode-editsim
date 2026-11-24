@@ -109,14 +109,19 @@ describe("legendEntries (M5.5)", () => {
 });
 
 describe("hiding rapids (M5.5, owner's addition)", () => {
-  it("leaves out every rapid and its end points, keeping the feeds", () => {
+  it("leaves out every rapid and the end points only rapids touch, keeping the feeds", () => {
     const f = filterToolpath(tp, new Set(), { rapids: false });
     expect(f.rapidIndex).toHaveLength(0);
     expect(f.feedIndex).toBe(tp.feedIndex);
+    // A node stays while a feed ends or starts there (M6): a rapid's end
+    // where a feed starts can still be hovered and measured to.
+    const feed = (s: number): boolean => s >= 0 && tp.segmentKind[s] !== Rapid;
     for (let i = 0; i < tp.endpoints.segment.length; i += 1) {
-      const kind = tp.segmentKind[tp.endpoints.segment[i] ?? 0];
-      expect(f.endpointVisible[i]).toBe(kind === Rapid ? 0 : 1);
+      const kept = feed(tp.endpoints.segment[i] ?? -1) || feed(tp.endpoints.leaving[i] ?? -1);
+      expect(f.endpointVisible[i], String(i)).toBe(kept ? 1 : 0);
     }
+    // The first rapid ends where the first feed starts.
+    expect(f.endpointVisible[1]).toBe(1);
   });
 
   it("works together with hidden tools", () => {

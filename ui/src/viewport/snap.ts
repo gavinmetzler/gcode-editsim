@@ -26,6 +26,12 @@ export interface Endpoints {
    *  move leaves in; on an arc, its last piece's (the tangent, to within
    *  the drawing tolerance). NaN for a move of zero length. */
   readonly direction: Float32Array;
+  /** The move leaving each end point (M6): the next move, when it starts
+   *  there, or the point's own move at a start; -1 when none does. */
+  readonly leaving: Int32Array;
+  /** x, y, z per end point: the unit direction the leaving move starts
+   *  in; NaN when there is none or it has no length. */
+  readonly leavingDirection: Float32Array;
 }
 
 const MOTION: ReadonlySet<number> = new Set([SEG_KIND.Rapid, SEG_KIND.Linear, SEG_KIND.ArcCw, SEG_KIND.ArcCcw]);
@@ -42,6 +48,8 @@ export function moveEndpoints(
   const segment: number[] = [];
   const isStart: number[] = [];
   const direction: number[] = [];
+  const leaving: number[] = [];
+  const leavingDirection: number[] = [];
   const pos = rb.positions;
   let last: [number, number, number] | null = null;
   const at = (v: number): [number, number, number] => [pos[v * 3] ?? NaN, pos[v * 3 + 1] ?? NaN, pos[v * 3 + 2] ?? NaN];
@@ -50,16 +58,26 @@ export function moveEndpoints(
     if (!MOTION.has(seg.kind) || seg.vertexCount === 0) continue;
     const start = at(seg.firstVertex);
     const end = at(seg.firstVertex + seg.vertexCount - 1);
+    const leaves = travel(at, seg.firstVertex, seg.vertexCount, true);
     if (!last || last[0] !== start[0] || last[1] !== start[1] || last[2] !== start[2]) {
       xyz.push(...start);
       segment.push(s);
       isStart.push(1);
-      direction.push(...travel(at, seg.firstVertex, seg.vertexCount, true));
+      direction.push(...leaves);
+      leaving.push(s);
+      leavingDirection.push(...leaves);
+    } else {
+      // This move leaves the previous move's end point.
+      const prev = leaving.length - 1;
+      leaving[prev] = s;
+      leavingDirection.splice(prev * 3, 3, ...leaves);
     }
     xyz.push(...end);
     segment.push(s);
     isStart.push(0);
     direction.push(...travel(at, seg.firstVertex, seg.vertexCount, false));
+    leaving.push(-1);
+    leavingDirection.push(NaN, NaN, NaN);
     last = end;
   }
   return {
@@ -67,7 +85,23 @@ export function moveEndpoints(
     segment: Uint32Array.from(segment),
     isStart: Uint8Array.from(isStart),
     direction: Float32Array.from(direction),
+    leaving: Int32Array.from(leaving),
+    leavingDirection: Float32Array.from(leavingDirection),
   };
+}
+
+/** The move a hovered or snapped node shows (M6, owner): the move leaving
+ *  it, if there is one and it is `shown`; otherwise the move arriving
+ *  there (the program's last point, or a leaving move filtered out). With
+ *  the unit direction the tool travels along it at the node. */
+export function hoverMove(
+  ep: Pick<Endpoints, "segment" | "direction" | "leaving" | "leavingDirection">,
+  i: number,
+  shown: (segment: number) => boolean,
+): { readonly segment: number; readonly direction: [number, number, number] } {
+  const leaves = ep.leaving[i] ?? -1;
+  const [d, s] = leaves >= 0 && shown(leaves) ? [ep.leavingDirection, leaves] : [ep.direction, ep.segment[i] ?? 0];
+  return { segment: s, direction: [d[i * 3] ?? NaN, d[i * 3 + 1] ?? NaN, d[i * 3 + 2] ?? NaN] };
 }
 
 /** The unit direction a move of `count` vertices from `first` leaves in

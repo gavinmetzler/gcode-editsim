@@ -22,8 +22,11 @@ export interface FilteredDrawing {
   readonly eventPositions: Float32Array;
   readonly eventColors: Float32Array;
   readonly singlePoints: Toolpath["singlePoints"];
-  /** 1 for each of the toolpath's end points that can be picked. */
+  /** 1 for each of the toolpath's end points that can be picked: a move
+   *  that ends or starts there is shown (M6). */
   readonly endpointVisible: Uint8Array;
+  /** Whether segment `s` is drawn. */
+  segmentShown(s: number): boolean;
 }
 
 /** Every tool the program uses, once, in the order it is first used. */
@@ -71,6 +74,7 @@ export function filterToolpath(
       eventColors: tp.eventColors,
       singlePoints: tp.singlePoints,
       endpointVisible: new Uint8Array(tp.endpoints.segment.length).fill(1),
+      segmentShown: () => true,
     };
   }
   // Index pairs: both vertices of a pair belong to the same segment.
@@ -106,7 +110,11 @@ export function filterToolpath(
       lines: points(singles.lines, 1, singles.segments),
       segments: Uint32Array.from(keptSingles),
     },
-    endpointVisible: Uint8Array.from(tp.endpoints.segment, (s) => (shown(s) ? 1 : 0)),
+    endpointVisible: Uint8Array.from(tp.endpoints.segment, (s, i) => {
+      const leaves = tp.endpoints.leaving[i] ?? -1;
+      return shown(s) || (leaves >= 0 && shown(leaves)) ? 1 : 0;
+    }),
+    segmentShown: shown,
   };
 }
 

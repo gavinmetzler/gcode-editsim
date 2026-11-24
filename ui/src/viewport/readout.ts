@@ -22,9 +22,10 @@ export interface ToolPoint {
   readonly point: Vec3;
   readonly segment: number;
   readonly place: Place;
-  /** The unit direction of travel arriving at the point, for the marker
-   *  (M5.6g); only points under the pointer have one. */
-  readonly direction?: Vec3;
+  /** The move the hover marker shows and highlights (M6): the one leaving
+   *  the point (else the one arriving), and the unit direction the tool
+   *  travels along it there. Only points under the pointer have one. */
+  readonly hover?: { readonly segment: number; readonly direction: Vec3 };
 }
 
 const MOTION: ReadonlySet<number> = new Set([SEG_KIND.Rapid, SEG_KIND.Linear, SEG_KIND.ArcCw, SEG_KIND.ArcCcw]);
