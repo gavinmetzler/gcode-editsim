@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { SEG_KIND } from "../src/generated/render_buffer";
-import { SNAP_PIXELS, moveEndpoints, nearestScreenPoint } from "../src/viewport/snap";
+import { SNAP_PIXELS, hoverMove, moveEndpoints, nearestScreenPoint } from "../src/viewport/snap";
 import { source } from "./source";
 
 const K = SEG_KIND;
@@ -44,6 +44,31 @@ describe("moveEndpoints", () => {
       Array.from(e.direction.subarray(i * 3, i * 3 + 3)).map((v) => Math.round(v * 1000) / 1000),
     );
     expect(dirs).toEqual([[0, 0, -1], [0, 0, -1], unit([30, 40, -10]), [0.6, -0.8, 0], [0, 0, -1], [0, 0, -1]]);
+  });
+
+  it("knows the move leaving each node, and its direction (M6)", () => {
+    // The rapid's start: the rapid; its end: the linear (seg 2, the tool
+    // change between is not a move); the linear's end: the arc; the arc's
+    // end: none (the next move starts elsewhere); the gap's start: seg 4.
+    expect(Array.from(e.leaving)).toEqual([0, 2, 3, -1, 4, -1]);
+    const dirs = Array.from({ length: e.leaving.length }, (_, i) =>
+      Array.from(e.leavingDirection.subarray(i * 3, i * 3 + 3)).map((v) => Math.round(v * 1000) / 1000),
+    );
+    expect(dirs[0]).toEqual([0, 0, -1]);
+    expect(dirs[1]).toEqual(unit([30, 40, -10]));
+    expect(dirs[2]).toEqual([0.6, 0.8, 0]);
+    expect(dirs[3]?.every((v) => Number.isNaN(v))).toBe(true);
+    expect(dirs[4]).toEqual([0, 0, -1]);
+  });
+
+  it("chooses the leaving move for hover, else the arriving one (M6)", () => {
+    const all = (): boolean => true;
+    expect(hoverMove(e, 1, all).segment).toBe(2);
+    expect(Array.from(hoverMove(e, 2, all).direction).map((v) => Math.round(v * 1000) / 1000)).toEqual([0.6, 0.8, 0]);
+    // Nothing leaves the arc's end: the arc itself, arriving.
+    expect(hoverMove(e, 3, all)).toEqual({ segment: 3, direction: [0.6, -0.8, 0].map((v) => expect.closeTo(v, 6) as unknown) });
+    // A leaving move that is not shown: the arriving one.
+    expect(hoverMove(e, 1, (s) => s !== 2).segment).toBe(0);
   });
 
   it("has no direction for a move of zero length", () => {

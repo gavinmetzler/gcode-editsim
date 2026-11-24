@@ -28,7 +28,7 @@ import type { ToolPoint } from "./readout";
 import { MARKER, TRAVEL_MARKER, markerShape, tailOnScreen, travelMarkerShape } from "./marker";
 import { blockMiddleClickPaste } from "./middle-click";
 import type { Measurement } from "./measure";
-import { nearestScreenPoint } from "./snap";
+import { hoverMove, nearestScreenPoint } from "./snap";
 import type { DiagnosticsInfo } from "../diagnostics/report";
 import { LINE_ATTRIBUTE, LineHighlight, type LineRange } from "./highlight";
 import type { Colouring } from "../layout/panes";
@@ -100,7 +100,7 @@ export class Viewport {
   private measuring = false;
   private measurement: Measurement | null = null;
   private dragging = false;
-  private snapped: Vec3 | null = null;
+  private snapped: ToolPoint | null = null;
   /** An orbit about a node, while the left button is down. */
   private pivot: { point: Vec3; x: number; y: number; startX: number; startY: number } | null = null;
   private hoverFrame = 0;
@@ -163,7 +163,7 @@ export class Viewport {
         canvas.setPointerCapture(e.pointerId);
         this.dragging = true;
         this.measurement = { start: p.point, end: null };
-        this.snapped = p.point;
+        this.snapped = p;
         this.drawOverlay();
         this.onMeasure(this.measurement);
       },
@@ -216,7 +216,7 @@ export class Viewport {
           this.onHover(p);
           return;
         }
-        this.snapped = p?.point ?? null;
+        this.snapped = p;
         const ms = this.measurement;
         // The end follows the last node reached that is not the start.
         if (this.dragging && ms && p && !p.point.every((c, k) => c === ms.start[k])) {
@@ -426,12 +426,12 @@ export class Viewport {
     if (i < 0 || segment === undefined) return null;
     const [ox, oy, oz] = toolpath.origin;
     const p = toolpath.endpoints.positions;
-    const d = toolpath.endpoints.direction;
+    const drawing = this.drawing;
     return {
       point: [(p[i * 3] ?? NaN) + ox, (p[i * 3 + 1] ?? NaN) + oy, (p[i * 3 + 2] ?? NaN) + oz],
       segment,
       place: toolpath.endpoints.isStart[i] === 1 ? "start" : "end",
-      direction: [d[i * 3] ?? NaN, d[i * 3 + 1] ?? NaN, d[i * 3 + 2] ?? NaN],
+      hover: hoverMove(toolpath.endpoints, i, (s) => drawing?.segmentShown(s) ?? true),
     };
   }
 
@@ -530,7 +530,12 @@ export class Viewport {
         parts.push(el("circle", { cx: ax, cy: ay, r: 4, fill: MARKER_COLOR }));
       }
       if (this.snapped) {
-        const [sx, sy] = screen(this.snapped);
+        // The snapped node's move, as hovering shows it (M6), under the
+        // measurement.
+        const hover = this.snapped.hover;
+        const line = hover ? this.moveLine(hover.segment, screen, el) : null;
+        if (line) parts.unshift(line);
+        const [sx, sy] = screen(this.snapped.point);
         parts.push(el("circle", { cx: sx, cy: sy, r: 8, fill: "none", stroke: "#ffffff", "stroke-width": 2 }));
         // A dot at the centre marks exactly which node is snapped to.
         parts.push(el("circle", { cx: sx, cy: sy, r: 2, fill: MARKER_COLOR }));
@@ -584,28 +589,8 @@ export class Viewport {
     el: (tag: string, attrs: Record<string, string | number>) => SVGElement,
   ): SVGElement[] {
     const parts: SVGElement[] = [];
-    const toolpath = this.toolpath;
-    const range = toolpath?.segmentVertices(segment);
-    if (toolpath && range && range.count >= 2) {
-      const [ox, oy, oz] = toolpath.origin;
-      const pos = toolpath.positions;
-      // At most HOVER_POINTS points: a huge arc is thinned, its ends kept.
-      const step = Math.max(1, Math.ceil(range.count / HOVER_POINTS));
-      const points: string[] = [];
-      for (let k = 0; k < range.count; k += step) points.push(this.svgPoint(pos, range.first + k, ox, oy, oz, screen));
-      if ((range.count - 1) % step !== 0) points.push(this.svgPoint(pos, range.first + range.count - 1, ox, oy, oz, screen));
-      const colour = cssColor(contrastingColour(displayColour(toolpath, segment, this.colouring, this.tools)));
-      parts.push(
-        el("polyline", {
-          points: points.join(" "),
-          fill: "none",
-          stroke: colour,
-          "stroke-width": 3,
-          "stroke-linecap": "round",
-          "stroke-linejoin": "round",
-        }),
-      );
-    }
+    const line = this.moveLine(segment, screen, el);
+    if (line) parts.push(line);
     const travel = this.markerTravel;
     const known = travel !== null && travel.every((c) => Number.isFinite(c));
     // One mm along the travel, on screen: the opposite of the tail.
@@ -622,6 +607,34 @@ export class Viewport {
       el("circle", { cx: shape.dot.x, cy: shape.dot.y, r: shape.dot.r, fill: "#ffffff", stroke: "#14171c", "stroke-width": 1.5 }),
     );
     return parts;
+  }
+
+  /** Segment `segment` drawn over the toolpath in a colour contrasting the
+   *  one it is drawn in (M6), or null for a segment of fewer than two
+   *  points. */
+  private moveLine(
+    segment: number,
+    screen: (p: Vec3) => [number, number],
+    el: (tag: string, attrs: Record<string, string | number>) => SVGElement,
+  ): SVGElement | null {
+    const toolpath = this.toolpath;
+    const range = toolpath?.segmentVertices(segment);
+    if (!toolpath || !range || range.count < 2) return null;
+    const [ox, oy, oz] = toolpath.origin;
+    const pos = toolpath.positions;
+    // At most HOVER_POINTS points: a huge arc is thinned, its ends kept.
+    const step = Math.max(1, Math.ceil(range.count / HOVER_POINTS));
+    const points: string[] = [];
+    for (let k = 0; k < range.count; k += step) points.push(this.svgPoint(pos, range.first + k, ox, oy, oz, screen));
+    if ((range.count - 1) % step !== 0) points.push(this.svgPoint(pos, range.first + range.count - 1, ox, oy, oz, screen));
+    return el("polyline", {
+      points: points.join(" "),
+      fill: "none",
+      stroke: cssColor(contrastingColour(displayColour(toolpath, segment, this.colouring, this.tools))),
+      "stroke-width": 3,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    });
   }
 
   /** Vertex `v` of `pos` (relative to the origin) on screen, as "x,y". */

@@ -64,11 +64,20 @@ describe("filterToolpath (M5.4)", () => {
     expect(Array.from(f.eventPositions)).toEqual([10, 4, 5]);
     expect(f.eventColors).toHaveLength(3);
     expect(Array.from(f.singlePoints.lines)).toEqual([src.segment(4).srcLine]);
-    // End points of T1's moves cannot be picked or snapped to.
-    for (let i = 0; i < tp.endpoints.segment.length; i += 1) {
-      const tool = tp.segmentTool[tp.endpoints.segment[i] ?? 0];
-      expect(f.endpointVisible[i]).toBe(tool === 1 ? 0 : 1);
-    }
+    // A node can be picked or snapped to while a move it ends or starts is
+    // shown (M6): the start of the rapid, the end of the rapid, the end of
+    // T1's arc where T2's linear starts, and the end of T2's linear; not
+    // the end of T1's linear (T1's arc leaves it) nor of T1's last rapid.
+    expect(Array.from(f.endpointVisible)).toEqual([1, 1, 0, 1, 1, 0]);
+    expect([0, 1, 2, 3, 4, 5, 6].map((s) => f.segmentShown(s))).toEqual([true, false, false, false, true, true, false]);
+  });
+
+  it("keeps a node after a hidden rapid where a shown move starts (M6)", () => {
+    const f = filterToolpath(tp, new Set(), { rapids: false });
+    // The rapid's start only has the rapid; its end starts T1's linear.
+    expect(Array.from(f.endpointVisible)).toEqual([0, 1, 1, 1, 1, 0]);
+    expect(f.segmentShown(0)).toBe(false);
+    expect(f.segmentShown(2)).toBe(true);
   });
 
   it("draws nothing when every tool is hidden", () => {
