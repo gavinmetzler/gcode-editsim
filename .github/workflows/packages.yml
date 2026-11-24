@@ -42,9 +42,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      # The package mirrors once hung for over 30 minutes: fail fast.
+      # The package mirrors once hung for over 30 minutes: fail instead (25
+      # minutes, as in ci.yml: a slow mirror can take over 10).
       - name: Install WebKit, the libraries Tauri needs, and rpm and cpio (to check the .rpm)
-        timeout-minutes: 10
+        timeout-minutes: 25
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
