@@ -30,10 +30,6 @@ export interface ToolPoint {
 
 const MOTION: ReadonlySet<number> = new Set([SEG_KIND.Rapid, SEG_KIND.Linear, SEG_KIND.ArcCw, SEG_KIND.ArcCcw]);
 
-/** Segments looked back over (events at the same spot) to find the move
- *  that ends where another starts. */
-const LOOK_BACK = 16;
-
 function vertex(rb: ReadoutSource, v: number): Vec3 {
   const [ox, oy, oz] = rb.header.origin;
   return [
@@ -51,23 +47,16 @@ export function segmentEnd(rb: ReadoutSource, s: number): Vec3 | null {
 }
 
 /**
- * A point snapped to the start of segment `s` is also the end of the move
- * before it, and that move's feed and tool are what brought the tool
- * there. Returns that move's end if a motion segment ends at the same
- * point (looking back over events there), else the start as given.
+ * The point as the panel describes it and a click goes to its line: by the
+ * move the hover highlights (M6, owner), so a node where one move ends and
+ * the next starts reads as the start of the next move, with its line, feed
+ * and tool. A point whose highlighted move is its own, or that has none,
+ * is returned as it is. The hover move is kept, for the marker.
  */
-export function preferArrivingMove(rb: ReadoutSource, p: ToolPoint): ToolPoint {
-  if (p.place !== "start") return p;
-  const seg = rb.segment(p.segment);
-  if (seg.vertexCount === 0) return p;
-  const [sx, sy, sz] = vertex(rb, seg.firstVertex);
-  for (let q = p.segment - 1; q >= 0 && q >= p.segment - LOOK_BACK; q -= 1) {
-    const end = segmentEnd(rb, q);
-    if (!end) continue;
-    if (end[0] !== sx || end[1] !== sy || end[2] !== sz) break;
-    if (MOTION.has(rb.segment(q).kind)) return { point: end, segment: q, place: "end" };
-  }
-  return p;
+export function shownMove(p: ToolPoint): ToolPoint {
+  const hover = p.hover;
+  if (!hover || hover.segment === p.segment) return p;
+  return { point: p.point, segment: hover.segment, place: "start", hover };
 }
 
 /**

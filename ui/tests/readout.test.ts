@@ -12,11 +12,11 @@ import { SEG_FLAG, SEG_KIND } from "../src/generated/render_buffer";
 import {
   feedText,
   placeText,
-  preferArrivingMove,
   readoutRows,
   restingFor,
   restingPoint,
   segmentEnd,
+  shownMove,
 } from "../src/viewport/readout";
 import { source } from "./source";
 
@@ -50,20 +50,31 @@ describe("segmentEnd and restingPoint", () => {
   });
 });
 
-describe("preferArrivingMove", () => {
-  it("reports the start of a move as the end of the move that arrived there, past events", () => {
-    const p = preferArrivingMove(rb, { point: [100, 200, 10], segment: 3, place: "start" });
-    expect(p).toEqual({ point: [100, 200, 10], segment: 0, place: "end" });
+describe("shownMove (M6): the panel and clicks follow the highlighted move", () => {
+  it("describes a node by the move leaving it when that is the one highlighted", () => {
+    // The end of the rapid, where the linear (segment 3) leaves.
+    const p = { point: [100, 200, 10] as const, segment: 0, place: "end" as const, hover: { segment: 3, direction: [0, 0, -1] as const } };
+    expect(shownMove(p)).toEqual({ point: [100, 200, 10], segment: 3, place: "start", hover: p.hover });
   });
 
-  it("keeps the start when nothing ends there", () => {
-    const first = { point: [100, 200, 50] as const, segment: 0, place: "start" as const };
-    expect(preferArrivingMove(rb, first)).toBe(first);
+  it("keeps the point as it is when the highlighted move is its own", () => {
+    const last = { point: [136, 240, -2] as const, segment: 5, place: "end" as const, hover: { segment: 5, direction: [0, 0, -1] as const } };
+    expect(shownMove(last)).toBe(last);
+    const first = { point: [100, 200, 50] as const, segment: 0, place: "start" as const, hover: { segment: 0, direction: [0, 0, -1] as const } };
+    expect(shownMove(first)).toBe(first);
   });
 
-  it("leaves other places alone", () => {
-    const mid = { point: [115, 220, 5] as const, segment: 3, place: "path" as const };
-    expect(preferArrivingMove(rb, mid)).toBe(mid);
+  it("leaves points without a hover move alone", () => {
+    const rest = { point: [130, 240, 0] as const, segment: 3, place: "end" as const };
+    expect(shownMove(rest)).toBe(rest);
+  });
+
+  it("reads as the start of the leaving move, with its line and feed", () => {
+    const p = shownMove({ point: [130, 240, 0], segment: 3, place: "end", hover: { segment: 4, direction: [0.6, 0.8, 0] } });
+    const rows = readoutRows(rb, p);
+    expect(value(rows, "Line")).toBe("5");
+    expect(value(rows, "Feed")).toBe("250.0 mm/min");
+    expect(value(rows, "At")).toBe("Start of Arc CCW move");
   });
 });
 

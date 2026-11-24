@@ -67,7 +67,7 @@ import { ToolsMenu } from "./panels/tools-menu";
 import { keepHidden, toolsInOrder } from "./viewport/tool-filter";
 import { measurePanel, type Measurement } from "./viewport/measure";
 import {
-  preferArrivingMove,
+  shownMove,
   readoutRows,
   restingFor,
   restingPoint,
@@ -754,7 +754,7 @@ async function main(app: HTMLElement): Promise<void> {
   editor.onCursorLine = followCursor;
   editor.onSelectedLines = followCursor;
   viewport.onHover = (p) => {
-    hovered = p && current ? preferArrivingMove(current, p) : null;
+    hovered = p && current ? shownMove(p) : null;
     showMarker();
   };
   /** Shows the measurement panel in place of the hover readout. */
@@ -830,8 +830,11 @@ async function main(app: HTMLElement): Promise<void> {
     if (!current || !p || freshness.stale) return;
     // The marker rests where the user clicked (not at the end of the line)
     // until the cursor moves to another line.
-    const line = current.segment(p.segment).srcLine;
-    pinned = { line, point: preferArrivingMove(current, p) };
+    // The line of the move the hover highlighted (M6), not the one that
+    // ends at the node.
+    const shown = shownMove(p);
+    const line = current.segment(shown.segment).srcLine;
+    pinned = { line, point: shown };
     if (line === cursorLine) {
       resting = pinned.point;
       showMarker();

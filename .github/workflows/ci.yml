@@ -90,9 +90,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # The package mirrors once hung here for over 30 minutes (normally
-      # about 20 s): fail fast instead, and re-run.
+      # about 20 s): fail instead, and re-run. 25 minutes, not 10: on
+      # 2026-11-24 a slow mirror took over 2 minutes for WebKit alone and
+      # the whole install ran past 10 minutes four times in a row.
       - name: Install WebKit and the other system libraries Tauri needs
-        timeout-minutes: 10
+        timeout-minutes: 25
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
